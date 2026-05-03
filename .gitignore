@@ -1,0 +1,10 @@
+.dart_tool/
+.idea/
+.metadata
+build/
+android/.gradle/
+android/local.properties
+android/app/debug
+android/app/profile
+android/app/release
+*.iml
