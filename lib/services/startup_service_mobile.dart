@@ -12,7 +12,7 @@ class StartupService {
       githubSyncTask,
       githubSyncTask,
       frequency: const Duration(hours: 1),
-      existingWorkPolicy: ExistingWorkPolicy.keep,
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
     );
   }
 }
