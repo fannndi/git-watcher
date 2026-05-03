@@ -38,6 +38,79 @@ class GitHubService {
         .toList();
   }
 
+  Future<List<Commit>> fetchLatestDayCommits(String owner, String repo) async {
+    final commits = <Commit>[];
+    DateTime? latestDay;
+    var page = 1;
+
+    while (true) {
+      final pageCommits = await _fetchCommitPage(owner, repo, page);
+      if (pageCommits.isEmpty) {
+        break;
+      }
+
+      for (final commit in pageCommits) {
+        final day = DateTime(
+          commit.date.toLocal().year,
+          commit.date.toLocal().month,
+          commit.date.toLocal().day,
+        );
+        latestDay ??= day;
+
+        if (day != latestDay) {
+          return commits;
+        }
+
+        commits.add(commit);
+      }
+
+      page++;
+    }
+
+    return commits;
+  }
+
+  Future<List<Commit>> fetchCommitsWithLimit(
+    String owner,
+    String repo,
+    int limit,
+  ) async {
+    final commits = <Commit>[];
+    var page = 1;
+
+    while (commits.length < limit) {
+      final pageCommits = await _fetchCommitPage(owner, repo, page);
+      if (pageCommits.isEmpty) {
+        break;
+      }
+
+      commits.addAll(pageCommits);
+      page++;
+    }
+
+    return commits.take(limit).toList();
+  }
+
+  Future<List<Commit>> _fetchCommitPage(
+    String owner,
+    String repo,
+    int page,
+  ) async {
+    final uri = Uri.parse(
+      '$githubBaseUrl/repos/$owner/$repo/commits?per_page=100&page=$page',
+    );
+    final response = await _client.get(uri, headers: _headers);
+
+    if (response.statusCode != 200) {
+      throw Exception('Gagal mengambil commit repository.');
+    }
+
+    final decoded = jsonDecode(response.body) as List<dynamic>;
+    return decoded
+        .map((item) => Commit.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Map<String, String> get _headers => const {
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',

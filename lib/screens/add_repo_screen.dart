@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/commit.dart';
 import '../models/watched_repo.dart';
 import '../services/github_service.dart';
 import '../services/storage_service.dart';
@@ -20,6 +21,7 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
   Map<String, dynamic>? _foundRepo;
   String? _owner;
   String? _repo;
+  String _syncMode = syncModeMinimal;
   bool _isChecking = false;
   bool _isAdding = false;
 
@@ -104,15 +106,17 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
     setState(() => _isAdding = true);
     try {
       final existing = await _storage.getRepos();
-      final commits = await _github.fetchCommits(owner, repo);
+      final commits = await _fetchInitialCommits(owner, repo);
       final newRepo = WatchedRepo(
         owner: owner,
         repo: repo,
         branch: foundRepo['default_branch'] as String? ?? 'main',
+        syncMode: _syncMode,
         lastSha: commits.isEmpty ? '' : commits.first.sha,
       );
 
       await _storage.saveRepos([...existing, newRepo]);
+      await _storage.saveCachedCommits(newRepo, commits);
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (_) {
@@ -182,6 +186,51 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
                     ),
                     Text('Branch default: ${foundRepo['default_branch'] ?? 'main'}'),
                     const SizedBox(height: 16),
+                    const Text(
+                      'Mode Sync',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    RadioListTile<String>(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Minimal'),
+                      subtitle: const Text('Simpan commit pada tanggal terbaru'),
+                      value: syncModeMinimal,
+                      groupValue: _syncMode,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _syncMode = value);
+                        }
+                      },
+                    ),
+                    RadioListTile<String>(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Latest 500'),
+                      subtitle: const Text('Simpan maksimal 500 commit terbaru'),
+                      value: syncModeLatest,
+                      groupValue: _syncMode,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _syncMode = value);
+                        }
+                      },
+                    ),
+                    RadioListTile<String>(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Extended 5000'),
+                      subtitle: const Text('Simpan maksimal 5000 commit terbaru'),
+                      value: syncModeExtended,
+                      groupValue: _syncMode,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _syncMode = value);
+                        }
+                      },
+                    ),
+                    const Text(
+                      'Mode besar dapat memerlukan waktu lebih lama dan terkena rate limit GitHub.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: _isAdding ? null : _addRepo,
                       icon: _isAdding
@@ -201,5 +250,17 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
         ],
       ),
     );
+  }
+
+  Future<List<Commit>> _fetchInitialCommits(String owner, String repo) {
+    if (_syncMode == syncModeLatest) {
+      return _github.fetchCommitsWithLimit(owner, repo, latestSyncCommitLimit);
+    }
+
+    if (_syncMode == syncModeExtended) {
+      return _github.fetchCommitsWithLimit(owner, repo, extendedSyncCommitLimit);
+    }
+
+    return _github.fetchLatestDayCommits(owner, repo);
   }
 }
