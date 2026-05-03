@@ -189,9 +189,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           IconButton(
-            tooltip: 'Demo Mode',
-            icon: const Icon(Icons.bug_report_outlined),
-            onPressed: _isDemoMode ? null : _askDemoPassword,
+            tooltip: _isDemoMode ? 'Keluar Demo Mode' : 'Demo Mode',
+            icon: Icon(
+              _isDemoMode ? Icons.bug_report : Icons.bug_report_outlined,
+            ),
+            onPressed: _isDemoMode ? _exitDemoMode : _askDemoPassword,
           ),
         ],
       ),
@@ -246,6 +248,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           : const Icon(Icons.sync),
                       label: const Text('Sinkronkan Sekarang'),
                     ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: _exitDemoMode,
+                      icon: const Icon(Icons.logout),
+                      label: const Text('Keluar Demo Mode'),
+                    ),
                     const SizedBox(height: 12),
                   ],
                   Expanded(
@@ -291,6 +299,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showRepoLimit() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Maksimal 3 repo dapat dipantau')),
+    );
+  }
+
+  void _exitDemoMode() {
+    setState(() {
+      _isDemoMode = false;
+      _syncIntervalMinutes = defaultSyncIntervalMinutes;
+    });
+    _scheduleNextSync(DateTime.now());
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Demo Mode nonaktif')),
     );
   }
 
