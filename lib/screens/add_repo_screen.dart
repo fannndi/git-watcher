@@ -204,7 +204,7 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
                     Text('Branch default: ${foundRepo['default_branch'] ?? 'main'}'),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: _selectedBranch,
+                      initialValue: _selectedBranch,
                       decoration: const InputDecoration(
                         labelText: 'Branch Dipantau',
                         border: OutlineInputBorder(),
@@ -235,46 +235,37 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
                       'Mode Sync',
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    RadioListTile<String>(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Minimal'),
-                      subtitle: const Text('Simpan commit pada tanggal terbaru'),
-                      value: syncModeMinimal,
-                      groupValue: _syncMode,
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => _syncMode = value);
-                        }
+                    const SizedBox(height: 8),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(
+                          value: syncModeMinimal,
+                          label: Text('Minimal'),
+                        ),
+                        ButtonSegment(
+                          value: syncModeLatest,
+                          label: Text('500'),
+                        ),
+                        ButtonSegment(
+                          value: syncModeExtended,
+                          label: Text('5000'),
+                        ),
+                      ],
+                      selected: {_syncMode},
+                      onSelectionChanged: (selected) {
+                        setState(() => _syncMode = selected.first);
                       },
                     ),
-                    RadioListTile<String>(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Latest 500'),
-                      subtitle: const Text('Simpan maksimal 500 commit terbaru'),
-                      value: syncModeLatest,
-                      groupValue: _syncMode,
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => _syncMode = value);
-                        }
-                      },
+                    const SizedBox(height: 8),
+                    Text(
+                      _syncModeDescription,
+                      style: const TextStyle(fontSize: 12),
                     ),
-                    RadioListTile<String>(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Extended 5000'),
-                      subtitle: const Text('Simpan maksimal 5000 commit terbaru'),
-                      value: syncModeExtended,
-                      groupValue: _syncMode,
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => _syncMode = value);
-                        }
-                      },
-                    ),
-                    const Text(
-                      'Mode besar dapat memerlukan waktu lebih lama dan terkena rate limit GitHub.',
-                      style: TextStyle(fontSize: 12),
-                    ),
+                    if (_syncMode != syncModeMinimal)
+                      const Text(
+                        'Mode besar dapat memerlukan waktu lebih lama dan terkena rate limit GitHub.',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: _isAdding ? null : _addRepo,
@@ -321,5 +312,17 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
     }
 
     return _github.fetchLatestDayCommits(owner, repo, branch);
+  }
+
+  String get _syncModeDescription {
+    if (_syncMode == syncModeLatest) {
+      return 'Simpan maksimal 500 commit terbaru.';
+    }
+
+    if (_syncMode == syncModeExtended) {
+      return 'Simpan maksimal 5000 commit terbaru.';
+    }
+
+    return 'Simpan commit pada tanggal terbaru.';
   }
 }

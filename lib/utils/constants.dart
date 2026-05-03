@@ -13,3 +13,4 @@ const String syncModeLatest = 'latest_500';
 const String syncModeExtended = 'extended_5000';
 const int latestSyncCommitLimit = 500;
 const int extendedSyncCommitLimit = 5000;
+const int defaultSyncIntervalMinutes = 60;
