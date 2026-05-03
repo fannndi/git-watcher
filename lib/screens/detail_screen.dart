@@ -16,7 +16,8 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen> {
   final GitHubService _github = GitHubService();
-  final DateFormat _dateFormat = DateFormat('yyyy-MM-dd HH:mm');
+  final DateFormat _dayFormat = DateFormat('yyyy-MM-dd');
+  final DateFormat _timeFormat = DateFormat('HH:mm');
 
   List<Commit> _commits = [];
   bool _isLoading = true;
@@ -47,6 +48,8 @@ class _DetailScreenState extends State<DetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final groupedCommits = _groupCommitsByDate();
+
     return Scaffold(
       appBar: AppBar(title: Text(widget.repo.fullName)),
       body: Padding(
@@ -63,36 +66,67 @@ class _DetailScreenState extends State<DetailScreen> {
                         ],
                       )
                     : ListView.builder(
-                        itemCount: _commits.length,
+                        itemCount: groupedCommits.length,
                         itemBuilder: (context, index) {
-                          final commit = _commits[index];
-                          final shortSha = commit.sha.length >= 7
-                              ? commit.sha.substring(0, 7)
-                              : commit.sha;
+                          final group = groupedCommits.entries.elementAt(index);
 
-                          return Card(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: ListTile(
-                              title: Text(
-                                commit.message,
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontWeight: FontWeight.w700),
-                              ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 8),
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
                                 child: Text(
-                                  '$shortSha - ${_dateFormat.format(commit.date.toLocal())}',
+                                  group.key,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w800),
                                 ),
                               ),
-                            ),
+                              ...group.value.map((commit) {
+                                final shortSha = commit.sha.length >= 7
+                                    ? commit.sha.substring(0, 7)
+                                    : commit.sha;
+
+                                return Card(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: ListTile(
+                                    title: Text(
+                                      commit.message,
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    subtitle: Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Text(
+                                        '$shortSha - ${_timeFormat.format(commit.date.toLocal())}',
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ],
                           );
                         },
                       ),
               ),
       ),
     );
+  }
+
+  Map<String, List<Commit>> _groupCommitsByDate() {
+    final grouped = <String, List<Commit>>{};
+
+    for (final commit in _commits) {
+      final key = _dayFormat.format(commit.date.toLocal());
+      grouped.putIfAbsent(key, () => []).add(commit);
+    }
+
+    return grouped;
   }
 }

@@ -1,3 +1,4 @@
+import '../models/sync_log.dart';
 import '../models/watched_repo.dart';
 import 'github_service.dart';
 import 'notification_service.dart';
@@ -38,6 +39,12 @@ class SyncService {
 
     await storage.saveRepos(updatedRepos);
     await storage.saveUpdateSummary(updates);
+    await storage.addSyncLog(
+      SyncLog(
+        syncedAt: DateTime.now(),
+        updates: updates,
+      ),
+    );
 
     if (updates.isNotEmpty || forceNotification) {
       await NotificationService.showUpdateNotification();

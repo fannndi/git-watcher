@@ -1,6 +1,7 @@
 const String githubBaseUrl = 'https://api.github.com';
 const String watchedReposKey = 'watched_repos';
 const String updateSummaryKey = 'update_summary';
+const String syncHistoryKey = 'sync_history';
 const String notificationChannelId = 'updates';
 const String githubSyncTask = 'githubSync';
 const String demoPassword = 'demo123';

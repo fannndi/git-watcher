@@ -149,6 +149,13 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('GitHub Watcher'),
         actions: [
           IconButton(
+            tooltip: 'Riwayat Sinkron',
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const UpdateScreen()),
+            ),
+          ),
+          IconButton(
             tooltip: 'Demo Mode',
             icon: const Icon(Icons.bug_report_outlined),
             onPressed: _isDemoMode ? null : _askDemoPassword,
