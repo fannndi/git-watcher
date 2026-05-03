@@ -75,7 +75,9 @@ class _DetailScreenState extends State<DetailScreen> {
     final groupedCommits = _groupCommitsByDate(filteredCommits);
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.repo.fullName)),
+      appBar: AppBar(
+        title: Text('${widget.repo.fullName} - ${widget.repo.branch}'),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: _isLoading
@@ -221,6 +223,7 @@ class _DetailScreenState extends State<DetailScreen> {
       return _github.fetchCommitsWithLimit(
         widget.repo.owner,
         widget.repo.repo,
+        widget.repo.branch,
         latestSyncCommitLimit,
       );
     }
@@ -229,10 +232,15 @@ class _DetailScreenState extends State<DetailScreen> {
       return _github.fetchCommitsWithLimit(
         widget.repo.owner,
         widget.repo.repo,
+        widget.repo.branch,
         extendedSyncCommitLimit,
       );
     }
 
-    return _github.fetchLatestDayCommits(widget.repo.owner, widget.repo.repo);
+    return _github.fetchLatestDayCommits(
+      widget.repo.owner,
+      widget.repo.repo,
+      widget.repo.branch,
+    );
   }
 }

@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/sync_log.dart';
 import '../models/commit.dart';
+import '../models/sync_log.dart';
 import '../models/watched_repo.dart';
 import '../utils/constants.dart';
 
@@ -102,6 +102,7 @@ class StorageService {
   }
 
   String _commitCacheKey(WatchedRepo repo) {
-    return '$commitCachePrefix${repo.owner}_${repo.repo}_${repo.syncMode}';
+    return '$commitCachePrefix'
+        '${repo.owner}_${repo.repo}_${repo.branch}_${repo.syncMode}';
   }
 }

@@ -21,6 +21,8 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
   Map<String, dynamic>? _foundRepo;
   String? _owner;
   String? _repo;
+  List<String> _branches = [];
+  String? _selectedBranch;
   String _syncMode = syncModeMinimal;
   bool _isChecking = false;
   bool _isAdding = false;
@@ -33,7 +35,11 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
 
   Future<void> _checkRepo() async {
     final input = _controller.text.trim();
-    setState(() => _foundRepo = null);
+    setState(() {
+      _foundRepo = null;
+      _branches = [];
+      _selectedBranch = null;
+    });
 
     if (input.isEmpty) {
       _showError('Input repository tidak boleh kosong');
@@ -60,16 +66,6 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
       return;
     }
 
-    final duplicate = existing.any(
-      (item) =>
-          item.owner.toLowerCase() == owner.toLowerCase() &&
-          item.repo.toLowerCase() == repo.toLowerCase(),
-    );
-    if (duplicate) {
-      _showError('Repository sudah dipantau');
-      return;
-    }
-
     setState(() => _isChecking = true);
     try {
       final result = await _github.getRepo(owner, repo);
@@ -80,10 +76,19 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
         return;
       }
 
+      final branches = await _github.fetchBranches(owner, repo);
+      if (!mounted) return;
+      final defaultBranch = result['default_branch'] as String? ?? 'main';
       setState(() {
         _foundRepo = result;
         _owner = owner;
         _repo = repo;
+        _branches = branches;
+        _selectedBranch = branches.contains(defaultBranch)
+            ? defaultBranch
+            : branches.isEmpty
+                ? defaultBranch
+                : branches.first;
       });
     } catch (_) {
       if (!mounted) return;
@@ -99,18 +104,30 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
     final owner = _owner;
     final repo = _repo;
     final foundRepo = _foundRepo;
-    if (owner == null || repo == null || foundRepo == null) {
+    final branch = _selectedBranch;
+    if (owner == null || repo == null || foundRepo == null || branch == null) {
       return;
     }
 
     setState(() => _isAdding = true);
     try {
       final existing = await _storage.getRepos();
-      final commits = await _fetchInitialCommits(owner, repo);
+      final duplicate = existing.any(
+        (item) =>
+            item.owner.toLowerCase() == owner.toLowerCase() &&
+            item.repo.toLowerCase() == repo.toLowerCase() &&
+            item.branch.toLowerCase() == branch.toLowerCase(),
+      );
+      if (duplicate) {
+        _showError('Repository dan branch sudah dipantau');
+        return;
+      }
+
+      final commits = await _fetchInitialCommits(owner, repo, branch);
       final newRepo = WatchedRepo(
         owner: owner,
         repo: repo,
-        branch: foundRepo['default_branch'] as String? ?? 'main',
+        branch: branch,
         syncMode: _syncMode,
         lastSha: commits.isEmpty ? '' : commits.first.sha,
       );
@@ -186,6 +203,34 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
                     ),
                     Text('Branch default: ${foundRepo['default_branch'] ?? 'main'}'),
                     const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _selectedBranch,
+                      decoration: const InputDecoration(
+                        labelText: 'Branch Dipantau',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _branches.isEmpty && _selectedBranch != null
+                          ? [
+                              DropdownMenuItem(
+                                value: _selectedBranch,
+                                child: Text(_selectedBranch!),
+                              ),
+                            ]
+                          : _branches
+                              .map(
+                                (branch) => DropdownMenuItem(
+                                  value: branch,
+                                  child: Text(branch),
+                                ),
+                              )
+                              .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _selectedBranch = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     const Text(
                       'Mode Sync',
                       style: TextStyle(fontWeight: FontWeight.w700),
@@ -252,15 +297,29 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
     );
   }
 
-  Future<List<Commit>> _fetchInitialCommits(String owner, String repo) {
+  Future<List<Commit>> _fetchInitialCommits(
+    String owner,
+    String repo,
+    String branch,
+  ) {
     if (_syncMode == syncModeLatest) {
-      return _github.fetchCommitsWithLimit(owner, repo, latestSyncCommitLimit);
+      return _github.fetchCommitsWithLimit(
+        owner,
+        repo,
+        branch,
+        latestSyncCommitLimit,
+      );
     }
 
     if (_syncMode == syncModeExtended) {
-      return _github.fetchCommitsWithLimit(owner, repo, extendedSyncCommitLimit);
+      return _github.fetchCommitsWithLimit(
+        owner,
+        repo,
+        branch,
+        extendedSyncCommitLimit,
+      );
     }
 
-    return _github.fetchLatestDayCommits(owner, repo);
+    return _github.fetchLatestDayCommits(owner, repo, branch);
   }
 }

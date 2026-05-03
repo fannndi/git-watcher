@@ -21,9 +21,48 @@ class GitHubService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  Future<List<Commit>> fetchCommits(String owner, String repo) async {
-    final uri = Uri.parse(
-      '$githubBaseUrl/repos/$owner/$repo/commits?per_page=$maxFetchedCommits',
+  Future<List<String>> fetchBranches(String owner, String repo) async {
+    final branches = <String>[];
+    var page = 1;
+
+    while (true) {
+      final uri = Uri.https(
+        'api.github.com',
+        '/repos/$owner/$repo/branches',
+        {'per_page': '100', 'page': '$page'},
+      );
+      final response = await _client.get(uri, headers: _headers);
+
+      if (response.statusCode != 200) {
+        throw Exception('Gagal mengambil branch repository.');
+      }
+
+      final decoded = jsonDecode(response.body) as List<dynamic>;
+      if (decoded.isEmpty) {
+        break;
+      }
+
+      branches.addAll(
+        decoded.map((item) {
+          final branch = item as Map<String, dynamic>;
+          return branch['name'] as String;
+        }),
+      );
+      page++;
+    }
+
+    return branches;
+  }
+
+  Future<List<Commit>> fetchCommits(
+    String owner,
+    String repo,
+    String branch,
+  ) async {
+    final uri = Uri.https(
+      'api.github.com',
+      '/repos/$owner/$repo/commits',
+      {'sha': branch, 'per_page': '$maxFetchedCommits'},
     );
     final response = await _client.get(uri, headers: _headers);
 
@@ -38,13 +77,17 @@ class GitHubService {
         .toList();
   }
 
-  Future<List<Commit>> fetchLatestDayCommits(String owner, String repo) async {
+  Future<List<Commit>> fetchLatestDayCommits(
+    String owner,
+    String repo,
+    String branch,
+  ) async {
     final commits = <Commit>[];
     DateTime? latestDay;
     var page = 1;
 
     while (true) {
-      final pageCommits = await _fetchCommitPage(owner, repo, page);
+      final pageCommits = await _fetchCommitPage(owner, repo, branch, page);
       if (pageCommits.isEmpty) {
         break;
       }
@@ -73,13 +116,14 @@ class GitHubService {
   Future<List<Commit>> fetchCommitsWithLimit(
     String owner,
     String repo,
+    String branch,
     int limit,
   ) async {
     final commits = <Commit>[];
     var page = 1;
 
     while (commits.length < limit) {
-      final pageCommits = await _fetchCommitPage(owner, repo, page);
+      final pageCommits = await _fetchCommitPage(owner, repo, branch, page);
       if (pageCommits.isEmpty) {
         break;
       }
@@ -94,10 +138,13 @@ class GitHubService {
   Future<List<Commit>> _fetchCommitPage(
     String owner,
     String repo,
+    String branch,
     int page,
   ) async {
-    final uri = Uri.parse(
-      '$githubBaseUrl/repos/$owner/$repo/commits?per_page=100&page=$page',
+    final uri = Uri.https(
+      'api.github.com',
+      '/repos/$owner/$repo/commits',
+      {'sha': branch, 'per_page': '100', 'page': '$page'},
     );
     final response = await _client.get(uri, headers: _headers);
 

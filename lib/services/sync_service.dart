@@ -16,19 +16,24 @@ class SyncService {
 
     for (final repo in repos) {
       try {
-      final commits = await github.fetchCommits(repo.owner, repo.repo);
-      if (commits.isEmpty) {
-        updatedRepos.add(repo);
-        continue;
-      }
+        final commits = await github.fetchCommits(
+          repo.owner,
+          repo.repo,
+          repo.branch,
+        );
+        if (commits.isEmpty) {
+          updatedRepos.add(repo);
+          continue;
+        }
 
-      final latest = commits.first;
-      await storage.mergeCachedCommits(repo, commits);
-      if (repo.lastSha.isNotEmpty && latest.sha != repo.lastSha) {
+        final latest = commits.first;
+        await storage.mergeCachedCommits(repo, commits);
+        if (repo.lastSha.isNotEmpty && latest.sha != repo.lastSha) {
           final count = commits
               .takeWhile((commit) => commit.sha != repo.lastSha)
               .length;
-          updates[repo.fullName] = count == 0 ? 1 : count;
+          final updateKey = '${repo.fullName} (${repo.branch})';
+          updates[updateKey] = count == 0 ? 1 : count;
         }
 
         repo.lastSha = latest.sha;
