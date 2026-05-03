@@ -7,7 +7,7 @@ import 'notification_service.dart';
 class StartupService {
   static Future<void> init() async {
     await NotificationService.init();
-    await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+    await Workmanager().initialize(callbackDispatcher);
     await Workmanager().registerPeriodicTask(
       githubSyncTask,
       githubSyncTask,

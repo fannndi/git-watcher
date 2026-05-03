@@ -4,7 +4,9 @@ import 'notification_service.dart';
 import 'storage_service.dart';
 
 class SyncService {
-  static Future<Map<String, int>> checkUpdates() async {
+  static Future<Map<String, int>> checkUpdates({
+    bool forceNotification = false,
+  }) async {
     final storage = StorageService();
     final github = GitHubService();
     final repos = await storage.getRepos();
@@ -37,7 +39,7 @@ class SyncService {
     await storage.saveRepos(updatedRepos);
     await storage.saveUpdateSummary(updates);
 
-    if (updates.isNotEmpty) {
+    if (updates.isNotEmpty || forceNotification) {
       await NotificationService.showUpdateNotification();
     }
 

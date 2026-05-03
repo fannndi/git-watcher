@@ -60,18 +60,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _askDemoPassword() async {
-    final controller = TextEditingController();
+    var password = '';
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Demo Mode'),
         content: TextField(
-          controller: controller,
           obscureText: true,
+          autofocus: true,
           decoration: const InputDecoration(
             labelText: 'Password',
             border: OutlineInputBorder(),
           ),
+          onChanged: (value) => password = value,
+          onSubmitted: (_) {
+            Navigator.of(context).pop(password == demoPassword);
+          },
         ),
         actions: [
           TextButton(
@@ -80,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           FilledButton(
             onPressed: () {
-              Navigator.of(context).pop(controller.text == demoPassword);
+              Navigator.of(context).pop(password == demoPassword);
             },
             child: const Text('Aktifkan'),
           ),
@@ -88,7 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
-    controller.dispose();
     if (!mounted) return;
 
     if (accepted == true) {
@@ -106,21 +109,23 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _syncNow() async {
     setState(() => _isSyncing = true);
     try {
-      final updates = await SyncService.checkUpdates();
+      final updates = await SyncService.checkUpdates(
+        forceNotification: _isDemoMode,
+      );
       await _loadRepos();
       if (!mounted) return;
 
+      final message = _isDemoMode
+          ? 'Sinkron selesai. Notifikasi dikirim.'
+          : updates.isEmpty
+              ? 'Tidak ada update baru'
+              : '${updates.length} repo memiliki update';
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            updates.isEmpty
-                ? 'Tidak ada update baru'
-                : '${updates.length} repo memiliki update',
-          ),
-        ),
+        SnackBar(content: Text(message)),
       );
 
-      if (updates.isNotEmpty) {
+      if (updates.isNotEmpty && !_isDemoMode) {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const UpdateScreen()),
         );
