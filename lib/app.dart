@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
+import 'services/app_settings_controller.dart';
 import 'services/notification_service.dart';
+import 'utils/constants.dart';
 
 class GitHubWatcherApp extends StatefulWidget {
   const GitHubWatcherApp({super.key});
@@ -18,7 +20,8 @@ class _GitHubWatcherAppState extends State<GitHubWatcherApp> {
   }
 
   Future<void> _openInitialNotification() async {
-    final shouldOpen = await NotificationService.launchedFromUpdateNotification();
+    final shouldOpen =
+        await NotificationService.launchedFromUpdateNotification();
     if (!mounted || !shouldOpen) {
       return;
     }
@@ -30,15 +33,37 @@ class _GitHubWatcherAppState extends State<GitHubWatcherApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'GitHub Watcher',
-      navigatorKey: navigatorKey,
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
-      ),
-      home: const HomeScreen(),
+    return ValueListenableBuilder(
+      valueListenable: appSettingsController,
+      builder: (context, settings, _) {
+        return MaterialApp(
+          title: 'GitHub Watcher',
+          navigatorKey: navigatorKey,
+          debugShowCheckedModeBanner: false,
+          themeMode: _themeMode(settings.themeMode),
+          theme: ThemeData(
+            useMaterial3: true,
+            colorSchemeSeed: Colors.blue,
+            brightness: Brightness.light,
+          ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorSchemeSeed: Colors.blue,
+            brightness: Brightness.dark,
+          ),
+          home: const HomeScreen(),
+        );
+      },
     );
+  }
+
+  ThemeMode _themeMode(String value) {
+    if (value == themeModeLight) {
+      return ThemeMode.light;
+    }
+    if (value == themeModeDark) {
+      return ThemeMode.dark;
+    }
+    return ThemeMode.system;
   }
 }
