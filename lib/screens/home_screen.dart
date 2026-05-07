@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/watched_repo.dart';
+import '../services/app_settings_controller.dart';
 import '../services/storage_service.dart';
 import '../services/sync_service.dart';
 import '../utils/constants.dart';
+import '../utils/strings.dart';
 import '../widgets/repo_tile.dart';
 import 'add_repo_screen.dart';
 import 'detail_screen.dart';
+import 'settings_screen.dart';
 import 'update_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -23,15 +26,19 @@ class _HomeScreenState extends State<HomeScreen> {
   List<WatchedRepo> _repos = [];
   bool _isLoading = true;
   bool _isSyncing = false;
-  bool _isDemoMode = false;
   int _syncIntervalMinutes = defaultSyncIntervalMinutes;
+  String _languageCode = languageIndonesian;
+  bool _isDemoMode = false;
   Duration _timeUntilSync = Duration.zero;
   DateTime? _nextSyncAt;
+  DateTime? _lastSyncAt;
   Timer? _countdownTimer;
 
   @override
   void initState() {
     super.initState();
+    _applySettings();
+    appSettingsController.addListener(_applySettings);
     _loadRepos();
     _countdownTimer = Timer.periodic(
       const Duration(seconds: 1),
@@ -42,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    appSettingsController.removeListener(_applySettings);
     super.dispose();
   }
 
@@ -54,7 +62,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _repos = repos;
       _isLoading = false;
     });
-    _scheduleNextSync(history.isEmpty ? null : history.first.syncedAt);
+    _lastSyncAt = history.isEmpty ? null : history.first.syncedAt;
+    _scheduleNextSync(_lastSyncAt);
   }
 
   Future<void> _openAddRepo() async {
@@ -82,64 +91,15 @@ class _HomeScreenState extends State<HomeScreen> {
     if (updated.isEmpty) {
       _clearCountdown();
     }
+    final strings = stringsFor(_languageCode);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${repo.fullName} dihapus')),
+      SnackBar(content: Text(strings.repoDeleted(repo.fullName))),
     );
-  }
-
-  Future<void> _askDemoPassword() async {
-    var password = '';
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Demo Mode'),
-        content: TextField(
-          obscureText: true,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Password',
-            border: OutlineInputBorder(),
-          ),
-          onChanged: (value) => password = value,
-          onSubmitted: (_) {
-            Navigator.of(context).pop(password == demoPassword);
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop(password == demoPassword);
-            },
-            child: const Text('Aktifkan'),
-          ),
-        ],
-      ),
-    );
-
-    if (!mounted) return;
-
-    if (accepted == true) {
-      setState(() {
-        _isDemoMode = true;
-        _syncIntervalMinutes = 3;
-      });
-      _scheduleNextSync(DateTime.now());
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Demo Mode Aktif')),
-      );
-    } else if (accepted == false) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password demo salah')),
-      );
-    }
   }
 
   Future<void> _syncNow() async {
     setState(() => _isSyncing = true);
+    final strings = stringsFor(_languageCode);
     try {
       final updates = await SyncService.checkUpdates(
         forceNotification: _isDemoMode,
@@ -149,10 +109,10 @@ class _HomeScreenState extends State<HomeScreen> {
       _scheduleNextSync(DateTime.now());
 
       final message = _isDemoMode
-          ? 'Sinkron selesai. Notifikasi dikirim.'
+          ? strings.syncDoneNotification
           : updates.isEmpty
-              ? 'Tidak ada update baru'
-              : '${updates.length} repo memiliki update';
+              ? strings.noUpdates
+              : strings.reposHaveUpdates(updates.length);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
@@ -166,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sinkronisasi gagal. Cek koneksi internet.')),
+        SnackBar(content: Text(strings.syncFailed)),
       );
     } finally {
       if (mounted) {
@@ -177,23 +137,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = stringsFor(_languageCode);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GitHub Watcher'),
+        title: Text(strings.appTitle),
         actions: [
           IconButton(
-            tooltip: 'Riwayat Sinkron',
+            tooltip: strings.history,
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const UpdateScreen()),
             ),
           ),
           IconButton(
-            tooltip: _isDemoMode ? 'Keluar Demo Mode' : 'Demo Mode',
-            icon: Icon(
-              _isDemoMode ? Icons.bug_report : Icons.bug_report_outlined,
-            ),
-            onPressed: _isDemoMode ? _exitDemoMode : _askDemoPassword,
+            tooltip: strings.settings,
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: _openSettings,
           ),
         ],
       ),
@@ -205,71 +165,41 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (_repos.isNotEmpty) ...[
-                    _buildCountdownCard(),
-                    const SizedBox(height: 12),
-                  ],
-                  if (_isDemoMode) ...[
-                    Text(
-                      'Demo Mode Aktif',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w700,
+                    if (_isDemoMode) ...[
+                      _buildCountdownCard(strings),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: _isSyncing ? null : _syncNow,
+                        icon: _isSyncing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.sync),
+                        label: Text(strings.syncNow),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<int>(
-                      initialValue: _syncIntervalMinutes,
-                      decoration: const InputDecoration(
-                        labelText: 'Interval Demo',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 1, child: Text('1 menit')),
-                        DropdownMenuItem(value: 3, child: Text('3 menit')),
-                        DropdownMenuItem(value: 5, child: Text('5 menit')),
-                        DropdownMenuItem(value: 10, child: Text('10 menit')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => _syncIntervalMinutes = value);
-                          _scheduleNextSync(DateTime.now());
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    FilledButton.icon(
-                      onPressed: _isSyncing ? null : _syncNow,
-                      icon: _isSyncing
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.sync),
-                      label: const Text('Sinkronkan Sekarang'),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _exitDemoMode,
-                      icon: const Icon(Icons.logout),
-                      label: const Text('Keluar Demo Mode'),
-                    ),
-                    const SizedBox(height: 12),
+                      const SizedBox(height: 12),
+                    ],
                   ],
                   Expanded(
                     child: _repos.isEmpty
-                        ? const Center(child: Text('Belum ada repo dipantau'))
+                        ? Center(child: Text(strings.noRepos))
                         : ListView.builder(
                             itemCount: _repos.length,
                             itemBuilder: (context, index) {
                               final repo = _repos[index];
                               return Dismissible(
-                                key: ValueKey('${repo.fullName}-${repo.branch}'),
+                                key:
+                                    ValueKey('${repo.fullName}-${repo.branch}'),
                                 direction: DismissDirection.endToStart,
                                 background: Container(
                                   alignment: Alignment.centerRight,
                                   padding: const EdgeInsets.only(right: 16),
-                                  color: Theme.of(context).colorScheme.errorContainer,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .errorContainer,
                                   child: const Icon(Icons.delete_outline),
                                 ),
                                 onDismissed: (_) => _deleteRepo(repo),
@@ -290,30 +220,27 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _repos.length >= maxWatchedRepos ? _showRepoLimit : _openAddRepo,
+        onPressed:
+            _repos.length >= maxWatchedRepos ? _showRepoLimit : _openAddRepo,
         child: const Icon(Icons.add),
       ),
     );
   }
 
   void _showRepoLimit() {
+    final strings = stringsFor(_languageCode);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Maksimal 3 repo dapat dipantau')),
+      SnackBar(content: Text(strings.maxRepos)),
     );
   }
 
-  void _exitDemoMode() {
-    setState(() {
-      _isDemoMode = false;
-      _syncIntervalMinutes = defaultSyncIntervalMinutes;
-    });
-    _scheduleNextSync(DateTime.now());
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Demo Mode nonaktif')),
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
     );
   }
 
-  Widget _buildCountdownCard() {
+  Widget _buildCountdownCard(AppStrings strings) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -326,11 +253,15 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Sync berikutnya',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                  Text(
+                    strings.nextSync,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  Text(_isDemoMode ? 'Interval demo aktif' : 'Interval 1 jam'),
+                  Text(
+                    _isDemoMode
+                        ? strings.demoIntervalActive
+                        : '${strings.normalInterval} $_syncIntervalMinutes menit',
+                  ),
                 ],
               ),
             ),
@@ -357,6 +288,29 @@ class _HomeScreenState extends State<HomeScreen> {
       _nextSyncAt = base.add(Duration(minutes: _syncIntervalMinutes));
     });
     _tickCountdown();
+  }
+
+  void _applySettings() {
+    final settings = appSettingsController.value;
+    final changedInterval =
+        _syncIntervalMinutes != settings.syncIntervalMinutes;
+    final changedDemoMode = _isDemoMode != settings.isDemoMode;
+
+    if (mounted) {
+      setState(() {
+        _isDemoMode = settings.isDemoMode;
+        _syncIntervalMinutes = settings.syncIntervalMinutes;
+        _languageCode = settings.languageCode;
+      });
+    } else {
+      _isDemoMode = settings.isDemoMode;
+      _syncIntervalMinutes = settings.syncIntervalMinutes;
+      _languageCode = settings.languageCode;
+    }
+
+    if ((changedInterval || changedDemoMode) && _repos.isNotEmpty) {
+      _scheduleNextSync(_lastSyncAt);
+    }
   }
 
   void _clearCountdown() {

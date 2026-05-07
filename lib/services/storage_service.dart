@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/commit.dart';
+import '../models/app_settings.dart';
 import '../models/sync_log.dart';
 import '../models/watched_repo.dart';
 import '../utils/constants.dart';
@@ -25,6 +26,22 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     final raw = jsonEncode(repos.map((repo) => repo.toJson()).toList());
     await prefs.setString(watchedReposKey, raw);
+  }
+
+  Future<AppSettings> getAppSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(appSettingsKey);
+    if (raw == null || raw.isEmpty) {
+      return const AppSettings.defaults();
+    }
+
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    return AppSettings.fromJson(decoded);
+  }
+
+  Future<void> saveAppSettings(AppSettings settings) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(appSettingsKey, jsonEncode(settings.toJson()));
   }
 
   Future<void> saveUpdateSummary(Map<String, int> updates) async {

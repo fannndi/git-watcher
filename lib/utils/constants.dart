@@ -1,5 +1,6 @@
 const String githubBaseUrl = 'https://api.github.com';
 const String watchedReposKey = 'watched_repos';
+const String appSettingsKey = 'app_settings';
 const String updateSummaryKey = 'update_summary';
 const String syncHistoryKey = 'sync_history';
 const String commitCachePrefix = 'commit_cache_';
@@ -14,3 +15,8 @@ const String syncModeExtended = 'extended_5000';
 const int latestSyncCommitLimit = 500;
 const int extendedSyncCommitLimit = 5000;
 const int defaultSyncIntervalMinutes = 60;
+const String languageIndonesian = 'id';
+const String languageEnglish = 'en';
+const String themeModeSystem = 'system';
+const String themeModeLight = 'light';
+const String themeModeDark = 'dark';
