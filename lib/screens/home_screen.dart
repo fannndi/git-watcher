@@ -97,28 +97,31 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _syncNow() async {
+  Future<void> _syncNow({bool fromCountdown = false}) async {
     setState(() => _isSyncing = true);
     final strings = stringsFor(_languageCode);
     try {
-      final updates = await SyncService.checkUpdates(
-        forceNotification: _isDemoMode,
-      );
+      final updates = await SyncService.checkUpdates();
       await _loadRepos();
       if (!mounted) return;
       _scheduleNextSync(DateTime.now());
 
-      final message = _isDemoMode
-          ? strings.syncDoneNotification
-          : updates.isEmpty
-              ? strings.noUpdates
-              : strings.reposHaveUpdates(updates.length);
+      // Auto-exit demo mode setelah countdown habis dan sync selesai
+      if (fromCountdown && _isDemoMode) {
+        await appSettingsController.update(
+          appSettingsController.value.copyWith(isDemoMode: false),
+        );
+      }
+
+      final message = updates.isEmpty
+          ? strings.noUpdates
+          : strings.reposHaveUpdates(updates.length);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
 
-      if (updates.isNotEmpty && !_isDemoMode) {
+      if (updates.isNotEmpty) {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const UpdateScreen()),
         );
@@ -330,7 +333,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (remaining <= Duration.zero) {
       setState(() => _timeUntilSync = Duration.zero);
       if (!_isSyncing) {
-        _syncNow();
+        // Tandai bahwa ini dipicu dari countdown
+        _syncNow(fromCountdown: true);
       }
       return;
     }

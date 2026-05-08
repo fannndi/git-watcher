@@ -5,9 +5,7 @@ import 'notification_service.dart';
 import 'storage_service.dart';
 
 class SyncService {
-  static Future<Map<String, int>> checkUpdates({
-    bool forceNotification = false,
-  }) async {
+  static Future<Map<String, int>> checkUpdates() async {
     final storage = StorageService();
     final github = GitHubService();
     final repos = await storage.getRepos();
@@ -53,13 +51,7 @@ class SyncService {
     );
 
     if (updates.isNotEmpty) {
-      // Kirim notifikasi spesifik hanya kalau ada update sungguhan
       await NotificationService.showUpdateNotification(updates);
-    } else if (forceNotification) {
-      // Demo mode: kirim notifikasi dummy agar bisa ditest
-      await NotificationService.showUpdateNotification({
-        'Demo': 1,
-      });
     }
 
     return updates;
