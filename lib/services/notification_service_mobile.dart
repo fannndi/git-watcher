@@ -37,21 +37,33 @@ class NotificationService {
         ?.createNotificationChannel(channel);
   }
 
-  static Future<void> showUpdateNotification() async {
-    const details = NotificationDetails(
+  static Future<void> showUpdateNotification(Map<String, int> updates) async {
+    final title = updates.length == 1
+        ? 'Update di ${updates.keys.first}'
+        : '${updates.length} repo ada update baru';
+
+    final body = updates.entries
+        .map((e) => '${e.key}: +${e.value} commit')
+        .join('\n');
+
+    final details = NotificationDetails(
       android: AndroidNotificationDetails(
         notificationChannelId,
         'GitHub Updates',
-        channelDescription: 'Notifications for watched GitHub repository updates.',
+        channelDescription:
+            'Notifications for watched GitHub repository updates.',
         importance: Importance.high,
         priority: Priority.high,
+        styleInformation: updates.length > 1
+            ? BigTextStyleInformation(body)
+            : null,
       ),
     );
 
     await _plugin.show(
       1,
-      'Update GitHub tersedia',
-      'Klik untuk melihat detail',
+      title,
+      body,
       details,
       payload: 'updates',
     );

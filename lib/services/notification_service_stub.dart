@@ -7,7 +7,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 class NotificationService {
   static Future<void> init() async {}
 
-  static Future<void> showUpdateNotification() async {
+  static Future<void> showUpdateNotification(Map<String, int> updates) async {
     openUpdateScreen();
   }
 

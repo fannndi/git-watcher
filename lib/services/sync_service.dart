@@ -52,8 +52,14 @@ class SyncService {
       ),
     );
 
-    if (updates.isNotEmpty || forceNotification) {
-      await NotificationService.showUpdateNotification();
+    if (updates.isNotEmpty) {
+      // Kirim notifikasi spesifik hanya kalau ada update sungguhan
+      await NotificationService.showUpdateNotification(updates);
+    } else if (forceNotification) {
+      // Demo mode: kirim notifikasi dummy agar bisa ditest
+      await NotificationService.showUpdateNotification({
+        'Demo': 1,
+      });
     }
 
     return updates;
