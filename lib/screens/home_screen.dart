@@ -113,6 +113,8 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
 
+      if (!mounted) return;
+
       final message = updates.isEmpty
           ? strings.noUpdates
           : strings.reposHaveUpdates(updates.length);

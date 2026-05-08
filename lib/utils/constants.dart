@@ -7,6 +7,7 @@ const String commitCachePrefix = 'commit_cache_';
 const String notificationChannelId = 'updates';
 const String githubSyncTask = 'githubSync';
 const String demoPassword = 'demo123';
+const String githubCredentialsKey = 'github_credentials';
 const int maxWatchedRepos = 3;
 const int maxFetchedCommits = 20;
 const String syncModeMinimal = 'minimal';

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/commit.dart';
 import '../models/app_settings.dart';
+import '../models/github_credentials.dart';
 import '../models/sync_log.dart';
 import '../models/watched_repo.dart';
 import '../utils/constants.dart';
@@ -117,6 +118,38 @@ class StorageService {
     final existing = await getCachedCommits(repo);
     await saveCachedCommits(repo, [...commits, ...existing]);
   }
+
+  // ── Credentials ──────────────────────────────────────────────────────────
+
+  Future<GitHubCredentials> getCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(githubCredentialsKey);
+    if (raw == null || raw.isEmpty) {
+      return const GitHubCredentials.empty();
+    }
+
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return GitHubCredentials.fromJson(decoded);
+    } catch (_) {
+      return const GitHubCredentials.empty();
+    }
+  }
+
+  Future<void> saveCredentials(GitHubCredentials credentials) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      githubCredentialsKey,
+      jsonEncode(credentials.toJson()),
+    );
+  }
+
+  Future<void> clearCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(githubCredentialsKey);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   String _commitCacheKey(WatchedRepo repo) {
     return '$commitCachePrefix'
