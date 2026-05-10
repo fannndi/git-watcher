@@ -35,6 +35,11 @@ class AppStrings {
   String get lightTheme => isEnglish ? 'Light' : 'Terang';
   String get darkTheme => isEnglish ? 'Dark' : 'Gelap';
   String get syncInterval => isEnglish ? 'Sync interval' : 'Interval Sync';
+  String get nextNormalSync =>
+      isEnglish ? 'Next normal sync' : 'Sync normal berikutnya';
+  String get syncIndicator => isEnglish
+      ? 'The background worker runs every 1 hour.'
+      : 'Background worker berjalan setiap 1 jam.';
   String minutes(int value) => isEnglish ? '$value minutes' : '$value menit';
   String get oneHour => isEnglish ? '1 hour' : '1 jam';
   String get syncNow => isEnglish ? 'Sync Now' : 'Sinkronkan Sekarang';
@@ -42,6 +47,7 @@ class AppStrings {
       isEnglish ? 'No watched repos yet' : 'Belum ada repo dipantau';
   String repoDeleted(String repo) =>
       isEnglish ? '$repo deleted' : '$repo dihapus';
+  String get deleteRepo => isEnglish ? 'Delete repo' : 'Hapus repo';
   String get maxRepos => isEnglish
       ? 'Maximum $maxWatchedRepos repos can be watched'
       : 'Maksimal $maxWatchedRepos repo dapat dipantau';
@@ -56,6 +62,12 @@ class AppStrings {
       isEnglish ? 'Repository found' : 'Repository ditemukan';
   String get defaultBranch => isEnglish ? 'Default branch' : 'Branch default';
   String get watchedBranch => isEnglish ? 'Watched branch' : 'Branch Dipantau';
+  String get branch => isEnglish ? 'Branch' : 'Branch';
+  String get publicRepo => isEnglish ? 'Public' : 'Public';
+  String get privateRepo => isEnglish ? 'Private' : 'Private';
+  String get lastUpdate => isEnglish ? 'Last update' : 'Update terakhir';
+  String get today => isEnglish ? 'Today' : 'Today';
+  String get neverSynced => isEnglish ? 'Not synced yet' : 'Belum sinkron';
   String get syncMode => isEnglish ? 'Sync mode' : 'Mode Sync';
   String get add => isEnglish ? 'Add' : 'Tambahkan';
   String get emptyRepositoryInput => isEnglish
@@ -99,6 +111,25 @@ class AppStrings {
   String get syncFailed => isEnglish
       ? 'Sync failed. Check your internet connection.'
       : 'Sinkronisasi gagal. Cek koneksi internet.';
+  String get fetchCommitsFailed => isEnglish
+      ? 'Failed to fetch latest commits'
+      : 'Gagal mengambil commit terbaru';
+  String get clearSearch => isEnglish ? 'Clear search' : 'Bersihkan pencarian';
+  String get searchCommit => isEnglish ? 'Search commit' : 'Cari commit';
+  String get searchCommitHelper => isEnglish
+      ? 'Search by message or SHA'
+      : 'Cari berdasarkan message atau SHA';
+  String get commitNotFound =>
+      isEnglish ? 'No commits found' : 'Commit tidak ditemukan';
+  String changedFiles(int count) =>
+      isEnglish ? '$count changed files' : '$count file berubah';
+  String get noFileDetail => isEnglish
+      ? 'No file detail from GitHub API.'
+      : 'Tidak ada detail file dari GitHub API.';
+  String get fetchCommitDetailFailed => isEnglish
+      ? 'Failed to fetch commit file details.'
+      : 'Gagal mengambil detail file commit.';
+  String get tryAgain => isEnglish ? 'Try again' : 'Coba lagi';
 
   // Private mode
   String get privateMode => isEnglish ? 'Private Mode' : 'Mode Privat';
@@ -116,6 +147,11 @@ class AppStrings {
       isEnglish ? 'Credentials saved' : 'Kredensial disimpan';
   String get credentialsCleared =>
       isEnglish ? 'Credentials cleared' : 'Kredensial dihapus';
+  String get usernameTokenRequired => isEnglish
+      ? 'Username and token cannot be empty'
+      : 'Username dan token tidak boleh kosong';
+  String get show => isEnglish ? 'Show' : 'Tampilkan';
+  String get hide => isEnglish ? 'Hide' : 'Sembunyikan';
   String get saveCredentials => isEnglish ? 'Save' : 'Simpan';
   String get clearCredentials => isEnglish ? 'Clear' : 'Hapus';
   String get credentialsActive =>
@@ -140,6 +176,10 @@ class AppStrings {
   String get openLinkFailed =>
       isEnglish ? 'Could not open link' : 'Gagal membuka link';
   String get close => isEnglish ? 'Close' : 'Tutup';
+  String get noSyncHistory =>
+      isEnglish ? 'No sync results yet' : 'Belum ada hasil sinkron';
+  String get noNewCommits =>
+      isEnglish ? 'No new commits' : 'Tidak ada commit baru';
 }
 
 AppStrings stringsFor(String code) => AppStrings(code);

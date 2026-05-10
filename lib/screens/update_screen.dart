@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/sync_log.dart';
+import '../services/app_settings_controller.dart';
 import '../services/storage_service.dart';
+import '../utils/strings.dart';
 
 class UpdateScreen extends StatefulWidget {
   const UpdateScreen({super.key});
@@ -34,14 +36,16 @@ class _UpdateScreenState extends State<UpdateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = stringsFor(appSettingsController.value.languageCode);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Riwayat Sinkron')),
+      appBar: AppBar(title: Text(strings.history)),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _history.isEmpty
-                ? const Center(child: Text('Belum ada hasil sinkron'))
+                ? Center(child: Text(strings.noSyncHistory))
                 : RefreshIndicator(
                     onRefresh: _loadUpdates,
                     child: ListView.builder(
@@ -67,7 +71,8 @@ class _UpdateScreenState extends State<UpdateScreen> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
-                                        _dateFormat.format(log.syncedAt.toLocal()),
+                                        _dateFormat
+                                            .format(log.syncedAt.toLocal()),
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w700,
                                         ),
@@ -78,7 +83,9 @@ class _UpdateScreenState extends State<UpdateScreen> {
                                           ? '+${log.totalCommits}'
                                           : '0',
                                       style: TextStyle(
-                                        color: Theme.of(context).colorScheme.primary,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -86,7 +93,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 if (!log.hasUpdates)
-                                  const Text('Tidak ada commit baru')
+                                  Text(strings.noNewCommits)
                                 else
                                   ...log.updates.entries.map(
                                     (entry) => Padding(

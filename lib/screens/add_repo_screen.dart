@@ -134,6 +134,8 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
         branch: branch,
         syncMode: _syncMode,
         avatarUrl: _repoAvatarUrl(foundRepo),
+        isPrivate: foundRepo['private'] == true,
+        lastCommitAt: commits.isEmpty ? null : commits.first.date,
         lastSha: commits.isEmpty ? '' : commits.first.sha,
       );
 

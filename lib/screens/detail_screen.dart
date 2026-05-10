@@ -59,8 +59,9 @@ class _DetailScreenState extends State<DetailScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _isLoading = false);
+      final strings = stringsFor(appSettingsController.value.languageCode);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal mengambil commit terbaru')),
+        SnackBar(content: Text(strings.fetchCommitsFailed)),
       );
     }
   }
@@ -76,6 +77,7 @@ class _DetailScreenState extends State<DetailScreen> {
   Widget build(BuildContext context) {
     final filteredCommits = _filteredCommits();
     final groupedCommits = _groupCommitsByDate(filteredCommits);
+    final strings = stringsFor(appSettingsController.value.languageCode);
 
     return Scaffold(
       appBar: AppBar(
@@ -103,15 +105,15 @@ class _DetailScreenState extends State<DetailScreen> {
                       suffixIcon: _query.isEmpty
                           ? null
                           : IconButton(
-                              tooltip: 'Bersihkan pencarian',
+                              tooltip: strings.clearSearch,
                               icon: const Icon(Icons.close),
                               onPressed: () {
                                 _searchController.clear();
                                 setState(() => _query = '');
                               },
                             ),
-                      labelText: 'Cari commit',
-                      helperText: 'Cari berdasarkan message atau SHA',
+                      labelText: strings.searchCommit,
+                      helperText: strings.searchCommitHelper,
                       border: const OutlineInputBorder(),
                     ),
                     onChanged: (value) => setState(() => _query = value.trim()),
@@ -122,9 +124,9 @@ class _DetailScreenState extends State<DetailScreen> {
                       onRefresh: _refreshCommits,
                       child: filteredCommits.isEmpty
                           ? ListView(
-                              children: const [
-                                SizedBox(height: 220),
-                                Center(child: Text('Commit tidak ditemukan')),
+                              children: [
+                                const SizedBox(height: 220),
+                                Center(child: Text(strings.commitNotFound)),
                               ],
                             )
                           : ListView.separated(
@@ -279,7 +281,7 @@ class _DetailScreenState extends State<DetailScreen> {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Tutup',
+                        tooltip: strings.close,
                         icon: const Icon(Icons.close),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
@@ -424,6 +426,7 @@ class _CommitFileSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final strings = stringsFor(appSettingsController.value.languageCode);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,7 +435,7 @@ class _CommitFileSummary extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                '${detail.files.length} file berubah',
+                strings.changedFiles(detail.files.length),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -452,7 +455,7 @@ class _CommitFileSummary extends StatelessWidget {
         const SizedBox(height: 12),
         if (detail.files.isEmpty)
           Text(
-            'Tidak ada detail file dari GitHub API.',
+            strings.noFileDetail,
             style: TextStyle(color: colorScheme.onSurfaceVariant),
           )
         else
@@ -566,18 +569,20 @@ class _CommitDetailError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = stringsFor(appSettingsController.value.languageCode);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
           const Icon(Icons.error_outline, size: 36),
           const SizedBox(height: 10),
-          const Text('Gagal mengambil detail file commit.'),
+          Text(strings.fetchCommitDetailFailed),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh),
-            label: const Text('Coba lagi'),
+            label: Text(strings.tryAgain),
           ),
         ],
       ),

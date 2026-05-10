@@ -41,7 +41,7 @@ class GitHubService {
       final response = await _get(uri);
 
       if (response.statusCode != 200) {
-        throw Exception('Gagal mengambil branch repository.');
+        throw Exception('Failed to fetch repository branches.');
       }
 
       final decoded = jsonDecode(response.body) as List<dynamic>;
@@ -72,7 +72,7 @@ class GitHubService {
     final response = await _get(uri);
 
     if (response.statusCode != 200) {
-      throw Exception('Gagal mengambil commit repository.');
+      throw Exception('Failed to fetch repository commits.');
     }
 
     final decoded = jsonDecode(response.body) as List<dynamic>;
@@ -146,7 +146,7 @@ class GitHubService {
     final response = await _get(uri);
 
     if (response.statusCode != 200) {
-      throw Exception('Gagal mengambil detail commit.');
+      throw Exception('Failed to fetch commit detail.');
     }
 
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -169,7 +169,7 @@ class GitHubService {
     final response = await _get(uri);
 
     if (response.statusCode != 200) {
-      throw Exception('Gagal mengambil commit repository.');
+      throw Exception('Failed to fetch repository commits.');
     }
 
     final decoded = jsonDecode(response.body) as List<dynamic>;
@@ -178,24 +178,20 @@ class GitHubService {
         .toList();
   }
 
-  /// Coba request tanpa auth dulu.
-  /// Kalau dapat 401 atau 404, retry pakai credentials yang tersimpan.
-  /// Kalau credentials kosong, kembalikan response asli.
+  /// Try without auth first, then use saved credentials as fallback.
   Future<http.Response> _get(Uri uri) async {
     final publicResponse = await _client.get(uri, headers: _publicHeaders);
 
-    // Sukses atau error selain auth — langsung return
+    // Return immediately for success or non-auth errors.
     if (publicResponse.statusCode != 401 && publicResponse.statusCode != 404) {
       return publicResponse;
     }
 
-    // Coba ambil credentials untuk fallback
     final credentials = await _storage.getCredentials();
     if (credentials.isEmpty) {
       return publicResponse;
     }
 
-    // Retry dengan auth
     final authResponse = await _client.get(
       uri,
       headers: _authHeaders(credentials),

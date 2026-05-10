@@ -386,7 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     _isDemoMode
                         ? strings.demoIntervalActive
-                        : '${strings.normalInterval} $_syncIntervalMinutes menit',
+                        : '${strings.normalInterval} ${strings.oneHour}',
                   ),
                 ],
               ),
@@ -418,19 +418,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _applySettings() {
     final settings = appSettingsController.value;
-    final changedInterval =
-        _syncIntervalMinutes != settings.syncIntervalMinutes;
+    final effectiveInterval = settings.isDemoMode
+        ? settings.syncIntervalMinutes
+        : defaultSyncIntervalMinutes;
+    final changedInterval = _syncIntervalMinutes != effectiveInterval;
     final changedDemoMode = _isDemoMode != settings.isDemoMode;
 
     if (mounted) {
       setState(() {
         _isDemoMode = settings.isDemoMode;
-        _syncIntervalMinutes = settings.syncIntervalMinutes;
+        _syncIntervalMinutes = effectiveInterval;
         _languageCode = settings.languageCode;
       });
     } else {
       _isDemoMode = settings.isDemoMode;
-      _syncIntervalMinutes = settings.syncIntervalMinutes;
+      _syncIntervalMinutes = effectiveInterval;
       _languageCode = settings.languageCode;
     }
 

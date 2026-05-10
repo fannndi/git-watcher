@@ -27,14 +27,14 @@ class SyncService {
         final latest = commits.first;
         await storage.mergeCachedCommits(repo, commits);
         if (repo.lastSha.isNotEmpty && latest.sha != repo.lastSha) {
-          final count = commits
-              .takeWhile((commit) => commit.sha != repo.lastSha)
-              .length;
+          final count =
+              commits.takeWhile((commit) => commit.sha != repo.lastSha).length;
           final updateKey = '${repo.fullName} (${repo.branch})';
           updates[updateKey] = count == 0 ? 1 : count;
         }
 
         repo.lastSha = latest.sha;
+        repo.lastCommitAt = latest.date;
         updatedRepos.add(repo);
       } catch (_) {
         updatedRepos.add(repo);
