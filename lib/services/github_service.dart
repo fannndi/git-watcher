@@ -134,6 +134,25 @@ class GitHubService {
     return commits.take(limit).toList();
   }
 
+  Future<CommitDetail> fetchCommitDetail(
+    String owner,
+    String repo,
+    String sha,
+  ) async {
+    final uri = Uri.https(
+      'api.github.com',
+      '/repos/$owner/$repo/commits/$sha',
+    );
+    final response = await _get(uri);
+
+    if (response.statusCode != 200) {
+      throw Exception('Gagal mengambil detail commit.');
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    return CommitDetail.fromJson(decoded);
+  }
+
   // ── Internal ──────────────────────────────────────────────────────────────
 
   Future<List<Commit>> _fetchCommitPage(
@@ -166,8 +185,7 @@ class GitHubService {
     final publicResponse = await _client.get(uri, headers: _publicHeaders);
 
     // Sukses atau error selain auth — langsung return
-    if (publicResponse.statusCode != 401 &&
-        publicResponse.statusCode != 404) {
+    if (publicResponse.statusCode != 401 && publicResponse.statusCode != 404) {
       return publicResponse;
     }
 

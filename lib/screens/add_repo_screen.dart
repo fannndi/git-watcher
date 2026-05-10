@@ -133,6 +133,7 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
         repo: repo,
         branch: branch,
         syncMode: _syncMode,
+        avatarUrl: _repoAvatarUrl(foundRepo),
         lastSha: commits.isEmpty ? '' : commits.first.sha,
       );
 
@@ -151,7 +152,8 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -340,5 +342,13 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
     }
 
     return strings.minimalSyncDescription;
+  }
+
+  String _repoAvatarUrl(Map<String, dynamic> repo) {
+    final owner = repo['owner'];
+    if (owner is Map<String, dynamic>) {
+      return owner['avatar_url'] as String? ?? '';
+    }
+    return '';
   }
 }

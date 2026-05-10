@@ -3,6 +3,7 @@ class WatchedRepo {
   final String repo;
   final String branch;
   final String syncMode;
+  final String avatarUrl;
   String lastSha;
 
   WatchedRepo({
@@ -10,6 +11,7 @@ class WatchedRepo {
     required this.repo,
     required this.branch,
     required this.syncMode,
+    this.avatarUrl = '',
     required this.lastSha,
   });
 
@@ -20,6 +22,7 @@ class WatchedRepo {
         'repo': repo,
         'branch': branch,
         'sync_mode': syncMode,
+        'avatar_url': avatarUrl,
         'last_sha': lastSha,
       };
 
@@ -30,6 +33,7 @@ class WatchedRepo {
       repo: json['repo'],
       branch: json['branch'] ?? 'main',
       syncMode: rawSyncMode == 'full' ? 'extended_5000' : rawSyncMode,
+      avatarUrl: json['avatar_url'] ?? '',
       lastSha: json['last_sha'] ?? '',
     );
   }

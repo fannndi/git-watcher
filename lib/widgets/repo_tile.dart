@@ -18,6 +18,9 @@ class RepoTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final avatarUrl = repo.avatarUrl.isEmpty
+        ? 'https://github.com/${repo.owner}.png?size=96'
+        : repo.avatarUrl;
 
     return Card(
       color: colorScheme.surface,
@@ -39,9 +42,14 @@ class RepoTile extends StatelessWidget {
                   color: colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  Icons.code,
-                  color: colorScheme.onPrimaryContainer,
+                clipBehavior: Clip.antiAlias,
+                child: Image.network(
+                  avatarUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Icon(
+                    Icons.code,
+                    color: colorScheme.onPrimaryContainer,
+                  ),
                 ),
               ),
               const SizedBox(width: 14),
