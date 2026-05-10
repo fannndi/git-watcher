@@ -62,7 +62,7 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
     final existing = await _storage.getRepos();
 
     if (existing.length >= maxWatchedRepos) {
-      _showError('Maksimal 3 repo dapat dipantau');
+      _showError('Maksimal $maxWatchedRepos repo dapat dipantau');
       return;
     }
 

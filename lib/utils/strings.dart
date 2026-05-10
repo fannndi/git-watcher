@@ -10,6 +10,14 @@ class AppStrings {
   String get appTitle => 'GitHub Watcher';
   String get history => isEnglish ? 'Sync History' : 'Riwayat Sinkron';
   String get settings => isEnglish ? 'Settings' : 'Pengaturan';
+  String get watchedRepos =>
+      isEnglish ? 'Watched repositories' : 'Repo Dipantau';
+  String repoCount(int count) => isEnglish
+      ? '$count of $maxWatchedRepos slots used'
+      : '$count dari $maxWatchedRepos slot terpakai';
+  String get homeSubtitle => isEnglish
+      ? 'Keep an eye on recent commits across public and private repositories.'
+      : 'Pantau commit terbaru dari repo publik dan privat.';
   String get nextSync => isEnglish ? 'Next sync' : 'Sync berikutnya';
   String get normalInterval =>
       isEnglish ? 'Normal interval' : 'Interval normal';
@@ -35,8 +43,15 @@ class AppStrings {
   String repoDeleted(String repo) =>
       isEnglish ? '$repo deleted' : '$repo dihapus';
   String get maxRepos => isEnglish
-      ? 'Maximum 3 repos can be watched'
-      : 'Maksimal 3 repo dapat dipantau';
+      ? 'Maximum $maxWatchedRepos repos can be watched'
+      : 'Maksimal $maxWatchedRepos repo dapat dipantau';
+  String get addRepo => isEnglish ? 'Add repo' : 'Tambah repo';
+  String get openSettings => isEnglish ? 'Open settings' : 'Buka pengaturan';
+  String get noReposTitle =>
+      isEnglish ? 'No repositories yet' : 'Belum ada repo';
+  String get noReposSubtitle => isEnglish
+      ? 'Add a repository to start watching commit activity.'
+      : 'Tambahkan repository untuk mulai memantau aktivitas commit.';
   String get noUpdates =>
       isEnglish ? 'No new updates' : 'Tidak ada update baru';
   String reposHaveUpdates(int count) => isEnglish
@@ -51,8 +66,10 @@ class AppStrings {
   String get privateModeSubtitle => isEnglish
       ? 'Use credentials to access private repositories.'
       : 'Gunakan kredensial untuk mengakses repo privat.';
-  String get githubUsername => isEnglish ? 'GitHub Username' : 'Username GitHub';
-  String get githubToken => isEnglish ? 'Personal Access Token' : 'Personal Access Token';
+  String get githubUsername =>
+      isEnglish ? 'GitHub Username' : 'Username GitHub';
+  String get githubToken =>
+      isEnglish ? 'Personal Access Token' : 'Personal Access Token';
   String get githubTokenHelper => isEnglish
       ? 'Token is stored encoded on this device only.'
       : 'Token disimpan terenkode di perangkat ini saja.';
@@ -66,6 +83,22 @@ class AppStrings {
       isEnglish ? 'Credentials saved' : 'Kredensial tersimpan';
   String get credentialsEmpty =>
       isEnglish ? 'No credentials saved' : 'Belum ada kredensial';
+  String get appearance => isEnglish ? 'Appearance' : 'Tampilan';
+  String get syncAndDemo => isEnglish ? 'Sync & demo' : 'Sync & demo';
+  String get privateAccess =>
+      isEnglish ? 'Private repository access' : 'Akses repo privat';
+  String get aboutApp => isEnglish ? 'About app' : 'Tentang aplikasi';
+  String get aboutAppSubtitle => isEnglish
+      ? 'Version, description, and platform target.'
+      : 'Versi, deskripsi, dan target platform.';
+  String get appDescription => isEnglish
+      ? 'A lightweight GitHub watcher for tracking recent commits, update notifications, and private repository access from one device.'
+      : 'GitHub Watcher ringan untuk memantau commit terbaru, notifikasi update, dan akses repo privat dari satu perangkat.';
+  String get version => isEnglish ? 'Version' : 'Versi';
+  String get build => isEnglish ? 'Build' : 'Build';
+  String get androidApiSupport =>
+      isEnglish ? 'Android API 29-36' : 'Android API 29-36';
+  String get close => isEnglish ? 'Close' : 'Tutup';
 }
 
 AppStrings stringsFor(String code) => AppStrings(code);

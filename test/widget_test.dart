@@ -9,7 +9,8 @@ void main() {
     await tester.pumpWidget(const GitHubWatcherApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('GitHub Watcher'), findsOneWidget);
-    expect(find.text('Belum ada repo dipantau'), findsOneWidget);
+    expect(find.text('GitHub Watcher'), findsWidgets);
+    expect(find.text('Repo Dipantau'), findsOneWidget);
+    expect(find.text('Belum ada repo'), findsOneWidget);
   });
 }

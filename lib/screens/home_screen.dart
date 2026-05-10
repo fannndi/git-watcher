@@ -147,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(strings.appTitle),
+        centerTitle: false,
         actions: [
           IconButton(
             tooltip: strings.history,
@@ -163,66 +164,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_repos.isNotEmpty) ...[
-                    if (_isDemoMode) ...[
-                      _buildCountdownCard(strings),
-                      const SizedBox(height: 12),
-                      FilledButton.icon(
-                        onPressed: _isSyncing ? null : _syncNow,
-                        icon: _isSyncing
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.sync),
-                        label: Text(strings.syncNow),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                  ],
-                  Expanded(
-                    child: _repos.isEmpty
-                        ? Center(child: Text(strings.noRepos))
-                        : ListView.builder(
-                            itemCount: _repos.length,
-                            itemBuilder: (context, index) {
-                              final repo = _repos[index];
-                              return Dismissible(
-                                key:
-                                    ValueKey('${repo.fullName}-${repo.branch}'),
-                                direction: DismissDirection.endToStart,
-                                background: Container(
-                                  alignment: Alignment.centerRight,
-                                  padding: const EdgeInsets.only(right: 16),
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .errorContainer,
-                                  child: const Icon(Icons.delete_outline),
-                                ),
-                                onDismissed: (_) => _deleteRepo(repo),
-                                child: RepoTile(
-                                  repo: repo,
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => DetailScreen(repo: repo),
-                                    ),
-                                  ),
-                                  onDelete: () => _deleteRepo(repo),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
+            : _buildContent(strings),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed:
@@ -242,6 +187,182 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openSettings() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
+  }
+
+  Widget _buildContent(AppStrings strings) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildHomeHeader(strings),
+        if (_repos.isNotEmpty && _isDemoMode) ...[
+          const SizedBox(height: 12),
+          _buildCountdownCard(strings),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: _isSyncing ? null : _syncNow,
+            icon: _isSyncing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.sync),
+            label: Text(strings.syncNow),
+          ),
+        ],
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                strings.watchedRepos,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+            ),
+            Text(
+              strings.repoCount(_repos.length),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: _repos.isEmpty ? _buildEmptyState(strings) : _buildRepoList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHomeHeader(AppStrings strings) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: colorScheme.primary,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              Icons.notifications_active_outlined,
+              color: colorScheme.onPrimary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  strings.appTitle,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  strings.homeSubtitle,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onPrimaryContainer
+                            .withValues(alpha: 0.76),
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(AppStrings strings) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 80),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(
+                Icons.folder_open_outlined,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              strings.noReposTitle,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              strings.noReposSubtitle,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRepoList() {
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: 96),
+      itemCount: _repos.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final repo = _repos[index];
+        return Dismissible(
+          key: ValueKey('${repo.fullName}-${repo.branch}'),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 18),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.delete_outline),
+          ),
+          onDismissed: (_) => _deleteRepo(repo),
+          child: RepoTile(
+            repo: repo,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => DetailScreen(repo: repo),
+              ),
+            ),
+            onDelete: () => _deleteRepo(repo),
+          ),
+        );
+      },
     );
   }
 

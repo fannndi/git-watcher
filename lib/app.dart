@@ -45,11 +45,20 @@ class _GitHubWatcherAppState extends State<GitHubWatcherApp> {
             useMaterial3: true,
             colorSchemeSeed: Colors.blue,
             brightness: Brightness.light,
+            scaffoldBackgroundColor: const Color(0xFFF7F8FC),
+            cardTheme: const CardThemeData(
+              elevation: 0,
+              margin: EdgeInsets.zero,
+            ),
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
             colorSchemeSeed: Colors.blue,
             brightness: Brightness.dark,
+            cardTheme: const CardThemeData(
+              elevation: 0,
+              margin: EdgeInsets.zero,
+            ),
           ),
           home: const HomeScreen(),
         );
