@@ -47,6 +47,47 @@ class AppStrings {
       : 'Maksimal $maxWatchedRepos repo dapat dipantau';
   String get addRepo => isEnglish ? 'Add repo' : 'Tambah repo';
   String get openSettings => isEnglish ? 'Open settings' : 'Buka pengaturan';
+  String get repository => isEnglish ? 'Repository' : 'Repository';
+  String get repositoryInputHelper => isEnglish
+      ? 'Use owner/repo format, for example: flutter/flutter'
+      : 'Masukkan format owner/repo, contoh: flutter/flutter';
+  String get check => isEnglish ? 'Check' : 'Check';
+  String get repositoryFound =>
+      isEnglish ? 'Repository found' : 'Repository ditemukan';
+  String get defaultBranch =>
+      isEnglish ? 'Default branch' : 'Branch default';
+  String get watchedBranch =>
+      isEnglish ? 'Watched branch' : 'Branch Dipantau';
+  String get syncMode => isEnglish ? 'Sync mode' : 'Mode Sync';
+  String get add => isEnglish ? 'Add' : 'Tambahkan';
+  String get emptyRepositoryInput => isEnglish
+      ? 'Repository input cannot be empty'
+      : 'Input repository tidak boleh kosong';
+  String get invalidRepositoryFormat =>
+      isEnglish ? 'Format must be owner/repo' : 'Format harus owner/repo';
+  String get repositoryNotFound =>
+      isEnglish ? 'Repository not found' : 'Repository tidak ditemukan';
+  String get connectionFailed => isEnglish
+      ? 'Connection failed. Check your internet and try again.'
+      : 'Koneksi gagal. Cek internet lalu coba lagi.';
+  String get duplicateRepository => isEnglish
+      ? 'Repository and branch are already watched'
+      : 'Repository dan branch sudah dipantau';
+  String get addRepositoryFailed => isEnglish
+      ? 'Failed to add repo. Check your internet connection.'
+      : 'Gagal menambahkan repo. Cek koneksi internet.';
+  String get minimalSyncDescription => isEnglish
+      ? 'Store commits from the latest date.'
+      : 'Simpan commit pada tanggal terbaru.';
+  String get latestSyncDescription => isEnglish
+      ? 'Store up to the latest 500 commits.'
+      : 'Simpan maksimal 500 commit terbaru.';
+  String get extendedSyncDescription => isEnglish
+      ? 'Store up to the latest 5000 commits.'
+      : 'Simpan maksimal 5000 commit terbaru.';
+  String get largeSyncWarning => isEnglish
+      ? 'Large modes can take longer and may hit GitHub rate limits.'
+      : 'Mode besar dapat memerlukan waktu lebih lama dan terkena rate limit GitHub.';
   String get noReposTitle =>
       isEnglish ? 'No repositories yet' : 'Belum ada repo';
   String get noReposSubtitle => isEnglish

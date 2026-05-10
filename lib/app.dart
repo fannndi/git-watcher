@@ -5,31 +5,8 @@ import 'services/app_settings_controller.dart';
 import 'services/notification_service.dart';
 import 'utils/constants.dart';
 
-class GitHubWatcherApp extends StatefulWidget {
+class GitHubWatcherApp extends StatelessWidget {
   const GitHubWatcherApp({super.key});
-
-  @override
-  State<GitHubWatcherApp> createState() => _GitHubWatcherAppState();
-}
-
-class _GitHubWatcherAppState extends State<GitHubWatcherApp> {
-  @override
-  void initState() {
-    super.initState();
-    _openInitialNotification();
-  }
-
-  Future<void> _openInitialNotification() async {
-    final shouldOpen =
-        await NotificationService.launchedFromUpdateNotification();
-    if (!mounted || !shouldOpen) {
-      return;
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      NotificationService.openUpdateScreen();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {

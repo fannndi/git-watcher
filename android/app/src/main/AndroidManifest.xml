@@ -4,6 +4,8 @@
 
     <application
         android:label="GitHub Watcher"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:name="${applicationName}">
         <activity
             android:name=".MainActivity"

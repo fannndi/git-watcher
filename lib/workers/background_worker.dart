@@ -7,10 +7,16 @@ import '../utils/constants.dart';
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
-    if (task == githubSyncTask) {
-      await NotificationService.init();
-      await SyncService.checkUpdates();
+    try {
+      if (task == githubSyncTask) {
+        await NotificationService.init();
+        await SyncService.checkUpdates().timeout(
+          const Duration(seconds: 25),
+        );
+      }
+      return Future.value(true);
+    } catch (_) {
+      return Future.value(false);
     }
-    return Future.value(true);
   });
 }
