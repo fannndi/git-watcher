@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/commit.dart';
 import '../models/watched_repo.dart';
 import '../services/github_service.dart';
 import '../services/storage_service.dart';
+import '../services/app_settings_controller.dart';
 import '../utils/constants.dart';
+import '../utils/strings.dart';
 
 class DetailScreen extends StatefulWidget {
   final WatchedRepo repo;
@@ -241,6 +244,7 @@ class _DetailScreenState extends State<DetailScreen> {
   void _showCommitDetail(Commit commit) {
     final shortSha =
         commit.sha.length >= 7 ? commit.sha.substring(0, 7) : commit.sha;
+    final strings = stringsFor(appSettingsController.value.languageCode);
 
     showModalBottomSheet<void>(
       context: context,
@@ -286,6 +290,12 @@ class _DetailScreenState extends State<DetailScreen> {
                     commit.message,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
+                  const SizedBox(height: 14),
+                  FilledButton.icon(
+                    onPressed: () => _openCommitUrl(commit),
+                    icon: const Icon(Icons.open_in_browser_outlined),
+                    label: Text(strings.seeDetail),
+                  ),
                   const SizedBox(height: 18),
                   if (snapshot.connectionState != ConnectionState.done)
                     const Center(
@@ -305,6 +315,21 @@ class _DetailScreenState extends State<DetailScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _openCommitUrl(Commit commit) async {
+    final strings = stringsFor(appSettingsController.value.languageCode);
+    final uri = Uri.https(
+      'github.com',
+      '/${widget.repo.owner}/${widget.repo.repo}/commit/${commit.sha}',
+    );
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.openLinkFailed)),
+      );
+    }
   }
 
   List<Commit> _filteredCommits() {

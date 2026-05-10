@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/app_settings.dart';
 import '../models/github_credentials.dart';
@@ -303,7 +304,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     subtitle: Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        '${strings.version} $appVersionName - ${strings.build} $appBuildNumber\n${strings.androidApiSupport}',
+                        '${strings.version} $appVersionName - $appReleaseChannel\n${strings.developer}: $developerName',
                       ),
                     ),
                     trailing: const Icon(Icons.chevron_right),
@@ -335,8 +336,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(strings.appDescription),
             const SizedBox(height: 16),
             _AboutRow(label: strings.version, value: appVersionName),
-            _AboutRow(label: strings.build, value: appBuildNumber),
-            _AboutRow(label: 'Android', value: strings.androidApiSupport),
+            _AboutRow(label: strings.channel, value: appReleaseChannel),
+            _AboutLinkRow(
+              label: strings.developer,
+              value: developerName,
+              url: developerUrl,
+            ),
           ],
         ),
         actions: [
@@ -346,6 +351,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+Future<void> _openUrl(BuildContext context, String url) async {
+  final strings = stringsFor(appSettingsController.value.languageCode);
+  final opened = await launchUrl(
+    Uri.parse(url),
+    mode: LaunchMode.externalApplication,
+  );
+
+  if (!opened && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.openLinkFailed)),
     );
   }
 }
@@ -451,6 +470,53 @@ class _AboutRow extends StatelessWidget {
             ),
           ),
           Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+}
+
+class _AboutLinkRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final String url;
+
+  const _AboutLinkRow({
+    required this.label,
+    required this.value,
+    required this.url,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 82,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          Expanded(
+            child: InkWell(
+              onTap: () => _openUrl(context, url),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  '$value ($url)',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

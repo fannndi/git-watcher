@@ -54,10 +54,8 @@ class AppStrings {
   String get check => isEnglish ? 'Check' : 'Check';
   String get repositoryFound =>
       isEnglish ? 'Repository found' : 'Repository ditemukan';
-  String get defaultBranch =>
-      isEnglish ? 'Default branch' : 'Branch default';
-  String get watchedBranch =>
-      isEnglish ? 'Watched branch' : 'Branch Dipantau';
+  String get defaultBranch => isEnglish ? 'Default branch' : 'Branch default';
+  String get watchedBranch => isEnglish ? 'Watched branch' : 'Branch Dipantau';
   String get syncMode => isEnglish ? 'Sync mode' : 'Mode Sync';
   String get add => isEnglish ? 'Add' : 'Tambahkan';
   String get emptyRepositoryInput => isEnglish
@@ -130,15 +128,17 @@ class AppStrings {
       isEnglish ? 'Private repository access' : 'Akses repo privat';
   String get aboutApp => isEnglish ? 'About app' : 'Tentang aplikasi';
   String get aboutAppSubtitle => isEnglish
-      ? 'Version, description, and platform target.'
-      : 'Versi, deskripsi, dan target platform.';
+      ? 'Version, release channel, and developer.'
+      : 'Versi, channel rilis, dan developer.';
   String get appDescription => isEnglish
       ? 'A lightweight GitHub watcher for tracking recent commits, update notifications, and private repository access from one device.'
       : 'GitHub Watcher ringan untuk memantau commit terbaru, notifikasi update, dan akses repo privat dari satu perangkat.';
   String get version => isEnglish ? 'Version' : 'Versi';
-  String get build => isEnglish ? 'Build' : 'Build';
-  String get androidApiSupport =>
-      isEnglish ? 'Android API 29-36' : 'Android API 29-36';
+  String get channel => isEnglish ? 'Channel' : 'Channel';
+  String get developer => isEnglish ? 'Developer' : 'Developer';
+  String get seeDetail => isEnglish ? 'See detail' : 'See detail';
+  String get openLinkFailed =>
+      isEnglish ? 'Could not open link' : 'Gagal membuka link';
   String get close => isEnglish ? 'Close' : 'Tutup';
 }
 
