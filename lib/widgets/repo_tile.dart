@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../models/watched_repo.dart';
-import '../services/app_settings_controller.dart';
-import '../utils/strings.dart';
 
 class RepoTile extends StatelessWidget {
   final WatchedRepo repo;
@@ -21,89 +18,128 @@ class RepoTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final avatarUrl = repo.avatarUrl.isEmpty
-        ? 'https://github.com/${repo.owner}.png?size=96'
-        : repo.avatarUrl;
-    final strings = stringsFor(appSettingsController.value.languageCode);
 
     return Card(
-      color: colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: colorScheme.outlineVariant),
-      ),
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      clipBehavior: Clip.hardEdge,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+          padding: const EdgeInsets.all(14),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Image.network(
-                  avatarUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Icon(
-                    Icons.code,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
+              _RepoAvatar(repo: repo, colorScheme: colorScheme),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Text(
-                        repo.fullName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          height: 1.15,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                repo.owner,
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                repo.repo,
+                                style: textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: Icon(
+                              Icons.delete_outline,
+                              size: 17,
+                              color: colorScheme.onSurfaceVariant
+                                  .withOpacity(0.6),
+                            ),
+                            tooltip: 'Hapus repo',
+                            onPressed: onDelete,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 10),
                     Wrap(
-                      spacing: 8,
+                      spacing: 6,
                       runSpacing: 6,
                       children: [
-                        _RepoChip(
-                          label: '${strings.branch}: ${repo.branch}',
-                          icon: Icons.account_tree_outlined,
+                        _Chip(
+                          icon: Icons.call_split_outlined,
+                          label: repo.branch,
+                          colorScheme: colorScheme,
                         ),
-                        _RepoChip(
-                          label: repo.isPrivate
-                              ? strings.privateRepo
-                              : strings.publicRepo,
+                        _Chip(
                           icon: repo.isPrivate
                               ? Icons.lock_outline
                               : Icons.public_outlined,
+                          label: repo.isPrivate ? 'Private' : 'Public',
+                          colorScheme: colorScheme,
+                          isAccent: !repo.isPrivate,
                         ),
-                        _RepoChip(
-                          label:
-                              '${strings.lastUpdate}: ${_formatLastUpdate(repo.lastCommitAt, strings)}',
-                          icon: Icons.update_outlined,
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Divider(
+                      height: 1,
+                      thickness: 0.5,
+                      color: colorScheme.outlineVariant.withOpacity(0.5),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.update_outlined,
+                          size: 13,
+                          color: colorScheme.onSurfaceVariant.withOpacity(0.6),
                         ),
+                        const SizedBox(width: 4),
+                        Text(
+                          repo.lastCommitAt != null
+                              ? _formatDate(repo.lastCommitAt!)
+                              : 'Belum tersinkron',
+                          style: textTheme.bodySmall?.copyWith(
+                            fontSize: 11,
+                            color: colorScheme.onSurfaceVariant
+                                .withOpacity(0.7),
+                          ),
+                        ),
+                        const Spacer(),
+                        if (repo.lastSha.length >= 7)
+                          Text(
+                            repo.lastSha.substring(0, 7),
+                            style: textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              color: colorScheme.onSurfaceVariant
+                                  .withOpacity(0.6),
+                              fontFamily: 'monospace',
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                       ],
                     ),
                   ],
                 ),
-              ),
-              IconButton(
-                tooltip: strings.deleteRepo,
-                icon: const Icon(Icons.delete_outline),
-                onPressed: onDelete,
               ),
             ],
           ),
@@ -112,51 +148,95 @@ class RepoTile extends StatelessWidget {
     );
   }
 
-  String _formatLastUpdate(DateTime? date, AppStrings strings) {
-    if (date == null) {
-      return strings.neverSynced;
-    }
-
-    final localDate = date.toLocal();
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final commitDay = DateTime(localDate.year, localDate.month, localDate.day);
-
-    if (commitDay == today) {
-      return strings.today;
-    }
-
-    return DateFormat('dd-MM-yyyy').format(localDate);
+  String _formatDate(DateTime date) {
+    final local = date.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}-'
+        '${local.month.toString().padLeft(2, '0')}-'
+        '${local.year}';
   }
 }
 
-class _RepoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
+class _RepoAvatar extends StatelessWidget {
+  final WatchedRepo repo;
+  final ColorScheme colorScheme;
 
-  const _RepoChip({required this.icon, required this.label});
+  const _RepoAvatar({required this.repo, required this.colorScheme});
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final url = repo.avatarUrl.isNotEmpty
+        ? repo.avatarUrl
+        : 'https://github.com/${repo.owner}.png?size=88';
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.network(
+        url,
+        width: 44,
+        height: 44,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _fallback(),
+      ),
+    );
+  }
+
+  Widget _fallback() {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(
+        Icons.code,
+        size: 22,
+        color: colorScheme.onPrimaryContainer,
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final ColorScheme colorScheme;
+  final bool isAccent;
+
+  const _Chip({
+    required this.icon,
+    required this.label,
+    required this.colorScheme,
+    this.isAccent = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isAccent
+        ? colorScheme.secondaryContainer.withOpacity(0.5)
+        : colorScheme.surfaceVariant.withOpacity(0.6);
+    final fg = isAccent
+        ? colorScheme.onSecondaryContainer
+        : colorScheme.onSurfaceVariant;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: colorScheme.onSurfaceVariant),
+          Icon(icon, size: 12, color: fg),
           const SizedBox(width: 4),
           Text(
             label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
+            style: TextStyle(
+              fontSize: 12,
+              color: fg,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),

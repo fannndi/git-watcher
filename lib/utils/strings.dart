@@ -55,8 +55,8 @@ class AppStrings {
   String get openSettings => isEnglish ? 'Open settings' : 'Buka pengaturan';
   String get repository => isEnglish ? 'Repository' : 'Repository';
   String get repositoryInputHelper => isEnglish
-      ? 'Use owner/repo format, for example: flutter/flutter'
-      : 'Masukkan format owner/repo, contoh: flutter/flutter';
+      ? 'Use owner/repo format, for example: torvalds/linux'
+      : 'Masukkan format owner/repo, contoh: torvalds/linux';
   String get check => isEnglish ? 'Check' : 'Check';
   String get repositoryFound =>
       isEnglish ? 'Repository found' : 'Repository ditemukan';
