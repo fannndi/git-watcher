@@ -26,17 +26,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _hasCredentials = false;
   bool _isSaving = false;
 
+  DateTime? _nextSyncAt;
+  Timer? _countdownTimer;
+  String _countdownText = '--:--';
+
   @override
   void initState() {
     super.initState();
     _loadCredentials();
+    _loadNextSyncAt();
   }
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _usernameController.dispose();
     _tokenController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadNextSyncAt() async {
+    final nextSync = await _storage.getNextSyncAt();
+    if (!mounted) return;
+    setState(() {
+      _nextSyncAt = nextSync;
+    });
+    _updateCountdownText();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateCountdownText();
+    });
+  }
+
+  void _updateCountdownText() {
+    if (!mounted || _nextSyncAt == null) return;
+    final now = DateTime.now();
+    final diff = _nextSyncAt!.difference(now);
+    if (diff.isNegative) {
+      setState(() => _countdownText = '00:00 (Syncing...)');
+    } else {
+      final m = diff.inMinutes.toString().padLeft(2, '0');
+      final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
+      setState(() => _countdownText = '$m:$s');
+    }
   }
 
   Future<void> _loadCredentials() async {
@@ -246,6 +277,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ],
                     ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _SettingsSection(
+                title: 'Background Sync',
+                icon: Icons.sync_outlined,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Estimasi Sync Berikutnya',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          _countdownText,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Catatan: Sesuai aturan Android, WorkManager bisa saja tertunda oleh Doze mode atau penghemat baterai.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
                 ],
               ),

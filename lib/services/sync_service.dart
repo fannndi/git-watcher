@@ -43,16 +43,23 @@ class SyncService {
 
     await storage.saveRepos(updatedRepos);
     await storage.saveUpdateSummary(updates);
-    await storage.addSyncLog(
-      SyncLog(
-        syncedAt: DateTime.now(),
-        updates: updates,
-      ),
-    );
+    
+    final now = DateTime.now();
+    await storage.setLastSyncAt(now);
 
     if (updates.isNotEmpty) {
+      await storage.addSyncLog(
+        SyncLog(
+          syncedAt: now,
+          updates: updates,
+        ),
+      );
       await NotificationService.showUpdateNotification(updates);
     }
+
+    final appSettings = await storage.getAppSettings();
+    await storage.setNextSyncAt(
+        DateTime.now().add(Duration(minutes: appSettings.syncIntervalMinutes)));
 
     return updates;
   }

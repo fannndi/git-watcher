@@ -57,12 +57,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadRepos() async {
     setState(() => _isLoading = true);
     final repos = await _storage.getRepos();
-    final history = await _storage.getSyncHistory();
+    final lastSync = await _storage.getLastSyncAt();
     if (!mounted) return;
     setState(() {
       _repos = repos;
       _isLoading = false;
-      _lastSyncAt = history.isEmpty ? null : history.first.syncedAt;
+      _lastSyncAt = lastSync;
     });
   }
 

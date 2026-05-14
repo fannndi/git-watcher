@@ -3,6 +3,7 @@ import 'package:workmanager/workmanager.dart';
 import '../utils/constants.dart';
 import '../workers/background_worker.dart';
 import 'notification_service.dart';
+import 'storage_service.dart';
 
 class StartupService {
   static Future<void> init() async {
@@ -19,6 +20,13 @@ class StartupService {
         ExistingPeriodicWorkPolicy.keep,
       );
 
+      final storage = StorageService();
+      final currentNextSync = await storage.getNextSyncAt();
+      if (currentNextSync == null || currentNextSync.isBefore(DateTime.now().subtract(const Duration(minutes: 5)))) {
+        await storage.setNextSyncAt(
+            DateTime.now().add(const Duration(minutes: defaultSyncIntervalMinutes)));
+      }
+
       if (await NotificationService.launchedFromUpdateNotification()) {
         NotificationService.openUpdateScreen();
       }
@@ -33,6 +41,10 @@ class StartupService {
       await Workmanager().cancelByUniqueName(githubSyncTask);
       await Future.delayed(const Duration(milliseconds: 300));
       await _registerTask(intervalMinutes, ExistingPeriodicWorkPolicy.replace);
+      
+      final storage = StorageService();
+      await storage.setNextSyncAt(
+          DateTime.now().add(Duration(minutes: intervalMinutes)));
     } catch (_) {}
   }
 

@@ -61,6 +61,30 @@ class StorageService {
     return decoded.map((key, value) => MapEntry(key, (value as num).toInt()));
   }
 
+  Future<DateTime?> getNextSyncAt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(nextSyncAtKey);
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  Future<void> setNextSyncAt(DateTime time) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(nextSyncAtKey, time.toIso8601String());
+  }
+
+  Future<DateTime?> getLastSyncAt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(lastSyncAtKey);
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  Future<void> setLastSyncAt(DateTime time) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(lastSyncAtKey, time.toIso8601String());
+  }
+
   Future<List<SyncLog>> getSyncHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(syncHistoryKey);
