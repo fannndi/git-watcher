@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../services/notification_service.dart';
@@ -8,6 +9,8 @@ import '../utils/constants.dart';
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
+      WidgetsFlutterBinding.ensureInitialized();
+
       if (task == githubSyncTask) {
         // NotificationService harus diinisialisasi di isolate baru ini
         await NotificationService.init();
