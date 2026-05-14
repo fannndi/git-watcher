@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 
 import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
-import '../services/startup_service.dart';
 import '../services/storage_service.dart';
 import '../services/sync_service.dart';
 import '../utils/constants.dart';
@@ -94,11 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final strings = stringsFor(_languageCode);
     try {
       final updates = await SyncService.checkUpdates();
-
-      // Reset jadwal WorkManager — countdown mulai dari sekarang
-      await StartupService.resetBackgroundSync(
-        appSettingsController.value.syncIntervalMinutes,
-      );
 
       await _loadRepos();
       if (!mounted) return;

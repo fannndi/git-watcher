@@ -6,7 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/app_settings.dart';
 import '../models/github_credentials.dart';
 import '../services/app_settings_controller.dart';
-import '../services/startup_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
@@ -103,46 +102,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _SettingsSection(
-                title: strings.syncSettings,
-                icon: Icons.sync_outlined,
-                children: [
-                  DropdownButtonFormField<int>(
-                    initialValue: settings.syncIntervalMinutes,
-                    decoration: InputDecoration(
-                      labelText: strings.syncInterval,
-                      border: const OutlineInputBorder(),
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                        value: 15,
-                        child: Text(strings.minutes(15)),
-                      ),
-                      DropdownMenuItem(
-                        value: 30,
-                        child: Text(strings.minutes(30)),
-                      ),
-                      DropdownMenuItem(
-                        value: 60,
-                        child: Text(strings.oneHour),
-                      ),
-                      DropdownMenuItem(
-                        value: 120,
-                        child: Text(strings.twoHours),
-                      ),
-                    ],
-                    onChanged: (value) async {
-                      if (value != null) {
-                        await _update(
-                            settings.copyWith(syncIntervalMinutes: value));
-                        // Reset WorkManager dengan interval baru
-                        await StartupService.resetBackgroundSync(value);
-                      }
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
               _SettingsSection(
                 title: strings.appearance,
                 icon: Icons.palette_outlined,

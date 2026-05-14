@@ -9,14 +9,19 @@ void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
       if (task == githubSyncTask) {
+        // NotificationService harus diinisialisasi di isolate baru ini
         await NotificationService.init();
+
+        // Jalankan sync dengan timeout yang cukup
+        // (timeout terlalu pendek = sync selalu gagal di background)
         await SyncService.checkUpdates().timeout(
-          const Duration(seconds: 25),
+          const Duration(seconds: 55),
         );
       }
-      return Future.value(true);
+      return true;
     } catch (_) {
-      return Future.value(false);
+      // Kembalikan false agar WorkManager retry sesuai backoff policy
+      return false;
     }
   });
 }
