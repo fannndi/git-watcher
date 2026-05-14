@@ -161,16 +161,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _buildContent(strings),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed:
-            _repos.length >= maxWatchedRepos ? _showRepoLimit : _openAddRepo,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _repos.length >= maxWatchedRepos
+          ? null
+          : FloatingActionButton(
+              onPressed: _openAddRepo,
+              child: const Icon(Icons.add),
+            ),
     );
   }
 
@@ -178,12 +179,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildHomeHeader(strings),
-        if (_repos.isNotEmpty) ...[
-          const SizedBox(height: 12),
+        if (_repos.isNotEmpty)
           _buildSyncCard(strings),
-        ],
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -203,62 +201,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Expanded(
           child: _repos.isEmpty ? _buildEmptyState(strings) : _buildRepoList(),
         ),
       ],
-    );
-  }
-
-  Widget _buildHomeHeader(AppStrings strings) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: colorScheme.primary,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              Icons.notifications_active_outlined,
-              color: colorScheme.onPrimary,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  strings.appTitle,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  strings.homeSubtitle,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onPrimaryContainer
-                            .withValues(alpha: 0.76),
-                      ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -269,7 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
         : strings.never;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(14),
@@ -297,14 +244,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   lastSyncText,
                   style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  strings.nextSyncAuto,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color:
-                            colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                      ),
                 ),
               ],
             ),
@@ -373,9 +312,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildRepoList() {
     return ListView.separated(
-      padding: const EdgeInsets.only(bottom: 96),
+      padding: EdgeInsets.only(bottom: _repos.length >= maxWatchedRepos ? 24 : 96),
       itemCount: _repos.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final repo = _repos[index];
         return Dismissible(
