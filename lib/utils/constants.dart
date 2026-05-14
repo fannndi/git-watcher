@@ -6,7 +6,6 @@ const String syncHistoryKey = 'sync_history';
 const String commitCachePrefix = 'commit_cache_';
 const String notificationChannelId = 'updates';
 const String githubSyncTask = 'githubSync';
-const String demoPassword = 'demo123';
 const String githubCredentialsKey = 'github_credentials';
 const String appVersionName = '1.0.0';
 const String appReleaseChannel = 'Beta';

@@ -1,9 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
+import '../services/startup_service.dart';
 import '../services/storage_service.dart';
 import '../services/sync_service.dart';
 import '../utils/constants.dart';
@@ -23,34 +23,34 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final StorageService _storage = StorageService();
+  final DateFormat _dateFormat = DateFormat('yyyy-MM-dd HH:mm');
+
   List<WatchedRepo> _repos = [];
   bool _isLoading = true;
   bool _isSyncing = false;
-  int _syncIntervalMinutes = defaultSyncIntervalMinutes;
   String _languageCode = languageIndonesian;
-  bool _isDemoMode = false;
-  Duration _timeUntilSync = Duration.zero;
-  DateTime? _nextSyncAt;
   DateTime? _lastSyncAt;
-  Timer? _countdownTimer;
 
   @override
   void initState() {
     super.initState();
-    _applySettings();
-    appSettingsController.addListener(_applySettings);
+    _languageCode = appSettingsController.value.languageCode;
+    appSettingsController.addListener(_onSettingsChanged);
     _loadRepos();
-    _countdownTimer = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) => _tickCountdown(),
-    );
   }
 
   @override
   void dispose() {
-    _countdownTimer?.cancel();
-    appSettingsController.removeListener(_applySettings);
+    appSettingsController.removeListener(_onSettingsChanged);
     super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    if (mounted) {
+      setState(() {
+        _languageCode = appSettingsController.value.languageCode;
+      });
+    }
   }
 
   Future<void> _loadRepos() async {
@@ -61,21 +61,16 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _repos = repos;
       _isLoading = false;
+      _lastSyncAt = history.isEmpty ? null : history.first.syncedAt;
     });
-    _lastSyncAt = history.isEmpty ? null : history.first.syncedAt;
-    _scheduleNextSync(_lastSyncAt);
   }
 
   Future<void> _openAddRepo() async {
     final added = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const AddRepoScreen()),
     );
-
     if (added == true) {
       await _loadRepos();
-      if (_repos.length == 1 && _nextSyncAt == null) {
-        _scheduleNextSync(DateTime.now());
-      }
     }
   }
 
@@ -88,31 +83,24 @@ class _HomeScreenState extends State<HomeScreen> {
     await _storage.saveRepos(updated);
     if (!mounted) return;
     setState(() => _repos = updated);
-    if (updated.isEmpty) {
-      _clearCountdown();
-    }
     final strings = stringsFor(_languageCode);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(strings.repoDeleted(repo.fullName))),
     );
   }
 
-  Future<void> _syncNow({bool fromCountdown = false}) async {
+  Future<void> _syncNow() async {
     setState(() => _isSyncing = true);
     final strings = stringsFor(_languageCode);
     try {
       final updates = await SyncService.checkUpdates();
+
+      // Reset jadwal WorkManager — countdown mulai dari sekarang
+      await StartupService.resetBackgroundSync(
+        appSettingsController.value.syncIntervalMinutes,
+      );
+
       await _loadRepos();
-      if (!mounted) return;
-      _scheduleNextSync(DateTime.now());
-
-      // Auto-exit demo mode setelah countdown habis dan sync selesai
-      if (fromCountdown && _isDemoMode) {
-        await appSettingsController.update(
-          appSettingsController.value.copyWith(isDemoMode: false),
-        );
-      }
-
       if (!mounted) return;
 
       final message = updates.isEmpty
@@ -159,7 +147,9 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             tooltip: strings.settings,
             icon: const Icon(Icons.settings_outlined),
-            onPressed: _openSettings,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
         ],
       ),
@@ -177,39 +167,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showRepoLimit() {
-    final strings = stringsFor(_languageCode);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(strings.maxRepos)),
-    );
-  }
-
-  Future<void> _openSettings() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-    );
-  }
-
   Widget _buildContent(AppStrings strings) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildHomeHeader(strings),
-        if (_repos.isNotEmpty && _isDemoMode) ...[
+        if (_repos.isNotEmpty) ...[
           const SizedBox(height: 12),
-          _buildCountdownCard(strings),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: _isSyncing ? null : _syncNow,
-            icon: _isSyncing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.sync),
-            label: Text(strings.syncNow),
-          ),
+          _buildSyncCard(strings),
         ],
         const SizedBox(height: 18),
         Row(
@@ -284,6 +249,73 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSyncCard(AppStrings strings) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final lastSyncText = _lastSyncAt != null
+        ? _dateFormat.format(_lastSyncAt!.toLocal())
+        : strings.never;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.sync_outlined,
+            size: 20,
+            color: colorScheme.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  strings.lastSync,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  lastSyncText,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  strings.nextSyncAuto,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color:
+                            colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            onPressed: _isSyncing ? null : _syncNow,
+            icon: _isSyncing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.sync, size: 18),
+            label: Text(strings.syncNow),
           ),
         ],
       ),
@@ -366,120 +398,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCountdownCard(AppStrings strings) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            const Icon(Icons.timer_outlined),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    strings.nextSync,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  Text(
-                    _isDemoMode
-                        ? strings.demoIntervalActive
-                        : '${strings.normalInterval} ${strings.oneHour}',
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              _formatDuration(_timeUntilSync),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-          ],
-        ),
-      ),
+  void _showRepoLimit() {
+    final strings = stringsFor(_languageCode);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.maxRepos)),
     );
-  }
-
-  void _scheduleNextSync(DateTime? lastSyncAt) {
-    if (_repos.isEmpty) {
-      _clearCountdown();
-      return;
-    }
-
-    final base = lastSyncAt ?? DateTime.now();
-    setState(() {
-      _nextSyncAt = base.add(Duration(minutes: _syncIntervalMinutes));
-    });
-    _tickCountdown();
-  }
-
-  void _applySettings() {
-    final settings = appSettingsController.value;
-    final effectiveInterval = settings.isDemoMode
-        ? settings.syncIntervalMinutes
-        : defaultSyncIntervalMinutes;
-    final changedInterval = _syncIntervalMinutes != effectiveInterval;
-    final changedDemoMode = _isDemoMode != settings.isDemoMode;
-
-    if (mounted) {
-      setState(() {
-        _isDemoMode = settings.isDemoMode;
-        _syncIntervalMinutes = effectiveInterval;
-        _languageCode = settings.languageCode;
-      });
-    } else {
-      _isDemoMode = settings.isDemoMode;
-      _syncIntervalMinutes = effectiveInterval;
-      _languageCode = settings.languageCode;
-    }
-
-    if ((changedInterval || changedDemoMode) && _repos.isNotEmpty) {
-      _scheduleNextSync(_lastSyncAt);
-    }
-  }
-
-  void _clearCountdown() {
-    setState(() {
-      _nextSyncAt = null;
-      _timeUntilSync = Duration.zero;
-    });
-  }
-
-  void _tickCountdown() {
-    final nextSyncAt = _nextSyncAt;
-    if (!mounted || nextSyncAt == null || _repos.isEmpty) {
-      return;
-    }
-
-    final remaining = nextSyncAt.difference(DateTime.now());
-    if (remaining <= Duration.zero) {
-      setState(() => _timeUntilSync = Duration.zero);
-      if (!_isSyncing) {
-        // Tandai bahwa ini dipicu dari countdown
-        _syncNow(fromCountdown: true);
-      }
-      return;
-    }
-
-    setState(() => _timeUntilSync = remaining);
-  }
-
-  String _formatDuration(Duration duration) {
-    final totalSeconds = duration.inSeconds;
-    final hours = totalSeconds ~/ 3600;
-    final minutes = (totalSeconds % 3600) ~/ 60;
-    final seconds = totalSeconds % 60;
-
-    if (hours > 0) {
-      return '${hours.toString().padLeft(2, '0')}:'
-          '${minutes.toString().padLeft(2, '0')}:'
-          '${seconds.toString().padLeft(2, '0')}';
-    }
-
-    return '${minutes.toString().padLeft(2, '0')}:'
-        '${seconds.toString().padLeft(2, '0')}';
   }
 }

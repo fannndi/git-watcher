@@ -71,7 +71,7 @@ class RepoTile extends StatelessWidget {
                               Icons.delete_outline,
                               size: 17,
                               color: colorScheme.onSurfaceVariant
-                                  .withOpacity(0.6),
+                                  .withValues(alpha: 0.6),
                             ),
                             tooltip: 'Hapus repo',
                             onPressed: onDelete,
@@ -103,7 +103,7 @@ class RepoTile extends StatelessWidget {
                     Divider(
                       height: 1,
                       thickness: 0.5,
-                      color: colorScheme.outlineVariant.withOpacity(0.5),
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -111,7 +111,8 @@ class RepoTile extends StatelessWidget {
                         Icon(
                           Icons.update_outlined,
                           size: 13,
-                          color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                          color: colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.6),
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -121,7 +122,7 @@ class RepoTile extends StatelessWidget {
                           style: textTheme.bodySmall?.copyWith(
                             fontSize: 11,
                             color: colorScheme.onSurfaceVariant
-                                .withOpacity(0.7),
+                                .withValues(alpha: 0.7),
                           ),
                         ),
                         const Spacer(),
@@ -131,7 +132,7 @@ class RepoTile extends StatelessWidget {
                             style: textTheme.bodySmall?.copyWith(
                               fontSize: 11,
                               color: colorScheme.onSurfaceVariant
-                                  .withOpacity(0.6),
+                                  .withValues(alpha: 0.6),
                               fontFamily: 'monospace',
                               letterSpacing: 0.5,
                             ),
@@ -213,8 +214,8 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = isAccent
-        ? colorScheme.secondaryContainer.withOpacity(0.5)
-        : colorScheme.surfaceVariant.withOpacity(0.6);
+        ? colorScheme.secondaryContainer.withValues(alpha: 0.5)
+        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.6);
     final fg = isAccent
         ? colorScheme.onSecondaryContainer
         : colorScheme.onSurfaceVariant;

@@ -9,20 +9,7 @@ class StartupService {
     try {
       await NotificationService.init();
       await Workmanager().initialize(callbackDispatcher);
-      await Workmanager().registerPeriodicTask(
-        githubSyncTask,
-        githubSyncTask,
-        frequency: const Duration(hours: 1),
-        flexInterval: const Duration(minutes: 20),
-        constraints: Constraints(
-          networkType: NetworkType.connected,
-          requiresBatteryNotLow: true,
-          requiresStorageNotLow: true,
-        ),
-        backoffPolicy: BackoffPolicy.exponential,
-        backoffPolicyDelay: const Duration(minutes: 15),
-        existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
-      );
+      await _registerTask(defaultSyncIntervalMinutes);
 
       if (await NotificationService.launchedFromUpdateNotification()) {
         NotificationService.openUpdateScreen();
@@ -30,5 +17,30 @@ class StartupService {
     } catch (_) {
       // Startup must never block opening the app. Foreground sync still works.
     }
+  }
+
+  /// Cancel task lama dan daftarkan ulang — countdown 1 jam dimulai dari sekarang.
+  static Future<void> resetBackgroundSync(int intervalMinutes) async {
+    try {
+      await Workmanager().cancelByUniqueName(githubSyncTask);
+      await _registerTask(intervalMinutes);
+    } catch (_) {}
+  }
+
+  static Future<void> _registerTask(int intervalMinutes) async {
+    await Workmanager().registerPeriodicTask(
+      githubSyncTask,
+      githubSyncTask,
+      frequency: Duration(minutes: intervalMinutes),
+      flexInterval: const Duration(minutes: 10),
+      constraints: Constraints(
+        networkType: NetworkType.connected,
+        requiresBatteryNotLow: true,
+        requiresStorageNotLow: true,
+      ),
+      backoffPolicy: BackoffPolicy.exponential,
+      backoffPolicyDelay: const Duration(minutes: 15),
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
+    );
   }
 }

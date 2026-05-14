@@ -18,31 +18,23 @@ class AppStrings {
   String get homeSubtitle => isEnglish
       ? 'Keep an eye on recent commits across public and private repositories.'
       : 'Pantau commit terbaru dari repo publik dan privat.';
-  String get nextSync => isEnglish ? 'Next sync' : 'Sync berikutnya';
-  String get normalInterval =>
-      isEnglish ? 'Normal interval' : 'Interval normal';
-  String get demoIntervalActive =>
-      isEnglish ? 'Demo interval active' : 'Interval demo aktif';
-  String get demoModeActive =>
-      isEnglish ? 'Demo Mode Active' : 'Demo Mode Aktif';
-  String get demoMode => isEnglish ? 'Demo Mode' : 'Demo Mode';
-  String get demoModeSubtitle => isEnglish
-      ? 'Show countdown on Home and allow faster sync.'
-      : 'Tampilkan countdown di Home dan aktifkan sync lebih cepat.';
   String get language => isEnglish ? 'Language' : 'Bahasa';
   String get theme => isEnglish ? 'Theme' : 'Tema';
   String get systemTheme => isEnglish ? 'System' : 'Sistem';
   String get lightTheme => isEnglish ? 'Light' : 'Terang';
   String get darkTheme => isEnglish ? 'Dark' : 'Gelap';
-  String get syncInterval => isEnglish ? 'Sync interval' : 'Interval Sync';
-  String get nextNormalSync =>
-      isEnglish ? 'Next normal sync' : 'Sync normal berikutnya';
-  String get syncIndicator => isEnglish
-      ? 'The background worker runs every 1 hour.'
-      : 'Background worker berjalan setiap 1 jam.';
+  String get syncSettings => isEnglish ? 'Sync' : 'Sinkronisasi';
+  String get syncInterval =>
+      isEnglish ? 'Background sync interval' : 'Interval sync background';
   String minutes(int value) => isEnglish ? '$value minutes' : '$value menit';
   String get oneHour => isEnglish ? '1 hour' : '1 jam';
-  String get syncNow => isEnglish ? 'Sync Now' : 'Sinkronkan Sekarang';
+  String get twoHours => isEnglish ? '2 hours' : '2 jam';
+  String get syncNow => isEnglish ? 'Sync Now' : 'Sync Sekarang';
+  String get lastSync => isEnglish ? 'Last sync' : 'Sinkron terakhir';
+  String get never => isEnglish ? 'Never' : 'Belum pernah';
+  String get nextSyncAuto => isEnglish
+      ? 'Background sync runs automatically'
+      : 'Sync background berjalan otomatis';
   String get noRepos =>
       isEnglish ? 'No watched repos yet' : 'Belum ada repo dipantau';
   String repoDeleted(String repo) =>
@@ -159,7 +151,6 @@ class AppStrings {
   String get credentialsEmpty =>
       isEnglish ? 'No credentials saved' : 'Belum ada kredensial';
   String get appearance => isEnglish ? 'Appearance' : 'Tampilan';
-  String get syncAndDemo => isEnglish ? 'Sync & demo' : 'Sync & demo';
   String get privateAccess =>
       isEnglish ? 'Private repository access' : 'Akses repo privat';
   String get aboutApp => isEnglish ? 'About app' : 'Tentang aplikasi';

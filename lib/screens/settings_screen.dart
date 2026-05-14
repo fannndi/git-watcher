@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/app_settings.dart';
 import '../models/github_credentials.dart';
 import '../services/app_settings_controller.dart';
+import '../services/startup_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
@@ -25,24 +26,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _tokenObscured = true;
   bool _hasCredentials = false;
   bool _isSaving = false;
-  Duration _normalSyncCountdown = const Duration(hours: 1);
-  DateTime? _lastSyncAt;
-  Timer? _countdownTimer;
 
   @override
   void initState() {
     super.initState();
     _loadCredentials();
-    _loadSyncCountdown();
-    _countdownTimer = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) => _tickCountdown(),
-    );
   }
 
   @override
   void dispose() {
-    _countdownTimer?.cancel();
     _usernameController.dispose();
     _tokenController.dispose();
     super.dispose();
@@ -65,7 +57,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final token = _tokenController.text.trim();
 
     if (username.isEmpty || token.isEmpty) {
-      final strings = stringsFor(appSettingsController.value.languageCode);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(strings.usernameTokenRequired)),
       );
@@ -113,32 +104,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               _SettingsSection(
-                title: strings.syncAndDemo,
+                title: strings.syncSettings,
                 icon: Icons.sync_outlined,
                 children: [
-                  SwitchListTile(
-                    value: settings.isDemoMode,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(strings.demoMode),
-                    subtitle: Text(strings.demoModeSubtitle),
-                    secondary: const Icon(Icons.bug_report_outlined),
-                    onChanged: (value) {
-                      final interval = value ? 3 : defaultSyncIntervalMinutes;
-                      _update(settings.copyWith(
-                        isDemoMode: value,
-                        syncIntervalMinutes: interval,
-                      ));
+                  DropdownButtonFormField<int>(
+                    initialValue: settings.syncIntervalMinutes,
+                    decoration: InputDecoration(
+                      labelText: strings.syncInterval,
+                      border: const OutlineInputBorder(),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: 15,
+                        child: Text(strings.minutes(15)),
+                      ),
+                      DropdownMenuItem(
+                        value: 30,
+                        child: Text(strings.minutes(30)),
+                      ),
+                      DropdownMenuItem(
+                        value: 60,
+                        child: Text(strings.oneHour),
+                      ),
+                      DropdownMenuItem(
+                        value: 120,
+                        child: Text(strings.twoHours),
+                      ),
+                    ],
+                    onChanged: (value) async {
+                      if (value != null) {
+                        await _update(
+                            settings.copyWith(syncIntervalMinutes: value));
+                        // Reset WorkManager dengan interval baru
+                        await StartupService.resetBackgroundSync(value);
+                      }
                     },
-                  ),
-                  const SizedBox(height: 12),
-                  _SyncIndicatorTile(
-                    title: settings.isDemoMode
-                        ? strings.nextSync
-                        : strings.nextNormalSync,
-                    subtitle: settings.isDemoMode
-                        ? strings.demoIntervalActive
-                        : strings.syncIndicator,
-                    countdown: _formatDuration(_normalSyncCountdown),
                   ),
                 ],
               ),
@@ -205,10 +205,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Expanded(
                         child: Text(
                           strings.privateMode,
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
                       _CredentialStatusPill(hasCredentials: _hasCredentials),
@@ -258,7 +258,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: FilledButton.icon(
                           onPressed: _isSaving
                               ? null
-                              : () => _saveCredentials(strings),
+                              : () => _saveCredentials(stringsFor(
+                                  appSettingsController.value.languageCode)),
                           icon: _isSaving
                               ? const SizedBox(
                                   width: 18,
@@ -320,42 +321,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return appSettingsController.update(settings);
   }
 
-  Future<void> _loadSyncCountdown() async {
-    final history = await _storage.getSyncHistory();
-    if (!mounted) return;
-
-    _lastSyncAt = history.isEmpty ? DateTime.now() : history.first.syncedAt;
-    _tickCountdown();
-  }
-
-  void _tickCountdown() {
-    final lastSyncAt = _lastSyncAt ?? DateTime.now();
-    final nextSyncAt =
-        lastSyncAt.add(const Duration(minutes: defaultSyncIntervalMinutes));
-    final remaining = nextSyncAt.difference(DateTime.now());
-
-    setState(() {
-      _normalSyncCountdown =
-          remaining <= Duration.zero ? Duration.zero : remaining;
-    });
-  }
-
-  String _formatDuration(Duration duration) {
-    final totalSeconds = duration.inSeconds;
-    final hours = totalSeconds ~/ 3600;
-    final minutes = (totalSeconds % 3600) ~/ 60;
-    final seconds = totalSeconds % 60;
-
-    if (hours > 0) {
-      return '${hours.toString().padLeft(2, '0')}:'
-          '${minutes.toString().padLeft(2, '0')}:'
-          '${seconds.toString().padLeft(2, '0')}';
-    }
-
-    return '${minutes.toString().padLeft(2, '0')}:'
-        '${seconds.toString().padLeft(2, '0')}';
-  }
-
   Future<void> _showAboutApp(AppStrings strings) {
     return showDialog<void>(
       context: context,
@@ -393,7 +358,6 @@ Future<void> _openUrl(BuildContext context, String url) async {
     Uri.parse(url),
     mode: LaunchMode.externalApplication,
   );
-
   if (!opened && context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(strings.openLinkFailed)),
@@ -477,59 +441,6 @@ class _CredentialStatusPill extends StatelessWidget {
               ? colorScheme.onPrimaryContainer
               : colorScheme.onSurfaceVariant,
         ),
-      ),
-    );
-  }
-}
-
-class _SyncIndicatorTile extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String countdown;
-
-  const _SyncIndicatorTile({
-    required this.title,
-    required this.subtitle,
-    required this.countdown,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.timer_outlined, color: colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(color: colorScheme.onSurfaceVariant),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            countdown,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-        ],
       ),
     );
   }
