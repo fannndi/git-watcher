@@ -30,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isSyncing = false;
   String _languageCode = languageIndonesian;
   DateTime? _lastSyncAt;
+  bool _hasUnreadUpdates = false;
 
   @override
   void initState() {
@@ -112,9 +113,9 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       if (updates.isNotEmpty) {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const UpdateScreen()),
-        );
+        setState(() {
+          _hasUnreadUpdates = true;
+        });
       }
     } catch (_) {
       if (!mounted) return;
@@ -139,10 +140,16 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             tooltip: strings.history,
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const UpdateScreen()),
+            icon: Badge(
+              isLabelVisible: _hasUnreadUpdates,
+              child: const Icon(Icons.notifications_outlined),
             ),
+            onPressed: () {
+              setState(() => _hasUnreadUpdates = false);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const UpdateScreen()),
+              );
+            },
           ),
           IconButton(
             tooltip: strings.settings,
