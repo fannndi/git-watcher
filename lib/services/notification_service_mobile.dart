@@ -10,19 +10,21 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
-  static Future<void> init() async {
+  static Future<void> init({bool isBackground = false}) async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: androidSettings);
 
     await _plugin.initialize(
       settings,
-      onDidReceiveNotificationResponse: (_) => openUpdateScreen(),
+      onDidReceiveNotificationResponse: isBackground ? null : (_) => openUpdateScreen(),
     );
 
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+    if (!isBackground) {
+      await _plugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
+    }
 
     const channel = AndroidNotificationChannel(
       notificationChannelId,

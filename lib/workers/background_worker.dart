@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../services/notification_service.dart';
+import '../services/startup_service.dart';
+import '../services/storage_service.dart';
 import '../services/sync_service.dart';
 import '../utils/constants.dart';
 
@@ -13,13 +15,20 @@ void callbackDispatcher() {
 
       if (task == githubSyncTask) {
         // NotificationService harus diinisialisasi di isolate baru ini
-        await NotificationService.init();
+        await NotificationService.init(isBackground: true);
 
         // Jalankan sync dengan timeout yang cukup
         // (timeout terlalu pendek = sync selalu gagal di background)
         await SyncService.checkUpdates().timeout(
           const Duration(seconds: 55),
         );
+        
+        // Jika ini task demo, jadwal kembali periodic task reguler
+        if (inputData?['isDemo'] == true) {
+          final storage = StorageService();
+          final appSettings = await storage.getAppSettings();
+          await StartupService.resetBackgroundSync(appSettings.syncIntervalMinutes);
+        }
       }
       return true;
     } catch (_) {

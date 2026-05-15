@@ -11,7 +11,6 @@ class StartupService {
       await NotificationService.init();
       await Workmanager().initialize(
         callbackDispatcher,
-        isInDebugMode: false,
       );
 
       // Daftarkan task hanya jika belum ada — tidak mereset countdown
@@ -35,7 +34,6 @@ class StartupService {
     }
   }
 
-  /// Cancel task lama dan daftarkan ulang — countdown dimulai dari sekarang.
   static Future<void> resetBackgroundSync(int intervalMinutes) async {
     try {
       await Workmanager().cancelByUniqueName(githubSyncTask);
@@ -45,6 +43,26 @@ class StartupService {
       final storage = StorageService();
       await storage.setNextSyncAt(
           DateTime.now().add(Duration(minutes: intervalMinutes)));
+    } catch (_) {}
+  }
+
+  static Future<void> startDemoSync() async {
+    try {
+      await Workmanager().cancelByUniqueName(githubSyncTask);
+      await Future.delayed(const Duration(milliseconds: 300));
+      await Workmanager().registerOneOffTask(
+        githubSyncTask, // reuse same unique name
+        githubSyncTask, // taskName
+        initialDelay: const Duration(minutes: 5),
+        constraints: Constraints(networkType: NetworkType.connected),
+        inputData: {'isDemo': true},
+        backoffPolicy: BackoffPolicy.linear,
+        backoffPolicyDelay: const Duration(minutes: 5),
+      );
+      
+      final storage = StorageService();
+      await storage.setNextSyncAt(
+          DateTime.now().add(const Duration(minutes: 5)));
     } catch (_) {}
   }
 

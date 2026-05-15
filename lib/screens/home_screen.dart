@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -31,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _languageCode = languageIndonesian;
   DateTime? _lastSyncAt;
   bool _hasUnreadUpdates = false;
+  Timer? _autoSyncTimer;
 
   @override
   void initState() {
@@ -38,12 +41,24 @@ class _HomeScreenState extends State<HomeScreen> {
     _languageCode = appSettingsController.value.languageCode;
     appSettingsController.addListener(_onSettingsChanged);
     _loadRepos();
+    _startAutoSyncChecker();
   }
 
   @override
   void dispose() {
+    _autoSyncTimer?.cancel();
     appSettingsController.removeListener(_onSettingsChanged);
     super.dispose();
+  }
+
+  void _startAutoSyncChecker() {
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      if (_isLoading || _isSyncing || !mounted) return;
+      final nextSync = await _storage.getNextSyncAt();
+      if (nextSync != null && DateTime.now().isAfter(nextSync)) {
+        _syncNow();
+      }
+    });
   }
 
   void _onSettingsChanged() {
@@ -344,10 +359,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showRepoLimit() {
-    final strings = stringsFor(_languageCode);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(strings.maxRepos)),
-    );
-  }
 }

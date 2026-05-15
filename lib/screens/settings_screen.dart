@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/app_settings.dart';
 import '../models/github_credentials.dart';
 import '../services/app_settings_controller.dart';
+import '../services/startup_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
@@ -319,6 +320,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await StartupService.startDemoSync();
+                        if (!context.mounted) return;
+                        setState(() {
+                          _nextSyncAt = DateTime.now().add(const Duration(minutes: 5));
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Demo mode diaktifkan. Sync berjalan dalam 5 menit.')),
+                        );
+                      },
+                      icon: const Icon(Icons.timer_outlined),
+                      label: const Text('Demo Mode (5 Menit)'),
+                    ),
                   ),
                 ],
               ),
