@@ -102,7 +102,7 @@ class RepoTile extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 14),
                     Row(
                       children: [
                         Icon(Icons.history, size: 14, color: colorScheme.onSurfaceVariant),

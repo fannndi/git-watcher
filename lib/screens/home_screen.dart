@@ -23,7 +23,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final StorageService _storage = StorageService();
   final DateFormat _dateFormat = DateFormat('yyyy-MM-dd HH:mm');
 
@@ -38,17 +38,38 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _languageCode = appSettingsController.value.languageCode;
     appSettingsController.addListener(_onSettingsChanged);
     _loadRepos();
     _startAutoSyncChecker();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndSyncOnOpen();
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _autoSyncTimer?.cancel();
     appSettingsController.removeListener(_onSettingsChanged);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkAndSyncOnOpen();
+    }
+  }
+
+  Future<void> _checkAndSyncOnOpen() async {
+    if (_isLoading || _isSyncing || !mounted) return;
+    final nextSync = await _storage.getNextSyncAt();
+    if (nextSync != null) {
+      _syncNow();
+    }
   }
 
   void _startAutoSyncChecker() {
@@ -231,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
         : strings.never;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(14),
@@ -239,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         children: [
           Icon(
-            Icons.sync_outlined,
+            _isSyncing ? Icons.sync : Icons.sync_outlined,
             size: 20,
             color: colorScheme.primary,
           ),
@@ -263,21 +284,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          FilledButton.icon(
-            onPressed: _isSyncing ? null : _syncNow,
-            icon: _isSyncing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.sync, size: 18),
-            label: Text(strings.syncNow),
-          ),
+          if (_isSyncing)
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: colorScheme.primary,
+              ),
+            ),
         ],
       ),
     );
