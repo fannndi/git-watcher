@@ -19,7 +19,7 @@ void callbackDispatcher() {
 
         // Jalankan sync dengan timeout yang cukup
         // (timeout terlalu pendek = sync selalu gagal di background)
-        await SyncService.checkUpdates().timeout(
+        await SyncService.checkUpdates(isBackground: true).timeout(
           const Duration(seconds: 55),
         );
         

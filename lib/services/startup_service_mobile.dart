@@ -13,17 +13,22 @@ class StartupService {
         callbackDispatcher,
       );
 
-      // Daftarkan task hanya jika belum ada — tidak mereset countdown
+      final storage = StorageService();
+      final settings = await storage.getAppSettings();
+
+      // Gunakan interval dari settings, bukan default
       await _registerTask(
-        defaultSyncIntervalMinutes,
+        settings.syncIntervalMinutes,
         ExistingPeriodicWorkPolicy.keep,
       );
 
-      final storage = StorageService();
       final currentNextSync = await storage.getNextSyncAt();
-      if (currentNextSync == null || currentNextSync.isBefore(DateTime.now().subtract(const Duration(minutes: 5)))) {
-        await storage.setNextSyncAt(
-            DateTime.now().add(const Duration(minutes: defaultSyncIntervalMinutes)));
+      final now = DateTime.now();
+      
+      // Jika nextSync belum ada atau sudah lewat (missed), 
+      // set ke 'sekarang' agar HomeScreen bisa mentrigger sync pada saat build selesai.
+      if (currentNextSync == null || currentNextSync.isBefore(now.subtract(const Duration(minutes: 1)))) {
+        await storage.setNextSyncAt(now);
       }
 
       if (await NotificationService.launchedFromUpdateNotification()) {

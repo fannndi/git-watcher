@@ -283,9 +283,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 16),
               _SettingsSection(
-                title: 'Background Sync',
+                title: strings.syncSettings,
                 icon: Icons.sync_outlined,
                 children: [
+                  DropdownButtonFormField<int>(
+                    initialValue: settings.syncIntervalMinutes,
+                    decoration: InputDecoration(
+                      labelText: strings.syncInterval,
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.timer_outlined),
+                    ),
+                    items: [15, 30, 60, 120, 240, 720, 1440].map((mins) {
+                      String label;
+                      if (mins == 60) {
+                        label = strings.oneHour;
+                      } else if (mins == 120) {
+                        label = strings.twoHours;
+                      } else if (mins >= 1440) {
+                        label = '24 ${strings.isEnglish ? 'hours' : 'jam'}';
+                      } else {
+                        label = strings.minutes(mins);
+                      }
+                      return DropdownMenuItem(
+                        value: mins,
+                        child: Text(label),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        _update(settings.copyWith(syncIntervalMinutes: value));
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(

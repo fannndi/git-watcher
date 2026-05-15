@@ -43,10 +43,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     appSettingsController.addListener(_onSettingsChanged);
     _loadRepos();
     _startAutoSyncChecker();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAndSyncOnOpen();
-    });
   }
 
   @override
@@ -65,9 +61,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _checkAndSyncOnOpen() async {
-    if (_isLoading || _isSyncing || !mounted) return;
+    if (_isLoading || _isSyncing || !mounted || _repos.isEmpty) return;
+    
     final nextSync = await _storage.getNextSyncAt();
-    if (nextSync != null) {
+    final now = DateTime.now();
+    
+    // Sync on open/resume if:
+    // 1. Next sync time has already passed
+    // 2. We have never synced before
+    // 3. Next sync is "close enough" (proactive sync)
+    //    Kita sync lebih awal jika sisa waktu < 10% dari interval (maks 10 menit)
+    //    agar user langsung melihat data fresh saat membuka apps.
+    final settings = appSettingsController.value;
+    final bufferMinutes = (settings.syncIntervalMinutes * 0.1).round().clamp(1, 10);
+    final proactiveThreshold = nextSync?.subtract(Duration(minutes: bufferMinutes));
+
+    if (nextSync == null || now.isAfter(proactiveThreshold!)) {
       _syncNow();
     }
   }
@@ -75,6 +84,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _startAutoSyncChecker() {
     _autoSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
       if (_isLoading || _isSyncing || !mounted) return;
+
+      // Update UI if background worker changed the last sync time
+      final lastSync = await _storage.getLastSyncAt();
+      if (lastSync != null && _lastSyncAt != null && lastSync.isAfter(_lastSyncAt!)) {
+        final repos = await _storage.getRepos();
+        if (mounted) {
+          setState(() {
+            _lastSyncAt = lastSync;
+            _repos = repos;
+          });
+        }
+      }
+
       final nextSync = await _storage.getNextSyncAt();
       if (nextSync != null && DateTime.now().isAfter(nextSync)) {
         _syncNow();
@@ -100,6 +122,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _isLoading = false;
       _lastSyncAt = lastSync;
     });
+
+    // Cek sync otomatis setelah data repo dimuat
+    _checkAndSyncOnOpen();
   }
 
   Future<void> _openAddRepo() async {
