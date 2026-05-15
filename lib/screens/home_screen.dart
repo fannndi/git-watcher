@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:intl/intl.dart';
 
 import '../models/watched_repo.dart';
@@ -33,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String _languageCode = languageIndonesian;
   DateTime? _lastSyncAt;
   bool _hasUnreadUpdates = false;
+  bool _showSyncOverlay = false;
   Timer? _autoSyncTimer;
 
   @override
@@ -77,6 +79,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final proactiveThreshold = nextSync?.subtract(Duration(minutes: bufferMinutes));
 
     if (nextSync == null || now.isAfter(proactiveThreshold!)) {
+      setState(() => _showSyncOverlay = true);
       _syncNow();
     }
   }
@@ -133,6 +136,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
     if (added == true) {
       await _loadRepos();
+      _syncNow();
     }
   }
 
@@ -152,6 +156,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _syncNow() async {
+    if (_isSyncing) return;
     setState(() => _isSyncing = true);
     final strings = stringsFor(_languageCode);
     try {
@@ -185,7 +190,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
     } finally {
       if (mounted) {
-        setState(() => _isSyncing = false);
+        setState(() {
+          _isSyncing = false;
+          _showSyncOverlay = false;
+        });
       }
     }
   }
@@ -221,11 +229,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _buildContent(strings),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _buildContent(strings),
+          ),
+          if (_showSyncOverlay) _buildSyncOverlay(),
+        ],
       ),
       floatingActionButton: _repos.length >= maxWatchedRepos
           ? null
@@ -393,6 +406,62 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
             onDelete: () => _deleteRepo(repo),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSyncOverlay() {
+    final colorScheme = Theme.of(context).colorScheme;
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 300),
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, value, child) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 5.0 * value,
+            sigmaY: 5.0 * value,
+          ),
+          child: Container(
+            color: colorScheme.surface.withValues(alpha: 0.3 * value),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.8 * value),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1 * value),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 4,
+                        valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _languageCode == languageIndonesian ? 'Sinkronisasi...' : 'Syncing...',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
