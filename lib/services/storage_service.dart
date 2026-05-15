@@ -10,8 +10,14 @@ import '../models/watched_repo.dart';
 import '../utils/constants.dart';
 
 class StorageService {
-  Future<List<WatchedRepo>> getRepos() async {
+  Future<SharedPreferences> _getPrefs() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
+    return prefs;
+  }
+
+  Future<List<WatchedRepo>> getRepos() async {
+    final prefs = await _getPrefs();
     final raw = prefs.getString(watchedReposKey);
     if (raw == null || raw.isEmpty) {
       return [];
@@ -24,13 +30,13 @@ class StorageService {
   }
 
   Future<void> saveRepos(List<WatchedRepo> repos) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     final raw = jsonEncode(repos.map((repo) => repo.toJson()).toList());
     await prefs.setString(watchedReposKey, raw);
   }
 
   Future<AppSettings> getAppSettings() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     final raw = prefs.getString(appSettingsKey);
     if (raw == null || raw.isEmpty) {
       return const AppSettings.defaults();
@@ -41,17 +47,17 @@ class StorageService {
   }
 
   Future<void> saveAppSettings(AppSettings settings) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     await prefs.setString(appSettingsKey, jsonEncode(settings.toJson()));
   }
 
   Future<void> saveUpdateSummary(Map<String, int> updates) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     await prefs.setString(updateSummaryKey, jsonEncode(updates));
   }
 
   Future<Map<String, int>> getUpdateSummary() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     final raw = prefs.getString(updateSummaryKey);
     if (raw == null || raw.isEmpty) {
       return {};
@@ -62,31 +68,31 @@ class StorageService {
   }
 
   Future<DateTime?> getNextSyncAt() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     final raw = prefs.getString(nextSyncAtKey);
     if (raw == null || raw.isEmpty) return null;
     return DateTime.tryParse(raw);
   }
 
   Future<void> setNextSyncAt(DateTime time) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     await prefs.setString(nextSyncAtKey, time.toIso8601String());
   }
 
   Future<DateTime?> getLastSyncAt() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     final raw = prefs.getString(lastSyncAtKey);
     if (raw == null || raw.isEmpty) return null;
     return DateTime.tryParse(raw);
   }
 
   Future<void> setLastSyncAt(DateTime time) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     await prefs.setString(lastSyncAtKey, time.toIso8601String());
   }
 
   Future<List<SyncLog>> getSyncHistory() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     final raw = prefs.getString(syncHistoryKey);
     if (raw == null || raw.isEmpty) {
       return [];
@@ -99,7 +105,7 @@ class StorageService {
   }
 
   Future<void> addSyncLog(SyncLog log) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     final history = await getSyncHistory();
     final updated = [log, ...history].take(30).toList();
     final raw = jsonEncode(updated.map((item) => item.toJson()).toList());
@@ -107,7 +113,7 @@ class StorageService {
   }
 
   Future<List<Commit>> getCachedCommits(WatchedRepo repo) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     final raw = prefs.getString(_commitCacheKey(repo));
     if (raw == null || raw.isEmpty) {
       return [];
@@ -123,7 +129,7 @@ class StorageService {
     WatchedRepo repo,
     List<Commit> commits,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     final unique = <String, Commit>{};
     for (final commit in commits) {
       unique[commit.sha] = commit;
@@ -146,7 +152,7 @@ class StorageService {
   // ── Credentials ──────────────────────────────────────────────────────────
 
   Future<GitHubCredentials> getCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     final raw = prefs.getString(githubCredentialsKey);
     if (raw == null || raw.isEmpty) {
       return const GitHubCredentials.empty();
@@ -161,7 +167,7 @@ class StorageService {
   }
 
   Future<void> saveCredentials(GitHubCredentials credentials) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     await prefs.setString(
       githubCredentialsKey,
       jsonEncode(credentials.toJson()),
@@ -169,7 +175,7 @@ class StorageService {
   }
 
   Future<void> clearCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     await prefs.remove(githubCredentialsKey);
   }
 
@@ -178,5 +184,58 @@ class StorageService {
   String _commitCacheKey(WatchedRepo repo) {
     return '$commitCachePrefix'
         '${repo.owner}_${repo.repo}_${repo.branch}_${repo.syncMode}';
+  }
+
+  // ── Background Sync Diagnostics ──────────────────────────────────────────
+
+  Future<DateTime?> getLastBackgroundSyncAt() async {
+    final prefs = await _getPrefs();
+    final raw = prefs.getString(lastBackgroundSyncAtKey);
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  Future<void> setLastBackgroundSyncAt(DateTime time) async {
+    final prefs = await _getPrefs();
+    await prefs.setString(lastBackgroundSyncAtKey, time.toIso8601String());
+  }
+
+  Future<String?> getLastBackgroundSyncStatus() async {
+    final prefs = await _getPrefs();
+    return prefs.getString(lastBackgroundSyncStatusKey);
+  }
+
+  Future<void> setLastBackgroundSyncStatus(String status) async {
+    final prefs = await _getPrefs();
+    await prefs.setString(lastBackgroundSyncStatusKey, status);
+  }
+
+  // ── Sync Lock ────────────────────────────────────────────────────────────
+
+  Future<bool> isSyncLocked() async {
+    final prefs = await _getPrefs();
+    final lockTimeStr = prefs.getString(syncLockKey);
+    if (lockTimeStr == null || lockTimeStr.isEmpty) return false;
+
+    final lockTime = DateTime.tryParse(lockTimeStr);
+    if (lockTime == null) return false;
+
+    // Auto-release lock after 5 minutes (safety against crashes)
+    if (DateTime.now().difference(lockTime).inMinutes > 5) {
+      await releaseSyncLock();
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<void> acquireSyncLock() async {
+    final prefs = await _getPrefs();
+    await prefs.setString(syncLockKey, DateTime.now().toIso8601String());
+  }
+
+  Future<void> releaseSyncLock() async {
+    final prefs = await _getPrefs();
+    await prefs.remove(syncLockKey);
   }
 }

@@ -28,6 +28,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isSaving = false;
 
   DateTime? _nextSyncAt;
+  DateTime? _lastBackgroundSyncAt;
+  String? _lastBackgroundSyncStatus;
   Timer? _countdownTimer;
   String _countdownText = '--:--';
 
@@ -36,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _loadCredentials();
     _loadNextSyncAt();
+    _loadBackgroundStatus();
   }
 
   @override
@@ -55,6 +58,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _updateCountdownText();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _updateCountdownText();
+    });
+  }
+
+  Future<void> _loadBackgroundStatus() async {
+    final lastRun = await _storage.getLastBackgroundSyncAt();
+    final lastStatus = await _storage.getLastBackgroundSyncStatus();
+    if (!mounted) return;
+    setState(() {
+      _lastBackgroundSyncAt = lastRun;
+      _lastBackgroundSyncStatus = lastStatus;
     });
   }
 
@@ -369,6 +382,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: const Text('Demo Mode (5 Menit)'),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  _buildBackgroundDiagnostic(strings),
                 ],
               ),
               const SizedBox(height: 16),
@@ -395,6 +410,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildBackgroundDiagnostic(AppStrings strings) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final lastRunText = _lastBackgroundSyncAt != null
+        ? '${_lastBackgroundSyncAt!.toLocal().hour.toString().padLeft(2, '0')}:${_lastBackgroundSyncAt!.toLocal().minute.toString().padLeft(2, '0')}'
+        : 'Never';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.monitor_heart_outlined, size: 16, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'Diagnostic: Background Worker',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _DiagnosticRow(label: 'Last Run', value: lastRunText),
+          _DiagnosticRow(
+            label: 'Last Status',
+            value: _lastBackgroundSyncStatus ?? 'Unknown',
+            isError: _lastBackgroundSyncStatus?.contains('Failed') ?? false,
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                await StartupService.resetBackgroundSync(1);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Test background task dijadwalkan (1 menit). Tutup apps untuk mengetes.')),
+                );
+              },
+              icon: const Icon(Icons.bug_report_outlined),
+              label: const Text('Test Background Sync (1 Min)'),
+              style: OutlinedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                textStyle: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -591,6 +663,49 @@ class _AboutLinkRow extends StatelessWidget {
                     decoration: TextDecoration.underline,
                   ),
                 ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiagnosticRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isError;
+
+  const _DiagnosticRow({
+    required this.label,
+    required this.value,
+    this.isError = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isError ? Theme.of(context).colorScheme.error : null,
               ),
             ),
           ),

@@ -7,14 +7,22 @@ import 'storage_service.dart';
 class SyncService {
   static Future<Map<String, int>> checkUpdates({bool isBackground = false}) async {
     final storage = StorageService();
-
-    // Debounce: Hindari sinkronisasi berulang jika baru saja dilakukan (< 30 detik)
-    // Ini krusial jika background worker dan UI mentrigger sync hampir bersamaan.
-    final lastSyncAt = await storage.getLastSyncAt();
-    if (lastSyncAt != null &&
-        DateTime.now().difference(lastSyncAt).inSeconds < 30) {
+    
+    // Check sync lock
+    if (await storage.isSyncLocked()) {
       return {};
     }
+
+    // Debounce: Hindari sinkronisasi berulang jika baru saja dilakukan (< 20 detik)
+    // (diperpendek dari 30s agar lebih responsif)
+    final lastSyncAt = await storage.getLastSyncAt();
+    if (!isBackground && 
+        lastSyncAt != null &&
+        DateTime.now().difference(lastSyncAt).inSeconds < 20) {
+      return {};
+    }
+
+    await storage.acquireSyncLock();
 
     final github = GitHubService();
     final updates = <String, int>{};
@@ -43,9 +51,16 @@ class SyncService {
           final latest = commits.first;
 
           if (repo.lastSha.isNotEmpty && latest.sha != repo.lastSha) {
+            // Hitung jumlah commit baru
             final count = commits.takeWhile((c) => c.sha != repo.lastSha).length;
-            final updateKey = '${repo.fullName} (${repo.branch})';
-            updates[updateKey] = count == 0 ? 1 : count;
+            if (count > 0) {
+              final updateKey = '${repo.fullName} (${repo.branch})';
+              updates[updateKey] = count;
+            }
+          } else if (repo.lastSha.isEmpty) {
+            // Inisialisasi lastSha jika kosong (misal repo baru atau error sebelumnya)
+            repo.lastSha = latest.sha;
+            repo.lastCommitAt = latest.date;
           }
 
           await storage.mergeCachedCommits(repo, commits);
@@ -53,6 +68,7 @@ class SyncService {
           repo.lastCommitAt = latest.date;
           updatedRepos.add(repo);
         } catch (_) {
+          // Tetap tambahkan ke updatedRepos agar tidak hilang dari storage
           updatedRepos.add(repo);
         }
       }
@@ -74,6 +90,8 @@ class SyncService {
         }
       }
     } finally {
+      await storage.releaseSyncLock();
+      
       final appSettings = await storage.getAppSettings();
       await storage.setNextSyncAt(
         DateTime.now().add(Duration(minutes: appSettings.syncIntervalMinutes)),

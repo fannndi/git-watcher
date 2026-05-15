@@ -19,7 +19,7 @@ class StartupService {
       // Gunakan interval dari settings, bukan default
       await _registerTask(
         settings.syncIntervalMinutes,
-        ExistingPeriodicWorkPolicy.keep,
+        ExistingWorkPolicy.keep,
       );
 
       final currentNextSync = await storage.getNextSyncAt();
@@ -43,7 +43,7 @@ class StartupService {
     try {
       await Workmanager().cancelByUniqueName(githubSyncTask);
       await Future.delayed(const Duration(milliseconds: 300));
-      await _registerTask(intervalMinutes, ExistingPeriodicWorkPolicy.replace);
+      await _registerTask(intervalMinutes, ExistingWorkPolicy.replace);
       
       final storage = StorageService();
       await storage.setNextSyncAt(
@@ -73,18 +73,12 @@ class StartupService {
 
   static Future<void> _registerTask(
     int intervalMinutes,
-    ExistingPeriodicWorkPolicy policy,
+    ExistingWorkPolicy policy,
   ) async {
-    await Workmanager().registerPeriodicTask(
+    await Workmanager().registerOneOffTask(
       githubSyncTask,
       githubSyncTask,
-      frequency: Duration(minutes: intervalMinutes),
-      flexInterval: Duration(
-        minutes: (intervalMinutes * 0.25).round().clamp(5, 30),
-      ),
-      // Hanya wajibkan koneksi internet saja.
-      // requiresBatteryNotLow & requiresStorageNotLow terlalu ketat
-      // dan sering memblokir eksekusi di Android modern.
+      initialDelay: Duration(minutes: intervalMinutes),
       constraints: Constraints(
         networkType: NetworkType.connected,
       ),
