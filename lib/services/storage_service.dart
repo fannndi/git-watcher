@@ -220,8 +220,8 @@ class StorageService {
     final lockTime = DateTime.tryParse(lockTimeStr);
     if (lockTime == null) return false;
 
-    // Auto-release lock after 5 minutes (safety against crashes)
-    if (DateTime.now().difference(lockTime).inMinutes > 5) {
+    // Auto-release lock after 10 minutes (safety against crashes)
+    if (DateTime.now().difference(lockTime).inMinutes > 10) {
       await releaseSyncLock();
       return false;
     }

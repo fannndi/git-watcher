@@ -10,6 +10,9 @@ import '../utils/constants.dart';
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     final storage = StorageService();
+    bool isDemo = inputData?['isDemo'] == true;
+    int interval = 30; // fallback
+
     try {
       WidgetsFlutterBinding.ensureInitialized();
       await storage.setLastBackgroundSyncAt(DateTime.now());
@@ -19,15 +22,15 @@ void callbackDispatcher() {
         await NotificationService.init(isBackground: true);
 
         final appSettings = await storage.getAppSettings();
-        final bool isDemo = inputData?['isDemo'] == true;
-        final interval = isDemo ? 5 : appSettings.syncIntervalMinutes;
+        interval = isDemo ? 5 : appSettings.syncIntervalMinutes;
 
-        // Jalankan sync
+        // Jalankan sync dengan timeout yang lebih longgar (5 menit)
+        // 55 detik terlalu pendek jika banyak repo atau koneksi lambat.
         final updates = await SyncService.checkUpdates(
           isBackground: true,
           customInterval: interval,
         ).timeout(
-          const Duration(seconds: 55),
+          const Duration(minutes: 5),
         );
 
         await storage.setLastBackgroundSyncStatus(
@@ -35,25 +38,35 @@ void callbackDispatcher() {
               ? 'Success (No updates)'
               : 'Success (${updates.length} repos updated)',
         );
-
-        // Jadwalkan ulang task berikutnya (Chaining One-Off Task)
-        await Workmanager().registerOneOffTask(
-          githubSyncTask,
-          githubSyncTask,
-          initialDelay: Duration(minutes: interval),
-          constraints: Constraints(networkType: NetworkType.connected),
-          // Jika demo, task berikutnya kembali ke normal (isDemo: false)
-          inputData: isDemo ? {'isDemo': false} : inputData,
-          existingWorkPolicy: ExistingWorkPolicy.replace,
-          backoffPolicy: BackoffPolicy.linear,
-          backoffPolicyDelay: const Duration(minutes: 5),
-        );
       }
       return true;
     } catch (e) {
       await storage.setLastBackgroundSyncStatus('Failed: ${e.toString()}');
-      // Kembalikan false agar WorkManager retry sesuai backoff policy
-      return false;
+      // Kita kembalikan true agar WorkManager menganggap task ini selesai
+      // (kita akan menjadwalkan task berikutnya di logic chaining di bawah).
+      // Jika kita kembalikan false, WorkManager akan retry task yang SAMA,
+      // yang bisa mengacaukan jadwal sync berikutnya.
+      return true;
+    } finally {
+      // Chain the next task NO MATTER WHAT (selama bukan task tak dikenal)
+      if (task == githubSyncTask) {
+        try {
+          // Jika demo, task berikutnya kembali ke normal (isDemo: false)
+          // Jika gagal di tengah jalan, kita pastikan interval tetap valid
+          await Workmanager().registerOneOffTask(
+            githubSyncTask,
+            githubSyncTask,
+            initialDelay: Duration(minutes: interval),
+            constraints: Constraints(networkType: NetworkType.connected),
+            inputData: isDemo ? {'isDemo': false} : inputData,
+            existingWorkPolicy: ExistingWorkPolicy.replace,
+            backoffPolicy: BackoffPolicy.linear,
+            backoffPolicyDelay: const Duration(minutes: 5),
+          );
+        } catch (_) {
+          // Gagal menjadwalkan ulang? Setidaknya kita sudah mencoba.
+        }
+      }
     }
   });
 }

@@ -13,7 +13,16 @@ class SyncService {
     
     // Check sync lock
     if (await storage.isSyncLocked()) {
-      return {};
+      // Jika background, jangan menyerah begitu saja. 
+      // Tunggu sebentar (retry lokal) sebelum menyerah.
+      if (isBackground) {
+        await Future.delayed(const Duration(seconds: 5));
+        if (await storage.isSyncLocked()) {
+          return {};
+        }
+      } else {
+        return {};
+      }
     }
 
     // Debounce: Hindari sinkronisasi berulang jika baru saja dilakukan (< 20 detik)
