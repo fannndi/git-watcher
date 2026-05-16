@@ -8,6 +8,7 @@ import '../models/github_credentials.dart';
 import '../services/app_settings_controller.dart';
 import '../services/startup_service.dart';
 import '../services/storage_service.dart';
+import '../services/notification_service.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
 
@@ -32,6 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _lastBackgroundSyncStatus;
   Timer? _countdownTimer;
   String _countdownText = '--:--';
+  bool _isPermissionGranted = true;
 
   @override
   void initState() {
@@ -39,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadCredentials();
     _loadNextSyncAt();
     _loadBackgroundStatus();
+    _checkPermission();
   }
 
   @override
@@ -69,6 +72,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _lastBackgroundSyncAt = lastRun;
       _lastBackgroundSyncStatus = lastStatus;
     });
+  }
+
+  Future<void> _checkPermission() async {
+    final granted = await NotificationService.isPermissionGranted();
+    if (!mounted) return;
+    setState(() {
+      _isPermissionGranted = granted;
+    });
+  }
+
+  Future<void> _requestPermission() async {
+    await NotificationService.requestPermission();
+    await _checkPermission();
   }
 
   void _updateCountdownText() {
@@ -449,6 +465,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
             isError: _lastBackgroundSyncStatus?.contains('Failed') ?? false,
           ),
           const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          _DiagnosticRow(
+            label: 'Notification',
+            value: _isPermissionGranted ? 'Granted' : 'Denied / Not Requested',
+            isError: !_isPermissionGranted,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _isPermissionGranted ? null : _requestPermission,
+                  icon: const Icon(Icons.notifications_active_outlined),
+                  label: const Text('Request Permission'),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    textStyle: const TextStyle(fontSize: 11),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => NotificationService.testNotification(),
+                  icon: const Icon(Icons.send_outlined),
+                  label: const Text('Test Notification'),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    textStyle: const TextStyle(fontSize: 11),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -463,7 +514,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: const Text('Test Background Sync (1 Min)'),
               style: OutlinedButton.styleFrom(
                 visualDensity: VisualDensity.compact,
-                textStyle: const TextStyle(fontSize: 12),
+                textStyle: const TextStyle(fontSize: 11),
               ),
             ),
           ),

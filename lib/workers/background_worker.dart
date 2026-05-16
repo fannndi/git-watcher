@@ -16,10 +16,12 @@ void callbackDispatcher() {
     try {
       WidgetsFlutterBinding.ensureInitialized();
       await storage.setLastBackgroundSyncAt(DateTime.now());
+      await storage.setLastBackgroundSyncStatus('Initializing...');
 
       if (task == githubSyncTask) {
         // NotificationService harus diinisialisasi di isolate baru ini
         await NotificationService.init(isBackground: true);
+        await storage.setLastBackgroundSyncStatus('Syncing with GitHub...');
 
         final appSettings = await storage.getAppSettings();
         interval = isDemo ? 5 : appSettings.syncIntervalMinutes;
@@ -33,15 +35,17 @@ void callbackDispatcher() {
           const Duration(minutes: 5),
         );
 
-        await storage.setLastBackgroundSyncStatus(
-          updates.isEmpty
-              ? 'Success (No updates)'
-              : 'Success (${updates.length} repos updated)',
-        );
+        final status = updates.isEmpty
+            ? 'Success (No updates)'
+            : 'Success (${updates.length} repos updated)';
+        
+        await storage.setLastBackgroundSyncStatus(status);
       }
       return true;
-    } catch (e) {
-      await storage.setLastBackgroundSyncStatus('Failed: ${e.toString()}');
+    } catch (e, stackTrace) {
+      final errorMsg = 'Failed: ${e.toString()}';
+      debugPrint('BackgroundWorker Error: $errorMsg\n$stackTrace');
+      await storage.setLastBackgroundSyncStatus(errorMsg);
       // Kita kembalikan true agar WorkManager menganggap task ini selesai
       // (kita akan menjadwalkan task berikutnya di logic chaining di bawah).
       // Jika kita kembalikan false, WorkManager akan retry task yang SAMA,

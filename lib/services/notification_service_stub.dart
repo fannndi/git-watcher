@@ -13,6 +13,12 @@ class NotificationService {
 
   static Future<bool> launchedFromUpdateNotification() async => false;
 
+  static Future<bool> isPermissionGranted() async => true;
+
+  static Future<bool?> requestPermission() async => true;
+
+  static Future<void> testNotification() async {}
+
   static void openUpdateScreen() {
     navigatorKey.currentState?.push(
       MaterialPageRoute(builder: (_) => const UpdateScreen()),
