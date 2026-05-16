@@ -231,11 +231,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
       body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildContent(strings),
+                ? const Center(key: ValueKey('loading'), child: CircularProgressIndicator())
+                : Padding(
+                    key: const ValueKey('content'),
+                    padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+                    child: _buildContent(strings),
+                  ),
           ),
           if (_showSyncOverlay) _buildSyncOverlay(),
         ],
@@ -385,27 +389,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final repo = _repos[index];
-        return Dismissible(
-          key: ValueKey('${repo.fullName}-${repo.branch}'),
-          direction: DismissDirection.endToStart,
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 18),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.errorContainer,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(Icons.delete_outline),
-          ),
-          onDismissed: (_) => _deleteRepo(repo),
-          child: RepoTile(
-            repo: repo,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => DetailScreen(repo: repo),
+        return TweenAnimationBuilder<double>(
+          duration: Duration(milliseconds: 400 + (index * 100).clamp(0, 400)),
+          tween: Tween(begin: 0.0, end: 1.0),
+          builder: (context, value, child) {
+            return Opacity(
+              opacity: value,
+              child: Transform.translate(
+                offset: Offset(0, 30 * (1 - value)),
+                child: child,
               ),
+            );
+          },
+          child: Dismissible(
+            key: ValueKey('${repo.fullName}-${repo.branch}'),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 18),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.delete_outline),
             ),
-            onDelete: () => _deleteRepo(repo),
+            onDismissed: (_) => _deleteRepo(repo),
+            child: RepoTile(
+              repo: repo,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => DetailScreen(repo: repo),
+                ),
+              ),
+              onDelete: () => _deleteRepo(repo),
+            ),
           ),
         );
       },
@@ -415,50 +432,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildSyncOverlay() {
     final colorScheme = Theme.of(context).colorScheme;
     return TweenAnimationBuilder<double>(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
       tween: Tween(begin: 0.0, end: 1.0),
       builder: (context, value, child) {
         return BackdropFilter(
           filter: ImageFilter.blur(
-            sigmaX: 5.0 * value,
-            sigmaY: 5.0 * value,
+            sigmaX: 8.0 * value,
+            sigmaY: 8.0 * value,
           ),
           child: Container(
-            color: colorScheme.surface.withValues(alpha: 0.3 * value),
+            color: colorScheme.surface.withValues(alpha: 0.4 * value),
             child: Center(
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.8 * value),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1 * value),
-                      blurRadius: 20,
-                      spreadRadius: 5,
+              child: Transform.scale(
+                scale: 0.8 + (0.2 * value),
+                child: Opacity(
+                  opacity: value,
+                  child: Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.9 * value),
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15 * value),
+                          blurRadius: 30,
+                          spreadRadius: 5,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 4,
-                        valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
-                      ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 5,
+                            valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          _languageCode == languageIndonesian ? 'Sinkronisasi...' : 'Syncing...',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _languageCode == languageIndonesian ? 'Sinkronisasi...' : 'Syncing...',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

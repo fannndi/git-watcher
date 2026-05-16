@@ -22,7 +22,13 @@ class GitHubWatcherApp extends StatelessWidget {
             useMaterial3: true,
             colorSchemeSeed: Colors.blue,
             brightness: Brightness.light,
-            scaffoldBackgroundColor: const Color(0xFFF7F8FC),
+            scaffoldBackgroundColor: const Color(0xFFF8FAFF),
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+                TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+              },
+            ),
             cardTheme: const CardThemeData(
               elevation: 0,
               margin: EdgeInsets.zero,
@@ -32,6 +38,12 @@ class GitHubWatcherApp extends StatelessWidget {
             useMaterial3: true,
             colorSchemeSeed: Colors.blue,
             brightness: Brightness.dark,
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+                TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+              },
+            ),
             cardTheme: const CardThemeData(
               elevation: 0,
               margin: EdgeInsets.zero,

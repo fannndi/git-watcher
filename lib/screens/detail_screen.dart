@@ -92,76 +92,97 @@ class _DetailScreenState extends State<DetailScreen> {
           ],
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _query.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: strings.clearSearch,
-                              icon: const Icon(Icons.close),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _query = '');
-                              },
-                            ),
-                      labelText: strings.searchCommit,
-                      helperText: strings.searchCommitHelper,
-                      border: const OutlineInputBorder(),
+            ? const Center(key: ValueKey('loading'), child: CircularProgressIndicator())
+            : Padding(
+                key: const ValueKey('content'),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _query.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: strings.clearSearch,
+                                icon: const Icon(Icons.close),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _query = '');
+                                },
+                              ),
+                        labelText: strings.searchCommit,
+                        helperText: strings.searchCommitHelper,
+                        border: const OutlineInputBorder(),
+                      ),
+                      onChanged: (value) => setState(() => _query = value.trim()),
                     ),
-                    onChanged: (value) => setState(() => _query = value.trim()),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: _refreshCommits,
-                      child: filteredCommits.isEmpty
-                          ? ListView(
-                              children: [
-                                const SizedBox(height: 220),
-                                Center(child: Text(strings.commitNotFound)),
-                              ],
-                            )
-                          : ListView.separated(
-                              padding: const EdgeInsets.only(bottom: 24),
-                              itemCount: groupedCommits.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 4),
-                              itemBuilder: (context, index) {
-                                final group =
-                                    groupedCommits.entries.elementAt(index);
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _refreshCommits,
+                        child: filteredCommits.isEmpty
+                            ? ListView(
+                                children: [
+                                  const SizedBox(height: 220),
+                                  Center(child: Text(strings.commitNotFound)),
+                                ],
+                              )
+                            : ListView.separated(
+                                padding: const EdgeInsets.only(bottom: 24),
+                                itemCount: groupedCommits.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 4),
+                                itemBuilder: (context, index) {
+                                  final group =
+                                      groupedCommits.entries.elementAt(index);
 
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                          4, 16, 4, 8),
-                                      child: Text(
-                                        group.key,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w800,
-                                            ),
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            4, 16, 4, 8),
+                                        child: Text(
+                                          group.key,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                        ),
                                       ),
-                                    ),
-                                    ...group.value.map(_buildCommitCard),
-                                  ],
-                                );
-                              },
-                            ),
+                                      ...group.value.asMap().entries.map((entry) {
+                                        final commitIndex = entry.key;
+                                        final commit = entry.value;
+                                        return TweenAnimationBuilder<double>(
+                                          duration: Duration(milliseconds: 400 + (commitIndex * 80).clamp(0, 400)),
+                                          tween: Tween(begin: 0.0, end: 1.0),
+                                          builder: (context, value, child) {
+                                            return Opacity(
+                                              opacity: value,
+                                              child: Transform.translate(
+                                                offset: Offset(0, 20 * (1 - value)),
+                                                child: child,
+                                              ),
+                                            );
+                                          },
+                                          child: _buildCommitCard(commit),
+                                        );
+                                      }),
+                                    ],
+                                  );
+                                },
+                              ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
       ),
     );
