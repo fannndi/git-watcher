@@ -6,9 +6,9 @@
 **Nama Proyek:** GitHub Watcher  
 **Nama Package:** `github_watcher`  
 **Platform:** Android (Flutter)  
-**Versi Aplikasi:** 1.0.0 (Beta)  
+**Versi Aplikasi:** 1.0.0+2 (Release Candidate)  
 **Developer:** alisa ([github.com/fannndi](https://github.com/fannndi))  
-**Tanggal Dokumen:** 15 Mei 2026  
+**Tanggal Dokumen:** 16 Mei 2026  
 **Jenis Dokumen:** Product Requirements Document
 
 ---
@@ -41,7 +41,7 @@
 
 **GitHub Watcher** adalah aplikasi mobile berbasis Flutter yang memungkinkan pengguna memantau aktivitas commit dari satu atau beberapa repositori GitHub secara otomatis di latar belakang. Aplikasi ini dirancang untuk developer, mahasiswa, maupun tim kecil yang ingin mendapatkan notifikasi real-time ketika terdapat commit baru pada branch tertentu, tanpa perlu membuka browser atau platform GitHub secara manual.
 
-Aplikasi mendukung repository publik maupun privat (dengan autentikasi Personal Access Token), dilengkapi background sync menggunakan WorkManager, push notification lokal, cache data offline, serta antarmuka bilingual (Bahasa Indonesia dan English) dengan dukungan tema terang, gelap, dan sistem.
+Aplikasi mendukung repository publik maupun privat (dengan autentikasi Personal Access Token), dilengkapi background sync menggunakan **AndroidAlarmManager**, push notification lokal, cache data offline, serta antarmuka bilingual (Bahasa Indonesia dan English) dengan dukungan tema terang, gelap, dan sistem. Fitur unggulan **Extreme Precision** memastikan sinkronisasi tetap berjalan tepat waktu bahkan saat perangkat dalam mode hemat daya.
 
 ---
 
@@ -63,9 +63,10 @@ Solusi yang ada umumnya mengharuskan pengguna:
 ### 3.1 Tujuan Utama
 - Membangun aplikasi mobile Flutter Android yang fungsional dan siap pakai sebagai tugas pemrograman mobile.
 - Mengimplementasikan integrasi dengan GitHub REST API untuk mengambil data commit repositori.
-- Mengimplementasikan background task scheduling menggunakan WorkManager (via plugin `workmanager`).
+- Mengimplementasikan background task scheduling menggunakan **AndroidAlarmManager** (via plugin `android_alarm_manager_plus`) untuk akurasi tinggi.
 - Mengimplementasikan push notification lokal menggunakan `flutter_local_notifications`.
 - Mengimplementasikan penyimpanan data lokal persisten menggunakan `shared_preferences`.
+- Mengimplementasikan mekanisme pengecualian optimalisasi baterai (**Battery Optimization Exemption**) untuk menjamin eksekusi latar belakang.
 
 ### 3.2 Tujuan Sekunder
 - Mendemonstrasikan pola arsitektur yang bersih (pemisahan model, service, screen, widget).
@@ -90,15 +91,15 @@ Solusi yang ada umumnya mengharuskan pengguna:
 | F-07 | Pencarian commit berdasarkan pesan atau SHA |
 | F-08 | Melihat detail commit: statistik file berubah, baris ditambah/dihapus, status file |
 | F-09 | Membuka halaman commit di GitHub melalui browser eksternal |
-| F-10 | Sinkronisasi manual (foreground sync) dari halaman utama |
-| F-11 | Background sync otomatis menggunakan WorkManager |
+| F-10 | Sinkronisasi manual (Pull-to-Refresh) dari halaman utama |
+| F-11 | Background sync otomatis menggunakan AndroidAlarmManager (Exact Alarm) |
 | F-12 | Notifikasi lokal ketika terdapat commit baru |
 | F-13 | Riwayat sinkronisasi (sync history) maksimal 30 entri terakhir |
 | F-14 | Pengaturan kredensial GitHub (username + Personal Access Token) |
 | F-15 | Pengaturan bahasa (Indonesia / English) |
 | F-16 | Pengaturan tema (System / Light / Dark) |
-| F-17 | Countdown timer estimasi sync berikutnya di halaman Settings |
-| F-18 | Demo mode background sync (dipicu dalam 5 menit) |
+| F-17 | Fitur **Extreme Precision** (Request Battery Optimization Exemption) |
+| F-18 | Sinkronisasi otomatis saat menambahkan repositori baru |
 | F-19 | Deep link dari notifikasi langsung ke halaman riwayat update |
 
 ### 4.2 Di Luar Ruang Lingkup (Out-of-Scope)
@@ -130,7 +131,7 @@ Aplikasi menggunakan arsitektur berlapis sederhana yang terdiri dari empat lapis
 │               Service Layer                 │
 │  GitHubService | StorageService             │
 │  SyncService   | NotificationService        │
-│  StartupService                             │
+│  StartupService | AlarmWorker                │
 ├─────────────────────────────────────────────┤
 │               Data Layer                    │
 │  Models: WatchedRepo, Commit, CommitDetail, │
@@ -151,15 +152,17 @@ State lokal per screen dikelola menggunakan `StatefulWidget` dan `setState()`.
 
 Background sync diimplementasikan menggunakan dua mekanisme yang saling melengkapi:
 
-1. **WorkManager Periodic Task** — Task `githubSync` terdaftar sebagai `PeriodicTask` dengan interval yang dapat dikonfigurasi (default 60 menit). Task berjalan di isolate terpisah (`callbackDispatcher` dengan anotasi `@pragma('vm:entry-point')`).
+1. **AndroidAlarmManager (Exact & Periodic)** — Menggunakan `AndroidAlarmManager.periodic` dengan flag `exact: true` dan `wakeup: true`. Ini memanfaatkan `setExactAndAllowWhileIdle` di Android untuk memastikan tugas berjalan tepat setiap 60 menit meskipun perangkat dalam mode Doze.
 
-2. **Foreground Auto-Sync Checker** — `Timer.periodic` setiap 5 detik berjalan di foreground untuk memicu sync ketika `nextSyncAt` sudah terlampaui. Ini memastikan sync tetap berjalan meski WorkManager tertunda oleh Doze mode Android.
+2. **Idempotent Registration** — Registrasi alarm dilakukan secara idempotent di `StartupService`. Sistem mengecek flag `alarm_registered` agar pembukaan aplikasi berulang kali tidak mereset jadwal sinkronisasi yang sudah ada.
+
+3. **Battery Exemption Integration** — Menyediakan akses langsung bagi pengguna untuk mengecualikan aplikasi dari optimalisasi baterai sistem guna menjamin akurasi alarm 100%.
 
 ### 5.4 Strategi Fallback Autentikasi GitHub API
 
-`GitHubService._get()` mengimplementasikan pola fallback dua lapis:
-1. Pertama mencoba request tanpa autentikasi (untuk repositori publik).
-2. Jika mendapat HTTP 401 atau 404, otomatis retry menggunakan kredensial tersimpan.
+`GitHubService._get()` mengimplementasikan pola autentikasi proaktif:
+1. Jika kredensial tersedia, gunakan langsung (mendapatkan limit 5000 req/jam).
+2. Jika tidak ada atau gagal (HTTP 401), coba request publik (limit 60 req/jam).
 
 Ini memungkinkan aplikasi bekerja optimal untuk repo publik tanpa memerlukan setup token.
 
@@ -191,17 +194,17 @@ git-watcher-main/
 │   │   ├── notification_service_mobile.dart  # Implementasi notifikasi Android
 │   │   ├── notification_service_stub.dart    # Stub untuk non-mobile
 │   │   ├── startup_service.dart           # Factory/stub startup
-│   │   ├── startup_service_mobile.dart    # Implementasi WorkManager
+│   │   ├── startup_service_mobile.dart    # Implementasi AlarmManager & Battery settings
 │   │   ├── startup_service_stub.dart      # Stub untuk non-mobile
-│   │   ├── storage_service.dart           # Manajemen SharedPreferences
-│   │   └── sync_service.dart              # Logika cek pembaruan commit
+│   │   ├── storage_service.dart           # Manajemen SharedPreferences & Cache Capping
+│   │   └── sync_service.dart              # Logika cek pembaruan (Mode-Aware)
 │   ├── utils/
 │   │   ├── constants.dart                 # Konstanta global aplikasi
 │   │   └── strings.dart                   # Kelas lokalisasi (ID/EN)
 │   ├── widgets/
-│   │   └── repo_tile.dart                 # Tile item repository
+│   │   └── repo_tile.dart                 # Tile item repository (Animated & Localized)
 │   └── workers/
-│       └── background_worker.dart         # callbackDispatcher WorkManager
+│       └── alarm_worker.dart              # Isolate entry point untuk AlarmManager
 ├── android/                               # Konfigurasi native Android
 ├── ios/                                   # Konfigurasi native iOS (opsional)
 ├── pubspec.yaml                           # Konfigurasi dependensi Flutter
@@ -379,8 +382,8 @@ Lapisan abstraksi di atas `SharedPreferences` untuk semua operasi baca/tulis dat
 
 **Commit Cache Strategy:**
 - Cache disimpan per kombinasi `owner_repo_branch_syncMode`.
-- `saveCachedCommits()`: Deduplikasi berdasarkan SHA, lalu sort descending berdasarkan tanggal.
-- `mergeCachedCommits()`: Menggabungkan commit baru ke cache yang ada (lalu deduplikasi + sort ulang).
+- `saveCachedCommits()`: Deduplikasi berdasarkan SHA, lalu sort descending berdasarkan tanggal. **Capping: Maksimal 1000 commit per repositori** untuk menjaga performa.
+- `mergeCachedCommits()`: Menggabungkan commit baru ke cache yang ada.
 
 ---
 
@@ -429,14 +432,11 @@ Inisialisasi yang dijalankan saat aplikasi pertama kali dibuka.
 
 **Tugas Startup:**
 1. Inisialisasi `NotificationService` (minta izin notifikasi Android).
-2. Inisialisasi `Workmanager`.
-3. Daftarkan background task dengan policy `keep` (tidak mereset countdown jika sudah berjalan).
-4. Set `nextSyncAt` awal jika belum ada atau sudah kadaluarsa.
-5. Cek apakah aplikasi dibuka dari notifikasi update → jika ya, navigasi ke `UpdateScreen`.
+2. Inisialisasi `AndroidAlarmManager`.
+3. Daftarkan background task secara idempotent (hanya jika belum terdaftar).
+4. Tangani navigasi jika aplikasi dibuka dari notifikasi.
 
-**`resetBackgroundSync()`:** Membatalkan task lama, menunggu 300ms, lalu mendaftarkan ulang dengan interval baru. Digunakan setelah pengguna mengubah pengaturan interval.
-
-**`startDemoSync()`:** Mendaftarkan one-off task dengan delay 5 menit untuk demonstrasi background sync.
+**`requestBatteryOptimizationExemption()`:** Mengarahkan pengguna ke pengaturan sistem Android untuk mengabaikan optimasi baterai, guna memastikan alarm berjalan presisi.
 
 ---
 
@@ -491,9 +491,7 @@ Method `update(AppSettings settings)` menyimpan settings ke `StorageService` dan
 
 ### 9.3 F-03: Sinkronisasi Manual
 
-**Trigger:** Auto-trigger saat app dibuka atau setiap 5 detik jika `nextSyncAt` terlampaui.
-
-Pengguna tidak memiliki tombol "Sync Now" yang eksplisit di UI — sync berjalan otomatis saat kondisi terpenuhi. Selama sync berlangsung, `SyncCard` menampilkan `CircularProgressIndicator` kecil.
+**Trigger:** Pull-to-Refresh di halaman utama atau auto-trigger saat aplikasi dibuka/resume. Selama sync berlangsung, indikator progres muncul di AppBar dan `SyncCard`.
 
 ---
 
@@ -536,7 +534,7 @@ Pengguna dapat menyimpan `username` GitHub dan `Personal Access Token` untuk men
 
 ### 9.7 F-07: Demo Mode Background Sync
 
-Di halaman Settings, tombol **Demo Mode (5 Menit)** memicu `StartupService.startDemoSync()`. WorkManager akan menjalankan satu one-off task 5 menit kemudian, lalu mendaftarkan ulang periodic task dengan interval normal.
+Fitur "Extreme Precision" di halaman Settings memungkinkan pengguna memberikan izin pengecualian baterai secara manual. Ini krusial karena sistem Android sering menunda tugas latar belakang demi menghemat daya.
 
 ---
 
@@ -601,9 +599,9 @@ Aplikasi menggunakan `navigatorKey` global (`GlobalKey<NavigatorState>`) yang te
 
 ### 12.1 Performa
 - Waktu muat halaman utama: < 500ms (data dibaca dari cache lokal).
-- Timeout background sync: 55 detik (mencegah task terbunuh oleh WorkManager sebelum selesai).
-- Paginasi branch: 100 branch per request untuk meminimalkan jumlah API call.
-- Commit fetch minimal (mode default): Hanya commit hari terakhir, menjaga penggunaan API rendah.
+- Akurasi sinkronisasi: ±1 menit (menggunakan Exact Alarm).
+- Paginasi branch: 100 branch per request.
+- Mode-Aware Sync: Mengambil jumlah commit sesuai kebutuhan mode (Minimal/500/5000) untuk akurasi data.
 
 ### 12.2 Keandalan
 - Startup tidak boleh crash meski storage tidak tersedia (try-catch di `_bootstrap()`).
@@ -629,9 +627,10 @@ Aplikasi menggunakan `navigatorKey` global (`GlobalKey<NavigatorState>`) yang te
 | Library | Versi | Kegunaan |
 |---------|-------|----------|
 | `http` | `^1.2.0` | HTTP client untuk GitHub API |
-| `workmanager` | `^0.9.0+3` | Background task scheduling (Android WorkManager) |
+| `android_alarm_manager_plus` | `^4.0.0` | High-precision background scheduling |
 | `flutter_local_notifications` | `^17.1.2` | Push notification lokal |
 | `shared_preferences` | `^2.2.2` | Penyimpanan data persisten (key-value) |
+| `android_intent_plus` | `^5.0.0` | Akses pengaturan sistem (Baterai) |
 | `intl` | `^0.19.0` | Formatting tanggal dan waktu |
 | `url_launcher` | `^6.3.1` | Membuka URL di browser eksternal |
 | `flutter_lints` | `^3.0.0` | Analisis kode statis (dev dependency) |
@@ -648,14 +647,16 @@ Aplikasi menggunakan `navigatorKey` global (`GlobalKey<NavigatorState>`) yang te
 <uses-permission android:name="android.permission.INTERNET" />
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-<uses-permission android:name="android.permission.VIBRATE" />
 <uses-permission android:name="android.permission.WAKE_LOCK" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 ```
 
-### 14.2 Konfigurasi WorkManager
+### 14.2 Konfigurasi AlarmManager
 
-- Didaftarkan via `Workmanager().initialize(callbackDispatcher)`.
-- `callbackDispatcher` di-annotate `@pragma('vm:entry-point')` agar tidak di-tree-shake oleh Dart compiler saat build release.
+- Didaftarkan via `AndroidAlarmManager.initialize()`.
+- Fungsi `alarmCallback` di-annotate `@pragma('vm:entry-point')` dan dijalankan dalam Isolate terpisah dengan registrasi plugin manual (`DartPluginRegistrant`).
 
 ### 14.3 Notification Channel
 
@@ -762,11 +763,11 @@ AppStrings stringsFor(String languageCode) => AppStrings(languageCode);
 
 1. **Integrasi API REST** — Mengonsumsi GitHub REST API v3 dengan mekanisme autentikasi fallback yang elegan (publik → privat secara transparan).
 
-2. **Background Processing** — Memanfaatkan WorkManager melalui plugin `workmanager` untuk menjalankan task periodik di background secara andal, dilengkapi mekanisme foreground checker sebagai fallback terhadap Doze mode Android.
+2. **High-Precision Background Processing** — Memanfaatkan `AndroidAlarmManager` untuk menjalankan task periodik dengan akurasi tinggi, didukung oleh izin `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` untuk performa "Extreme Precision".
 
 3. **Notifikasi Lokal** — Menggunakan `flutter_local_notifications` dengan konfigurasi channel yang tepat, termasuk deep link navigasi ke halaman riwayat.
 
-4. **Persistensi Data** — Semua data (repo, settings, credentials, cache commit, sync history) disimpan secara lokal menggunakan `SharedPreferences` dengan serialisasi JSON manual.
+4. **Persistensi & Caching Cerdas** — Semua data disimpan lokal dengan serialisasi JSON. Implementasi *Commit Capping* (1000 entri) menjaga performa jangka panjang.
 
 5. **Keamanan Dasar** — Kredensial disimpan dalam Base64 sebagai lapisan obfuskasi minimal.
 
