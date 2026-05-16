@@ -11,35 +11,41 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   static Future<void> init({bool isBackground = false}) async {
-    const androidSettings = AndroidInitializationSettings('@drawable/ic_notification');
-    const settings = InitializationSettings(android: androidSettings);
+    try {
+      const androidSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const settings = InitializationSettings(android: androidSettings);
 
-    await _plugin.initialize(
-      settings,
-      onDidReceiveNotificationResponse: isBackground 
-          ? null 
-          : (NotificationResponse response) {
-              if (response.payload == 'updates') {
-                openUpdateScreen();
-              }
-            },
-    );
+      await _plugin.initialize(
+        settings,
+        onDidReceiveNotificationResponse: isBackground
+            ? null
+            : (NotificationResponse response) {
+                if (response.payload == 'updates') {
+                  openUpdateScreen();
+                }
+              },
+      );
 
-    // Create channel for Android 8.0+
-    const channel = AndroidNotificationChannel(
-      notificationChannelId,
-      'GitHub Updates',
-      description: 'Notifications for watched GitHub repository updates.',
-      importance: Importance.high,
-      enableVibration: true,
-      playSound: true,
-      showBadge: true,
-    );
+      // Create channel for Android 8.0+
+      const channel = AndroidNotificationChannel(
+        notificationChannelId,
+        'GitHub Updates',
+        description: 'Notifications for watched GitHub repository updates.',
+        importance: Importance.high,
+        enableVibration: true,
+        playSound: true,
+        showBadge: true,
+      );
 
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+      await _plugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channel);
+    } catch (e) {
+      debugPrint('NotificationService init error: $e');
+      // Non-fatal error
+    }
   }
 
   static Future<bool> isPermissionGranted() async {

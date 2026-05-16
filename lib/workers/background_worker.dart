@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -9,25 +10,21 @@ import '../utils/constants.dart';
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
+    DartPluginRegistrant.ensureInitialized();
+    WidgetsFlutterBinding.ensureInitialized();
+    
     final storage = StorageService();
     bool isDemo = inputData?['isDemo'] == true;
     int interval = 30; // fallback
 
     try {
-      WidgetsFlutterBinding.ensureInitialized();
       await storage.setLastBackgroundSyncAt(DateTime.now());
-      await storage.setLastBackgroundSyncStatus('Initializing...');
+      await storage.setLastBackgroundSyncStatus('Sinkronisasi GitHub...');
 
-      if (task == githubSyncTask) {
-        // NotificationService harus diinisialisasi di isolate baru ini
-        await NotificationService.init(isBackground: true);
-        await storage.setLastBackgroundSyncStatus('Syncing with GitHub...');
-
+      if (task == githubSyncTask || task.contains('githubSync')) {
         final appSettings = await storage.getAppSettings();
         interval = isDemo ? 5 : appSettings.syncIntervalMinutes;
 
-        // Jalankan sync dengan timeout yang lebih longgar (5 menit)
-        // 55 detik terlalu pendek jika banyak repo atau koneksi lambat.
         final updates = await SyncService.checkUpdates(
           isBackground: true,
           customInterval: interval,

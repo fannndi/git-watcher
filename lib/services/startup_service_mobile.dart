@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../utils/constants.dart';
@@ -8,34 +9,51 @@ import 'storage_service.dart';
 class StartupService {
   static Future<void> init() async {
     try {
-      await NotificationService.init();
-      await Workmanager().initialize(
-        callbackDispatcher,
-      );
+      // 1. Initialize Workmanager FIRST as it is critical for background sync
+      try {
+        await Workmanager().initialize(
+          callbackDispatcher,
+        );
+      } catch (e) {
+        debugPrint('StartupService: Workmanager init failed: $e');
+      }
+
+      // 2. Initialize Notification independently
+      try {
+        await NotificationService.init();
+      } catch (e) {
+        debugPrint('StartupService: Notification init failed: $e');
+      }
 
       final storage = StorageService();
       final settings = await storage.getAppSettings();
 
-      // Gunakan interval dari settings, bukan default
-      await _registerTask(
-        settings.syncIntervalMinutes,
-        ExistingWorkPolicy.keep,
-      );
-
       final currentNextSync = await storage.getNextSyncAt();
       final now = DateTime.now();
-      
-      // Jika nextSync belum ada atau sudah lewat (missed), 
-      // set ke 'sekarang' agar HomeScreen bisa mentrigger sync pada saat build selesai.
-      if (currentNextSync == null || currentNextSync.isBefore(now.subtract(const Duration(minutes: 1)))) {
+
+      // Jika nextSync belum ada atau sudah lewat (missed),
+      // segera jadwalkan task dalam 1 menit agar user melihat hasil secepatnya.
+      if (currentNextSync == null || currentNextSync.isBefore(now)) {
         await storage.setNextSyncAt(now);
+        await _registerTask(
+          1, // Jadwalkan dalam 1 menit
+          ExistingWorkPolicy.replace,
+        );
+      } else {
+        // Tetap pastikan task terdaftar dengan sisa waktu yang ada
+        final remainingMinutes = currentNextSync.difference(now).inMinutes;
+        await _registerTask(
+          remainingMinutes.clamp(0, settings.syncIntervalMinutes),
+          ExistingWorkPolicy.keep,
+        );
       }
 
       if (await NotificationService.launchedFromUpdateNotification()) {
         NotificationService.openUpdateScreen();
       }
-    } catch (_) {
-      // Startup must never block opening the app. Foreground sync still works.
+    } catch (e) {
+      debugPrint('StartupService critical error: $e');
+      // Startup must never block opening the app.
     }
   }
 

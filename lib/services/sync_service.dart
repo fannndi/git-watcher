@@ -98,7 +98,12 @@ class SyncService {
 
         // Apps yang smart hanya mengirim notifikasi sistem jika user TIDAK sedang membuka apps.
         if (isBackground) {
-          await NotificationService.showUpdateNotification(updates);
+          try {
+            await NotificationService.init(isBackground: true);
+            await NotificationService.showUpdateNotification(updates);
+          } catch (e) {
+            // Jika gagal notifikasi, jangan gagalkan proses sync utama
+          }
         }
       }
     } finally {
