@@ -1,13 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
-import '../services/storage_service.dart';
 import '../services/startup_service.dart';
+import '../services/storage_service.dart';
 import '../services/sync_service.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
@@ -45,6 +47,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     appSettingsController.addListener(_onSettingsChanged);
     _loadRepos();
     _startAutoSyncChecker();
+    // Show battery optimization prompt after first frame renders
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkBatteryOptimizationPrompt();
+    });
   }
 
   @override
@@ -113,6 +119,42 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _languageCode = appSettingsController.value.languageCode;
       });
     }
+  }
+
+  /// Shows a one-time dialog prompting the user to exempt the app from
+  /// battery optimization — critical for background sync reliability.
+  Future<void> _checkBatteryOptimizationPrompt() async {
+    if (!Platform.isAndroid || !mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    final alreadyPrompted = prefs.getBool('battery_opt_prompted') ?? false;
+    if (alreadyPrompted || !mounted) return;
+
+    await prefs.setBool('battery_opt_prompted', true);
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.battery_charging_full_outlined, size: 36),
+        title: const Text('Aktifkan Background Sync'),
+        content: const Text(
+          'Agar notifikasi Git update berjalan saat layar mati, aplikasi ini perlu dikecualikan dari penghemat baterai Android.\n\nPilih "Izinkan" pada halaman berikutnya.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Nanti'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await StartupService.requestBatteryOptimizationExemption();
+            },
+            child: const Text('Izinkan Sekarang'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadRepos() async {

@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:android_intent_plus/flag.dart';
 import 'package:flutter/foundation.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -9,7 +13,7 @@ import 'storage_service.dart';
 class StartupService {
   static Future<void> init() async {
     try {
-      // 1. Initialize Workmanager FIRST as it is critical for background sync
+      // 1. Initialize Workmanager FIRST — critical for background sync
       try {
         await Workmanager().initialize(
           callbackDispatcher,
@@ -18,91 +22,79 @@ class StartupService {
         debugPrint('StartupService: Workmanager init failed: $e');
       }
 
-      // 2. Initialize Notification independently
+      // 2. Initialize Notifications independently
       try {
         await NotificationService.init();
       } catch (e) {
         debugPrint('StartupService: Notification init failed: $e');
       }
 
+      // 3. Schedule periodic sync task (idempotent: safe to call every startup)
       final storage = StorageService();
       final settings = await storage.getAppSettings();
+      await _registerPeriodicTask(settings.syncIntervalMinutes);
 
-      final currentNextSync = await storage.getNextSyncAt();
-      final now = DateTime.now();
-
-      // Jika nextSync belum ada atau sudah lewat (missed),
-      // segera jadwalkan task dalam 1 menit agar user melihat hasil secepatnya.
-      if (currentNextSync == null || currentNextSync.isBefore(now)) {
-        await storage.setNextSyncAt(now);
-        await _registerTask(
-          1, // Jadwalkan dalam 1 menit
-          ExistingWorkPolicy.replace,
-        );
-      } else {
-        // Tetap pastikan task terdaftar dengan sisa waktu yang ada
-        final remainingMinutes = currentNextSync.difference(now).inMinutes;
-        await _registerTask(
-          remainingMinutes.clamp(0, settings.syncIntervalMinutes),
-          ExistingWorkPolicy.keep,
-        );
-      }
-
+      // 4. Handle notification-launched state
       if (await NotificationService.launchedFromUpdateNotification()) {
         NotificationService.openUpdateScreen();
       }
     } catch (e) {
       debugPrint('StartupService critical error: $e');
-      // Startup must never block opening the app.
+      // Startup must never block the app from opening.
     }
   }
 
+  /// Re-register the periodic sync task with a new interval.
+  /// Called when the user changes the sync interval in Settings.
   static Future<void> resetBackgroundSync(int intervalMinutes) async {
     try {
+      // Cancel existing and re-register with new interval.
       await Workmanager().cancelByUniqueName(githubSyncTask);
       await Future.delayed(const Duration(milliseconds: 300));
-      await _registerTask(intervalMinutes, ExistingWorkPolicy.replace);
-      
+      await _registerPeriodicTask(intervalMinutes);
+
       final storage = StorageService();
       await storage.setNextSyncAt(
           DateTime.now().add(Duration(minutes: intervalMinutes)));
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('StartupService: resetBackgroundSync failed: $e');
+    }
   }
 
-  static Future<void> startDemoSync() async {
+  /// Request Android to exclude this app from battery optimization.
+  /// This is the #1 most important step for reliable background sync.
+  /// Should be called once from the UI (e.g., on first launch or from a prompt).
+  static Future<void> requestBatteryOptimizationExemption() async {
+    if (!Platform.isAndroid) return;
     try {
-      await Workmanager().cancelByUniqueName(githubSyncTask);
-      await Future.delayed(const Duration(milliseconds: 300));
-      await Workmanager().registerOneOffTask(
-        githubSyncTask, // reuse same unique name
-        githubSyncTask, // taskName
-        initialDelay: const Duration(minutes: 5),
-        constraints: Constraints(networkType: NetworkType.connected),
-        inputData: {'isDemo': true},
-        backoffPolicy: BackoffPolicy.linear,
-        backoffPolicyDelay: const Duration(minutes: 5),
+      final intent = AndroidIntent(
+        action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+        data: 'package:com.ti24a4.app32',
+        flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
       );
-      
-      final storage = StorageService();
-      await storage.setNextSyncAt(
-          DateTime.now().add(const Duration(minutes: 5)));
-    } catch (_) {}
+      await intent.launch();
+    } catch (e) {
+      debugPrint('StartupService: Could not open battery settings: $e');
+    }
   }
 
-  static Future<void> _registerTask(
-    int intervalMinutes,
-    ExistingWorkPolicy policy,
-  ) async {
-    await Workmanager().registerOneOffTask(
+  static Future<void> _registerPeriodicTask(int intervalMinutes) async {
+    // WorkManager enforces a minimum of 15 minutes for periodic tasks on Android.
+    final effectiveInterval = intervalMinutes.clamp(15, 24 * 60);
+
+    await Workmanager().registerPeriodicTask(
       githubSyncTask,
       githubSyncTask,
-      initialDelay: Duration(minutes: intervalMinutes),
+      frequency: Duration(minutes: effectiveInterval),
+      // initialDelay ensures first run doesn't compete with app startup sync
+      initialDelay: const Duration(minutes: 1),
       constraints: Constraints(
         networkType: NetworkType.connected,
       ),
-      existingWorkPolicy: policy,
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
       backoffPolicy: BackoffPolicy.linear,
       backoffPolicyDelay: const Duration(minutes: 5),
     );
+    debugPrint('StartupService: Periodic task registered (interval: ${effectiveInterval}min)');
   }
 }

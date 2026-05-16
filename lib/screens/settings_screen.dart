@@ -384,20 +384,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
-                    child: OutlinedButton.icon(
+                    child: FilledButton.icon(
                       onPressed: () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        await StartupService.startDemoSync();
-                        if (!context.mounted) return;
-                        setState(() {
-                          _nextSyncAt = DateTime.now().add(const Duration(minutes: 5));
-                        });
-                        messenger.showSnackBar(
-                          const SnackBar(content: Text('Demo mode diaktifkan. Sync berjalan dalam 5 menit.')),
-                        );
+                        await StartupService.requestBatteryOptimizationExemption();
                       },
-                      icon: const Icon(Icons.timer_outlined),
-                      label: const Text('Demo Mode (5 Menit)'),
+                      icon: const Icon(Icons.battery_charging_full_outlined),
+                      label: const Text('Izinkan Baterai Penuh (Wajib!)'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap tombol di atas lalu pilih "Izinkan" agar background sync berjalan saat layar mati.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -505,13 +504,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: OutlinedButton.icon(
               onPressed: () async {
                 final messenger = ScaffoldMessenger.of(context);
-                await StartupService.resetBackgroundSync(1);
+                // Re-register with current interval to force a reset
+                final interval = appSettingsController.value.syncIntervalMinutes;
+                await StartupService.resetBackgroundSync(interval);
+                if (!context.mounted) return;
                 messenger.showSnackBar(
-                  const SnackBar(content: Text('Test background task dijadwalkan (1 menit). Tutup apps untuk mengetes.')),
+                  SnackBar(content: Text('Background sync dijadwalkan ulang setiap $interval menit.')),
                 );
               },
-              icon: const Icon(Icons.bug_report_outlined),
-              label: const Text('Test Background Sync (1 Min)'),
+              icon: const Icon(Icons.restart_alt_outlined),
+              label: const Text('Reset Background Sync'),
               style: OutlinedButton.styleFrom(
                 visualDensity: VisualDensity.compact,
                 textStyle: const TextStyle(fontSize: 11),
