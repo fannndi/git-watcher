@@ -85,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _startAutoSyncChecker() {
-    _autoSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (_isLoading || _isSyncing || !mounted) return;
 
       // Update UI if background worker changed the last sync time
@@ -159,17 +159,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (_isSyncing) return;
     setState(() => _isSyncing = true);
     final strings = stringsFor(_languageCode);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final updates = await SyncService.checkUpdates();
 
       await _loadRepos();
-      if (!mounted) return;
-
       final message = updates.isEmpty
           ? strings.noUpdates
           : strings.reposHaveUpdates(updates.length);
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text(message)),
       );
 
@@ -184,8 +183,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         });
       }
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text(strings.syncFailed)),
       );
     } finally {

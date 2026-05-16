@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../services/notification_service.dart';
-import '../services/startup_service.dart';
 import '../services/storage_service.dart';
 import '../services/sync_service.dart';
 import '../utils/constants.dart';
@@ -19,20 +18,25 @@ void callbackDispatcher() {
         // NotificationService harus diinisialisasi di isolate baru ini
         await NotificationService.init(isBackground: true);
 
+        final appSettings = await storage.getAppSettings();
+        final bool isDemo = inputData?['isDemo'] == true;
+        final interval = isDemo ? 5 : appSettings.syncIntervalMinutes;
+
         // Jalankan sync
-        final updates = await SyncService.checkUpdates(isBackground: true).timeout(
+        final updates = await SyncService.checkUpdates(
+          isBackground: true,
+          customInterval: interval,
+        ).timeout(
           const Duration(seconds: 55),
         );
 
         await storage.setLastBackgroundSyncStatus(
-          updates.isEmpty ? 'Success (No updates)' : 'Success (${updates.length} repos updated)',
+          updates.isEmpty
+              ? 'Success (No updates)'
+              : 'Success (${updates.length} repos updated)',
         );
-        
+
         // Jadwalkan ulang task berikutnya (Chaining One-Off Task)
-        final appSettings = await storage.getAppSettings();
-        final bool isDemo = inputData?['isDemo'] == true;
-        final interval = isDemo ? 5 : appSettings.syncIntervalMinutes;
-        
         await Workmanager().registerOneOffTask(
           githubSyncTask,
           githubSyncTask,

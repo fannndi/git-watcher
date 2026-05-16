@@ -5,7 +5,10 @@ import 'notification_service.dart';
 import 'storage_service.dart';
 
 class SyncService {
-  static Future<Map<String, int>> checkUpdates({bool isBackground = false}) async {
+  static Future<Map<String, int>> checkUpdates({
+    bool isBackground = false,
+    int? customInterval,
+  }) async {
     final storage = StorageService();
     
     // Check sync lock
@@ -93,8 +96,10 @@ class SyncService {
       await storage.releaseSyncLock();
       
       final appSettings = await storage.getAppSettings();
+      final interval = customInterval ?? appSettings.syncIntervalMinutes;
+      
       await storage.setNextSyncAt(
-        DateTime.now().add(Duration(minutes: appSettings.syncIntervalMinutes)),
+        DateTime.now().add(Duration(minutes: interval)),
       );
     }
 

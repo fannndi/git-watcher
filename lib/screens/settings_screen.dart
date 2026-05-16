@@ -329,6 +329,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
@@ -369,12 +370,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
                         await StartupService.startDemoSync();
                         if (!context.mounted) return;
                         setState(() {
                           _nextSyncAt = DateTime.now().add(const Duration(minutes: 5));
                         });
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(content: Text('Demo mode diaktifkan. Sync berjalan dalam 5 menit.')),
                         );
                       },
@@ -451,9 +453,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 await StartupService.resetBackgroundSync(1);
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(content: Text('Test background task dijadwalkan (1 menit). Tutup apps untuk mengetes.')),
                 );
               },
