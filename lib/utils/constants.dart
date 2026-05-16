@@ -9,7 +9,6 @@ const String lastBackgroundSyncStatusKey = 'last_background_sync_status';
 const String syncLockKey = 'sync_lock';
 const String commitCachePrefix = 'commit_cache_';
 const String notificationChannelId = 'updates';
-const String githubSyncTask = 'githubSync';
 const String githubCredentialsKey = 'github_credentials';
 const String appVersionName = '1.0.0';
 const String appReleaseChannel = 'Beta';

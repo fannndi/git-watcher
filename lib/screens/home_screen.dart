@@ -211,7 +211,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: _repos.isEmpty ? _buildEmptyState(strings) : _buildRepoList(),
+          child: RefreshIndicator(
+            onRefresh: _syncNow,
+            child: _repos.isEmpty ? _buildEmptyState(strings) : _buildRepoList(),
+          ),
         ),
       ],
     );
@@ -273,9 +276,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildEmptyState(AppStrings strings) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Center(
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 80),
+        padding: const EdgeInsets.only(top: 120),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

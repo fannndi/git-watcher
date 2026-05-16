@@ -52,23 +52,37 @@ Future<void> alarmCallback() async {
 }
 
 /// Mendaftarkan exact periodic alarm.
-/// [AndroidAlarmManager.periodic] pakai setExactAndAllowWhileIdle
-/// sehingga tetap jalan di Doze mode.
+/// Menggunakan logic yang mencegah reset jadwal setiap kali aplikasi dibuka.
 Future<void> registerExactAlarm() async {
+  final storage = StorageService();
+  final prefs = await storage.getPrefsForInternal(); // Helper to check raw prefs
+  
+  // Jika sudah terdaftar, jangan daftar ulang (menghindari reset timer)
+  if (prefs.getBool('alarm_registered') == true) {
+    debugPrint('AlarmWorker: alarm already registered, skipping registration');
+    return;
+  }
+
   await AndroidAlarmManager.periodic(
     alarmInterval,
     _alarmId,
     alarmCallback,
-    startAt: DateTime.now().add(const Duration(minutes: 2)),
+    // Start 15 menit dari sekarang untuk pertama kali, lalu rutin tiap 60 menit
+    startAt: DateTime.now().add(const Duration(minutes: 15)),
     exact: true,
     wakeup: true,
     rescheduleOnReboot: true,
   );
+  
+  await prefs.setBool('alarm_registered', true);
   debugPrint('AlarmWorker: exact periodic alarm registered (60 min)');
 }
 
 /// Batalkan alarm (dipanggil saat uninstall / debugging).
 Future<void> cancelExactAlarm() async {
   await AndroidAlarmManager.cancel(_alarmId);
-  debugPrint('AlarmWorker: alarm cancelled');
+  final storage = StorageService();
+  final prefs = await storage.getPrefsForInternal();
+  await prefs.remove('alarm_registered');
+  debugPrint('AlarmWorker: alarm cancelled and flag cleared');
 }

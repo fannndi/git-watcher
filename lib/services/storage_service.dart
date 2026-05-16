@@ -16,6 +16,9 @@ class StorageService {
     return prefs;
   }
 
+  /// Helper untuk akses langsung SharedPreferences (internal use)
+  Future<SharedPreferences> getPrefsForInternal() => _getPrefs();
+
   Future<List<WatchedRepo>> getRepos() async {
     final prefs = await _getPrefs();
     final raw = prefs.getString(watchedReposKey);
@@ -125,7 +128,8 @@ class StorageService {
 
     final sorted = unique.values.toList()
       ..sort((a, b) => b.date.compareTo(a.date));
-    final raw = jsonEncode(sorted.map((commit) => commit.toJson()).toList());
+    final capped = sorted.take(1000).toList();
+    final raw = jsonEncode(capped.map((commit) => commit.toJson()).toList());
     await prefs.setString(_commitCacheKey(repo), raw);
   }
 

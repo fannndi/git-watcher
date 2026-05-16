@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/watched_repo.dart';
+import '../services/app_settings_controller.dart';
+import '../utils/strings.dart';
 
 class RepoTile extends StatefulWidget {
   final WatchedRepo repo;
@@ -154,7 +156,7 @@ class _RepoTileState extends State<RepoTile> with SingleTickerProviderStateMixin
                               child: Text(
                                 widget.repo.lastCommitAt != null
                                     ? '${_formatDate(widget.repo.lastCommitAt!)} • ${widget.repo.lastSha.length >= 7 ? widget.repo.lastSha.substring(0, 7) : widget.repo.lastSha}'
-                                    : 'Belum tersinkron',
+                                    : stringsFor(appSettingsController.value.languageCode).notSynced,
                                 style: textTheme.labelSmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,

@@ -1,5 +1,7 @@
+import '../models/commit.dart';
 import '../models/sync_log.dart';
 import '../models/watched_repo.dart';
+import '../utils/constants.dart';
 import 'github_service.dart';
 import 'notification_service.dart';
 import 'storage_service.dart';
@@ -45,11 +47,15 @@ class SyncService {
 
       for (final repo in repos) {
         try {
-          final commits = await github.fetchCommits(
-            repo.owner,
-            repo.repo,
-            repo.branch,
-          );
+          // Fetch according to sync mode for better precision
+          List<Commit> commits;
+          if (repo.syncMode == syncModeExtended) {
+            commits = await github.fetchCommitsWithLimit(repo.owner, repo.repo, repo.branch, 100);
+          } else if (repo.syncMode == syncModeLatest) {
+            commits = await github.fetchCommitsWithLimit(repo.owner, repo.repo, repo.branch, 50);
+          } else {
+            commits = await github.fetchCommits(repo.owner, repo.repo, repo.branch);
+          }
 
           if (commits.isEmpty) {
             updatedRepos.add(repo);

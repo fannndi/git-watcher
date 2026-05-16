@@ -180,24 +180,23 @@ class GitHubService {
 
   /// Try without auth first, then use saved credentials as fallback.
   Future<http.Response> _get(Uri uri) async {
-    final publicResponse = await _client.get(uri, headers: _publicHeaders);
-
-    // Return immediately for success or non-auth errors.
-    if (publicResponse.statusCode != 401 && publicResponse.statusCode != 404) {
-      return publicResponse;
-    }
-
     final credentials = await _storage.getCredentials();
-    if (credentials.isEmpty) {
-      return publicResponse;
+    
+    // If we have credentials, use them first for better rate limits (5000/hr)
+    if (credentials.isNotEmpty) {
+      final authResponse = await _client.get(
+        uri,
+        headers: _authHeaders(credentials),
+      );
+      
+      // If auth fails for some reason (e.g. bad token), try public as fallback
+      if (authResponse.statusCode != 401) {
+        return authResponse;
+      }
     }
 
-    final authResponse = await _client.get(
-      uri,
-      headers: _authHeaders(credentials),
-    );
-
-    return authResponse;
+    // Fallback or default: Public request (60/hr limit)
+    return await _client.get(uri, headers: _publicHeaders);
   }
 
   Map<String, String> get _publicHeaders => const {

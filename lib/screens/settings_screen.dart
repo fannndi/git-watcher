@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -7,7 +5,6 @@ import '../models/app_settings.dart';
 import '../models/github_credentials.dart';
 import '../services/app_settings_controller.dart';
 import '../services/storage_service.dart';
-import '../services/notification_service.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
 import '../services/startup_service.dart';
@@ -28,51 +25,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _hasCredentials = false;
   bool _isSaving = false;
 
-  DateTime? _lastBackgroundSyncAt;
-  String? _lastBackgroundSyncStatus;
-  Timer? _diagnosticRefreshTimer;
-  bool _isPermissionGranted = true;
 
   @override
   void initState() {
     super.initState();
     _loadCredentials();
-    _loadBackgroundStatus();
-    _checkPermission();
-    // Refresh diagnostic setiap 10 detik
-    _diagnosticRefreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      _loadBackgroundStatus();
-    });
   }
 
   @override
   void dispose() {
-    _diagnosticRefreshTimer?.cancel();
     _usernameController.dispose();
     _tokenController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadBackgroundStatus() async {
-    final lastRun = await _storage.getLastBackgroundSyncAt();
-    final lastStatus = await _storage.getLastBackgroundSyncStatus();
-    if (!mounted) return;
-    setState(() {
-      _lastBackgroundSyncAt = lastRun;
-      _lastBackgroundSyncStatus = lastStatus;
-    });
-  }
 
-  Future<void> _checkPermission() async {
-    final granted = await NotificationService.isPermissionGranted();
-    if (!mounted) return;
-    setState(() => _isPermissionGranted = granted);
-  }
-
-  Future<void> _requestPermission() async {
-    await NotificationService.requestPermission();
-    await _checkPermission();
-  }
 
   Future<void> _loadCredentials() async {
     final credentials = await _storage.getCredentials();
@@ -353,8 +320,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _buildBackgroundDiagnostic(strings),
                 ],
               ),
               const SizedBox(height: 16),
@@ -386,83 +351,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildBackgroundDiagnostic(AppStrings strings) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final lastRunText = _lastBackgroundSyncAt != null
-        ? '${_lastBackgroundSyncAt!.toLocal().hour.toString().padLeft(2, '0')}:'
-            '${_lastBackgroundSyncAt!.toLocal().minute.toString().padLeft(2, '0')}'
-        : strings.neverRan;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withAlpha(128),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.monitor_heart_outlined, size: 16, color: colorScheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                strings.backgroundDiagnosticTitle,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _DiagnosticRow(label: strings.lastRun, value: lastRunText),
-          _DiagnosticRow(
-            label: strings.lastStatus,
-            value: _lastBackgroundSyncStatus ?? strings.neverRan,
-            isError: _lastBackgroundSyncStatus != null &&
-                (_lastBackgroundSyncStatus!.contains('Gagal') ||
-                    _lastBackgroundSyncStatus!.contains('Failed') ||
-                    _lastBackgroundSyncStatus!.startsWith('Skip:')),
-          ),
-          const SizedBox(height: 12),
-          _DiagnosticRow(
-            label: strings.notification,
-            value: _isPermissionGranted
-                ? strings.notificationGranted
-                : strings.notificationDenied,
-            isError: !_isPermissionGranted,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isPermissionGranted ? null : _requestPermission,
-                  icon: const Icon(Icons.notifications_active_outlined),
-                  label: Text(strings.requestNotificationPermission),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    textStyle: const TextStyle(fontSize: 11),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => NotificationService.testNotification(),
-                  icon: const Icon(Icons.send_outlined),
-                  label: Text(strings.testNotification),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    textStyle: const TextStyle(fontSize: 11),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _update(AppSettings settings) {
     return appSettingsController.update(settings);
@@ -662,45 +550,3 @@ class _AboutLinkRow extends StatelessWidget {
   }
 }
 
-class _DiagnosticRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isError;
-
-  const _DiagnosticRow({
-    required this.label,
-    required this.value,
-    this.isError = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isError ? Theme.of(context).colorScheme.error : null,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
