@@ -7,31 +7,27 @@ import 'storage_service.dart';
 class SyncService {
   static Future<Map<String, int>> checkUpdates({
     bool isBackground = false,
-    int? customInterval,
   }) async {
     final storage = StorageService();
-    
-    // Check sync lock
+
+    // Cek sync lock — hindari dua proses sync berjalan bersamaan
     if (await storage.isSyncLocked()) {
-      // Jika background, jangan menyerah begitu saja. 
-      // Tunggu sebentar (retry lokal) sebelum menyerah.
       if (isBackground) {
+        // Background: tunggu sebentar lalu coba sekali lagi
         await Future.delayed(const Duration(seconds: 5));
-        if (await storage.isSyncLocked()) {
-          return {};
-        }
+        if (await storage.isSyncLocked()) return {};
       } else {
         return {};
       }
     }
 
-    // Debounce: Hindari sinkronisasi berulang jika baru saja dilakukan (< 20 detik)
-    // (diperpendek dari 30s agar lebih responsif)
-    final lastSyncAt = await storage.getLastSyncAt();
-    if (!isBackground && 
-        lastSyncAt != null &&
-        DateTime.now().difference(lastSyncAt).inSeconds < 20) {
-      return {};
+    // Debounce foreground: jangan sync jika baru saja dilakukan (< 20 detik)
+    if (!isBackground) {
+      final lastSyncAt = await storage.getLastSyncAt();
+      if (lastSyncAt != null &&
+          DateTime.now().difference(lastSyncAt).inSeconds < 20) {
+        return {};
+      }
     }
 
     await storage.acquireSyncLock();
@@ -63,14 +59,12 @@ class SyncService {
           final latest = commits.first;
 
           if (repo.lastSha.isNotEmpty && latest.sha != repo.lastSha) {
-            // Hitung jumlah commit baru
             final count = commits.takeWhile((c) => c.sha != repo.lastSha).length;
             if (count > 0) {
-              final updateKey = '${repo.fullName} (${repo.branch})';
-              updates[updateKey] = count;
+              updates['${repo.fullName} (${repo.branch})'] = count;
             }
           } else if (repo.lastSha.isEmpty) {
-            // Inisialisasi lastSha jika kosong (misal repo baru atau error sebelumnya)
+            // Inisialisasi lastSha untuk repo baru
             repo.lastSha = latest.sha;
             repo.lastCommitAt = latest.date;
           }
@@ -80,7 +74,6 @@ class SyncService {
           repo.lastCommitAt = latest.date;
           updatedRepos.add(repo);
         } catch (_) {
-          // Tetap tambahkan ke updatedRepos agar tidak hilang dari storage
           updatedRepos.add(repo);
         }
       }
@@ -96,25 +89,17 @@ class SyncService {
         await storage.saveUpdateSummary(updates);
         await storage.addSyncLog(SyncLog(syncedAt: now, updates: updates));
 
-        // Apps yang smart hanya mengirim notifikasi sistem jika user TIDAK sedang membuka apps.
+        // Kirim notifikasi hanya dari background — foreground cukup snackbar
         if (isBackground) {
           try {
-            await NotificationService.init(isBackground: true);
             await NotificationService.showUpdateNotification(updates);
-          } catch (e) {
-            // Jika gagal notifikasi, jangan gagalkan proses sync utama
+          } catch (_) {
+            // Non-fatal: jangan gagalkan sync karena notifikasi gagal
           }
         }
       }
     } finally {
       await storage.releaseSyncLock();
-      
-      final appSettings = await storage.getAppSettings();
-      final interval = customInterval ?? appSettings.syncIntervalMinutes;
-      
-      await storage.setNextSyncAt(
-        DateTime.now().add(Duration(minutes: interval)),
-      );
     }
 
     return updates;

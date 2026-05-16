@@ -67,18 +67,6 @@ class StorageService {
     return decoded.map((key, value) => MapEntry(key, (value as num).toInt()));
   }
 
-  Future<DateTime?> getNextSyncAt() async {
-    final prefs = await _getPrefs();
-    final raw = prefs.getString(nextSyncAtKey);
-    if (raw == null || raw.isEmpty) return null;
-    return DateTime.tryParse(raw);
-  }
-
-  Future<void> setNextSyncAt(DateTime time) async {
-    final prefs = await _getPrefs();
-    await prefs.setString(nextSyncAtKey, time.toIso8601String());
-  }
-
   Future<DateTime?> getLastSyncAt() async {
     final prefs = await _getPrefs();
     final raw = prefs.getString(lastSyncAtKey);

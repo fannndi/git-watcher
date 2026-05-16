@@ -6,11 +6,11 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/app_settings.dart';
 import '../models/github_credentials.dart';
 import '../services/app_settings_controller.dart';
-import '../services/startup_service.dart';
 import '../services/storage_service.dart';
 import '../services/notification_service.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
+import '../services/startup_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -28,40 +28,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _hasCredentials = false;
   bool _isSaving = false;
 
-  DateTime? _nextSyncAt;
   DateTime? _lastBackgroundSyncAt;
   String? _lastBackgroundSyncStatus;
-  Timer? _countdownTimer;
-  String _countdownText = '--:--';
+  Timer? _diagnosticRefreshTimer;
   bool _isPermissionGranted = true;
 
   @override
   void initState() {
     super.initState();
     _loadCredentials();
-    _loadNextSyncAt();
     _loadBackgroundStatus();
     _checkPermission();
+    // Refresh diagnostic setiap 10 detik
+    _diagnosticRefreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _loadBackgroundStatus();
+    });
   }
 
   @override
   void dispose() {
-    _countdownTimer?.cancel();
+    _diagnosticRefreshTimer?.cancel();
     _usernameController.dispose();
     _tokenController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadNextSyncAt() async {
-    final nextSync = await _storage.getNextSyncAt();
-    if (!mounted) return;
-    setState(() {
-      _nextSyncAt = nextSync;
-    });
-    _updateCountdownText();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _updateCountdownText();
-    });
   }
 
   Future<void> _loadBackgroundStatus() async {
@@ -77,27 +66,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _checkPermission() async {
     final granted = await NotificationService.isPermissionGranted();
     if (!mounted) return;
-    setState(() {
-      _isPermissionGranted = granted;
-    });
+    setState(() => _isPermissionGranted = granted);
   }
 
   Future<void> _requestPermission() async {
     await NotificationService.requestPermission();
     await _checkPermission();
-  }
-
-  void _updateCountdownText() {
-    if (!mounted || _nextSyncAt == null) return;
-    final now = DateTime.now();
-    final diff = _nextSyncAt!.difference(now);
-    if (diff.isNegative) {
-      setState(() => _countdownText = '00:00 (Syncing...)');
-    } else {
-      final m = diff.inMinutes.toString().padLeft(2, '0');
-      final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
-      setState(() => _countdownText = '$m:$s');
-    }
   }
 
   Future<void> _loadCredentials() async {
@@ -163,6 +137,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // ── Appearance ───────────────────────────────────────────────
               _SettingsSection(
                 title: strings.appearance,
                 icon: Icons.palette_outlined,
@@ -216,6 +191,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
+
+              // ── GitHub Credentials ────────────────────────────────────────
               _SettingsSection(
                 title: strings.privateAccess,
                 icon: Icons.lock_outline,
@@ -284,8 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Icon(Icons.save_outlined),
                           label: Text(strings.saveCredentials),
@@ -311,92 +287,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
+
+              // ── Background Sync ───────────────────────────────────────────
               _SettingsSection(
                 title: strings.syncSettings,
                 icon: Icons.sync_outlined,
                 children: [
-                  DropdownButtonFormField<int>(
-                    initialValue: settings.syncIntervalMinutes,
-                    decoration: InputDecoration(
-                      labelText: strings.syncInterval,
-                      border: const OutlineInputBorder(),
-                      prefixIcon: const Icon(Icons.timer_outlined),
-                    ),
-                    items: [15, 30, 60, 120, 240, 720, 1440].map((mins) {
-                      String label;
-                      if (mins == 60) {
-                        label = strings.oneHour;
-                      } else if (mins == 120) {
-                        label = strings.twoHours;
-                      } else if (mins >= 1440) {
-                        label = '24 ${strings.isEnglish ? 'hours' : 'jam'}';
-                      } else {
-                        label = strings.minutes(mins);
-                      }
-                      return DropdownMenuItem(
-                        value: mins,
-                        child: Text(label),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        _update(settings.copyWith(syncIntervalMinutes: value));
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  const SizedBox(height: 16),
                   Row(
                     children: [
+                      const Icon(Icons.timer_outlined, size: 18),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Estimasi Sync Berikutnya',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          _countdownText,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
-                          ),
+                          strings.syncEveryHour,
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Catatan: Sesuai aturan Android, WorkManager bisa saja tertunda oleh Doze mode atau penghemat baterai.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () async {
-                        await StartupService.requestBatteryOptimizationExemption();
-                      },
-                      icon: const Icon(Icons.battery_charging_full_outlined),
-                      label: const Text('Izinkan Baterai Penuh (Wajib!)'),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer.withAlpha(76),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.primary.withAlpha(51),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap tombol di atas lalu pilih "Izinkan" agar background sync berjalan saat layar mati.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.bolt,
+                                size: 18, color: Theme.of(context).colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              strings.extremePrecision,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          strings.extremePrecisionDesc,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.tonal(
+                            onPressed: () => StartupService.requestBatteryOptimizationExemption(),
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              textStyle: const TextStyle(fontSize: 12),
+                            ),
+                            child: Text(strings.allowBatteryExemption),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -404,6 +358,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
+
+              // ── About ─────────────────────────────────────────────────────
               _SettingsSection(
                 title: strings.aboutApp,
                 icon: Icons.info_outline,
@@ -433,13 +389,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildBackgroundDiagnostic(AppStrings strings) {
     final colorScheme = Theme.of(context).colorScheme;
     final lastRunText = _lastBackgroundSyncAt != null
-        ? '${_lastBackgroundSyncAt!.toLocal().hour.toString().padLeft(2, '0')}:${_lastBackgroundSyncAt!.toLocal().minute.toString().padLeft(2, '0')}'
-        : 'Never';
+        ? '${_lastBackgroundSyncAt!.toLocal().hour.toString().padLeft(2, '0')}:'
+            '${_lastBackgroundSyncAt!.toLocal().minute.toString().padLeft(2, '0')}'
+        : strings.neverRan;
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        color: colorScheme.surfaceContainerHighest.withAlpha(128),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colorScheme.outlineVariant),
       ),
@@ -450,24 +407,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Icon(Icons.monitor_heart_outlined, size: 16, color: colorScheme.primary),
               const SizedBox(width: 8),
-              const Text(
-                'Diagnostic: Background Worker',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              Text(
+                strings.backgroundDiagnosticTitle,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          _DiagnosticRow(label: 'Last Run', value: lastRunText),
+          _DiagnosticRow(label: strings.lastRun, value: lastRunText),
           _DiagnosticRow(
-            label: 'Last Status',
-            value: _lastBackgroundSyncStatus ?? 'Unknown',
-            isError: _lastBackgroundSyncStatus?.contains('Failed') ?? false,
+            label: strings.lastStatus,
+            value: _lastBackgroundSyncStatus ?? strings.neverRan,
+            isError: _lastBackgroundSyncStatus != null &&
+                (_lastBackgroundSyncStatus!.contains('Gagal') ||
+                    _lastBackgroundSyncStatus!.contains('Failed') ||
+                    _lastBackgroundSyncStatus!.startsWith('Skip:')),
           ),
           const SizedBox(height: 12),
-          const SizedBox(height: 16),
           _DiagnosticRow(
-            label: 'Notification',
-            value: _isPermissionGranted ? 'Granted' : 'Denied / Not Requested',
+            label: strings.notification,
+            value: _isPermissionGranted
+                ? strings.notificationGranted
+                : strings.notificationDenied,
             isError: !_isPermissionGranted,
           ),
           const SizedBox(height: 12),
@@ -477,7 +438,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: OutlinedButton.icon(
                   onPressed: _isPermissionGranted ? null : _requestPermission,
                   icon: const Icon(Icons.notifications_active_outlined),
-                  label: const Text('Request Permission'),
+                  label: Text(strings.requestNotificationPermission),
                   style: OutlinedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     textStyle: const TextStyle(fontSize: 11),
@@ -489,7 +450,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () => NotificationService.testNotification(),
                   icon: const Icon(Icons.send_outlined),
-                  label: const Text('Test Notification'),
+                  label: Text(strings.testNotification),
                   style: OutlinedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     textStyle: const TextStyle(fontSize: 11),
@@ -497,28 +458,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                // Re-register with current interval to force a reset
-                final interval = appSettingsController.value.syncIntervalMinutes;
-                await StartupService.resetBackgroundSync(interval);
-                if (!context.mounted) return;
-                messenger.showSnackBar(
-                  SnackBar(content: Text('Background sync dijadwalkan ulang setiap $interval menit.')),
-                );
-              },
-              icon: const Icon(Icons.restart_alt_outlined),
-              label: const Text('Reset Background Sync'),
-              style: OutlinedButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                textStyle: const TextStyle(fontSize: 11),
-              ),
-            ),
           ),
         ],
       ),
@@ -559,6 +498,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 Future<void> _openUrl(BuildContext context, String url) async {
   final strings = stringsFor(appSettingsController.value.languageCode);
@@ -668,10 +609,7 @@ class _AboutRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 82,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
+            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
           ),
           Expanded(child: Text(value)),
         ],
@@ -699,10 +637,7 @@ class _AboutLinkRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 82,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
+            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
           ),
           Expanded(
             child: InkWell(

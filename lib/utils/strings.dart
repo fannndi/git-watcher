@@ -171,6 +171,37 @@ class AppStrings {
       isEnglish ? 'No sync results yet' : 'Belum ada hasil sinkron';
   String get noNewCommits =>
       isEnglish ? 'No new commits' : 'Tidak ada commit baru';
+
+  // Sync section
+  String get syncEveryHour => isEnglish
+      ? 'Background Sync: Every 1 hour'
+      : 'Sync Latar Belakang: Setiap 1 jam';
+
+  // Background diagnostic
+  String get backgroundDiagnosticTitle =>
+      isEnglish ? 'Background Worker Diagnostic' : 'Diagnostic Worker';
+  String get lastRun => isEnglish ? 'Last Run' : 'Terakhir';
+  String get lastStatus => isEnglish ? 'Last Status' : 'Status';
+  String get neverRan => isEnglish ? 'Never ran' : 'Belum pernah';
+  String get notification => isEnglish ? 'Notification' : 'Notifikasi';
+  String get notificationGranted => isEnglish ? 'Granted' : 'Diberikan';
+  String get notificationDenied =>
+      isEnglish ? 'Denied / Not requested' : 'Ditolak / Belum diminta';
+  String get requestNotificationPermission =>
+      isEnglish ? 'Allow Notifications' : 'Izinkan Notifikasi';
+  String get testNotification =>
+      isEnglish ? 'Test Notification' : 'Test Notifikasi';
+  String get syncingNow => isEnglish ? 'Syncing...' : 'Sinkronisasi...';
+
+  // Extreme Precision
+  String get extremePrecision =>
+      isEnglish ? 'Extreme Precision' : 'Presisi Ekstrem';
+  String get extremePrecisionDesc => isEnglish
+      ? 'Ensures sync runs exactly every 1 hour, even when the phone is idle for a long time. Requires battery exemption.'
+      : 'Memastikan sync berjalan tepat setiap 1 jam, meskipun HP diam lama. Membutuhkan izin baterai.';
+  String get allowBatteryExemption => isEnglish
+      ? 'Allow Battery Exemption'
+      : 'Izinkan Pengecualian Baterai';
 }
 
 AppStrings stringsFor(String code) => AppStrings(code);
