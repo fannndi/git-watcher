@@ -6,8 +6,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
-        android:label="GitHub Watcher"
-        android:icon="@mipmap/ic_launcher"
+        android:label="TI24A4 App 32"
+        android:icon="@mipmap/launcher_icon"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:name="${applicationName}">
         <activity

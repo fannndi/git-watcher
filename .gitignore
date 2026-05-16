@@ -8,3 +8,7 @@ android/app/debug
 android/app/profile
 android/app/release
 *.iml
+
+# Android signing
+android/key.properties
+*.jks
