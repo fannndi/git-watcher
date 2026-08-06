@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../models/watched_repo.dart';
@@ -28,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasUnreadUpdates = false;
   bool _isSearching = false;
   String _searchQuery = '';
+  bool _isOffline = false;
 
   @override
   void initState() {
@@ -35,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _languageCode = appSettingsController.value.languageCode;
     appSettingsController.addListener(_onSettingsChanged);
     _loadRepos();
+    _checkConnectivity();
   }
 
   @override
@@ -48,6 +52,20 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _languageCode = appSettingsController.value.languageCode;
       });
+    }
+  }
+
+  Future<void> _checkConnectivity() async {
+    try {
+      final result = await InternetAddress.lookup('api.github.com');
+      if (mounted) {
+        setState(
+            () => _isOffline = result.isEmpty || result[0].rawAddress.isEmpty);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isOffline = true);
+      }
     }
   }
 
@@ -153,6 +171,18 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         centerTitle: false,
         actions: [
+          if (_isOffline)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.error,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Offline',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
           IconButton(
             tooltip: _isSearching ? 'Close search' : 'Search',
             icon: Icon(_isSearching ? Icons.close : Icons.search),
