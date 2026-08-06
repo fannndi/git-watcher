@@ -366,8 +366,8 @@ class _DetailScreenState extends State<DetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  SelectableText(
-                    commit.message,
+                  SelectableText.rich(
+                    _formatCommitMessage(commit.message, context),
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 14),
@@ -433,6 +433,34 @@ class _DetailScreenState extends State<DetailScreen> {
     }
 
     return grouped;
+  }
+
+  TextSpan _formatCommitMessage(String message, BuildContext context) {
+    final spans = <TextSpan>[];
+    final lines = message.split('\n');
+
+    // First line (title)
+    if (lines.isNotEmpty) {
+      spans.add(TextSpan(
+        text: lines[0],
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
+      ));
+    }
+
+    // Rest of message (body)
+    if (lines.length > 1) {
+      spans.add(TextSpan(
+        text: '\n${lines.sublist(1).join('\n')}',
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ));
+    }
+
+    return TextSpan(children: spans);
   }
 
   Future<List<Commit>> _fetchCommitsByMode() {
