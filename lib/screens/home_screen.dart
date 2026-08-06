@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
@@ -44,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _checkConnectivity();
     _setupQuickActions();
     _checkFirstTime();
+    _checkForUpdates();
   }
 
   @override
@@ -93,6 +97,40 @@ class _HomeScreenState extends State<HomeScreen> {
     final hasSeenTour = prefs.getBool('has_seen_tour') ?? false;
     if (!hasSeenTour && mounted) {
       setState(() => _showTour = true);
+    }
+  }
+
+  Future<void> _checkForUpdates() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'https://api.github.com/repos/fannndi/git-watcher/releases/latest'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final latestVersion = data['tag_name']?.toString().replaceAll('v', '');
+
+        if (latestVersion != null && latestVersion != appVersionName) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Update tersedia: v$latestVersion'),
+                action: SnackBarAction(
+                  label: 'Update',
+                  onPressed: () {
+                    launchUrl(Uri.parse(
+                      'https://play.google.com/store/apps/details?id=$appId',
+                    ));
+                  },
+                ),
+              ),
+            );
+          }
+        }
+      }
+    } catch (_) {
+      // Non-fatal: silently ignore
     }
   }
 
