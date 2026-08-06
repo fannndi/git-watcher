@@ -348,6 +348,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: colorScheme.onSurfaceVariant,
                   ),
             ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: _openAddRepo,
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(strings.addRepo),
+            ),
           ],
         ),
       ),
