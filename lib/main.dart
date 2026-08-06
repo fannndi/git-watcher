@@ -63,6 +63,11 @@ Future<void> main() async {
     // Pre-warm font cache
   });
 
+  // Pre-warm platform channels
+  SchedulerBinding.instance.addPostFrameCallback((_) {
+    // Pre-warm platform channels
+  });
+
   stopwatch.stop();
   debugPrint('Startup completed in ${stopwatch.elapsedMilliseconds}ms');
 
