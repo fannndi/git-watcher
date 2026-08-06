@@ -9,6 +9,20 @@ import 'services/startup_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Set up error handling
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('Flutter error: ${details.exception}');
+    debugPrint('Stack trace: ${details.stack}');
+  };
+
+  // Set up platform error handling
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Platform error: $error');
+    debugPrint('Stack trace: $stack');
+    return true;
+  };
+
   runApp(const GitHubWatcherApp());
 
   unawaited(_bootstrap());
