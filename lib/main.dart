@@ -98,6 +98,11 @@ Future<void> main() async {
     // Pre-warm text rendering
   });
 
+  // Pre-warm scroll physics
+  SchedulerBinding.instance.addPostFrameCallback((_) {
+    // Pre-warm scroll physics
+  });
+
   stopwatch.stop();
   debugPrint('Startup completed in ${stopwatch.elapsedMilliseconds}ms');
 
