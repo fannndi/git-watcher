@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
@@ -39,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
     appSettingsController.addListener(_onSettingsChanged);
     _loadRepos();
     _checkConnectivity();
+    _setupQuickActions();
   }
 
   @override
@@ -67,6 +69,20 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _isOffline = true);
       }
     }
+  }
+
+  void _setupQuickActions() {
+    const channel = MethodChannel('quick_actions');
+    channel.setMethodCallHandler((call) async {
+      switch (call.method) {
+        case 'syncNow':
+          _syncNow();
+          break;
+        case 'addRepo':
+          _openAddRepo();
+          break;
+      }
+    });
   }
 
   Future<void> _loadRepos() async {
