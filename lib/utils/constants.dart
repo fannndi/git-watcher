@@ -28,3 +28,4 @@ const String languageEnglish = 'en';
 const String themeModeSystem = 'system';
 const String themeModeLight = 'light';
 const String themeModeDark = 'dark';
+const String appId = 'com.fannndi.gitwatcher';

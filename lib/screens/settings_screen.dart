@@ -344,6 +344,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   ListTile(
                     contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.star_outline),
+                    title: Text(strings.rateApp),
+                    subtitle: Text(strings.rateAppDesc),
+                    onTap: () {
+                      launchUrl(Uri.parse(
+                        'https://play.google.com/store/apps/details?id=$appId',
+                      ));
+                    },
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
                     title: Text(strings.appDescription),
                     subtitle: Padding(
                       padding: const EdgeInsets.only(top: 8),

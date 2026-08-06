@@ -175,6 +175,10 @@ class AppStrings {
   String get openLinkFailed =>
       isEnglish ? 'Could not open link' : 'Gagal membuka link';
   String get close => isEnglish ? 'Close' : 'Tutup';
+  String get rateApp => isEnglish ? 'Rate App' : 'Beri Nilai';
+  String get rateAppDesc => isEnglish
+      ? 'Rate this app on Google Play Store'
+      : 'Beri nilai aplikasi ini di Google Play Store';
   String get noSyncHistory =>
       isEnglish ? 'No sync results yet' : 'Belum ada hasil sinkron';
   String get noNewCommits =>
