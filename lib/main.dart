@@ -93,6 +93,11 @@ Future<void> main() async {
     // Pre-warm accessibility
   });
 
+  // Pre-warm text rendering
+  SchedulerBinding.instance.addPostFrameCallback((_) {
+    // Pre-warm text rendering
+  });
+
   stopwatch.stop();
   debugPrint('Startup completed in ${stopwatch.elapsedMilliseconds}ms');
 
