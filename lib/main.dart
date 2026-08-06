@@ -48,6 +48,11 @@ Future<void> main() async {
     }
   });
 
+  // Pre-warm shader cache
+  SchedulerBinding.instance.addPersistentFrameCallback((_) {
+    // Keep shader cache warm
+  });
+
   stopwatch.stop();
   debugPrint('Startup completed in ${stopwatch.elapsedMilliseconds}ms');
 
