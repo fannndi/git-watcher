@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
@@ -22,13 +21,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final StorageService _storage = StorageService();
-  final DateFormat _dateFormat = DateFormat('yyyy-MM-dd HH:mm');
-
   List<WatchedRepo> _repos = [];
   bool _isLoading = true;
   bool _isSyncing = false;
   String _languageCode = languageIndonesian;
-  DateTime? _lastSyncAt;
   bool _hasUnreadUpdates = false;
 
   @override
@@ -57,12 +53,10 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoading = true);
     try {
       final repos = await _storage.getRepos();
-      final lastSync = await _storage.getLastSyncAt();
       if (!mounted) return;
       setState(() {
         _repos = repos;
         _isLoading = false;
-        _lastSyncAt = lastSync;
       });
     } catch (e) {
       if (!mounted) return;
@@ -106,13 +100,11 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final updates = await SyncService.checkUpdates();
 
-      // Reload repos & last sync time
+      // Reload repos
       final repos = await _storage.getRepos();
-      final lastSync = await _storage.getLastSyncAt();
       if (!mounted) return;
       setState(() {
         _repos = repos;
-        _lastSyncAt = lastSync;
       });
 
       if (updates.isNotEmpty) {
@@ -183,16 +175,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
+      body: RefreshIndicator(
+        onRefresh: _loadRepos,
         child: _isLoading
-            ? const Center(
-                key: ValueKey('loading'), child: CircularProgressIndicator())
-            : Padding(
-                key: const ValueKey('content'),
-                padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
-                child: _buildContent(strings),
-              ),
+            ? const Center(child: CircularProgressIndicator())
+            : _repos.isEmpty
+                ? _buildEmptyState(strings)
+                : _buildRepoList(),
       ),
       floatingActionButton: _repos.length >= maxWatchedRepos
           ? null
@@ -200,125 +189,6 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: _openAddRepo,
               child: const Icon(Icons.add),
             ),
-    );
-  }
-
-  Widget _buildContent(AppStrings strings) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (_repos.isNotEmpty) _buildSyncCard(strings),
-        if (_repos.isNotEmpty)
-          FutureBuilder<DateTime?>(
-            future: _storage.getLastSyncAt(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const SizedBox.shrink();
-              final lastSync = snapshot.data!;
-              final ago = DateTime.now().difference(lastSync);
-              String timeAgo;
-              if (ago.inMinutes < 1) {
-                timeAgo = 'Baru saja';
-              } else if (ago.inHours < 1) {
-                timeAgo = '${ago.inMinutes} menit lalu';
-              } else if (ago.inDays < 1) {
-                timeAgo = '${ago.inHours} jam lalu';
-              } else {
-                timeAgo = '${ago.inDays} hari lalu';
-              }
-              return Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Text(
-                  'Terakhir sync: $timeAgo',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
-              );
-            },
-          ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                strings.watchedRepos,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-            ),
-            Text(
-              strings.repoCount(_repos.length),
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _syncNow,
-            child:
-                _repos.isEmpty ? _buildEmptyState(strings) : _buildRepoList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSyncCard(AppStrings strings) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final lastSyncText = _lastSyncAt != null
-        ? _dateFormat.format(_lastSyncAt!.toLocal())
-        : strings.never;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            _isSyncing ? Icons.sync : Icons.sync_outlined,
-            size: 20,
-            color: colorScheme.primary,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isSyncing ? strings.syncingNow : strings.lastSync,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 13),
-                ),
-                if (!_isSyncing) ...[
-                  const SizedBox(height: 1),
-                  Text(
-                    lastSyncText,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (_isSyncing)
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: colorScheme.primary,
-              ),
-            ),
-        ],
-      ),
     );
   }
 
