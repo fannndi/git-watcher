@@ -33,9 +33,20 @@ Future<void> alarmCallback() async {
     // Init notifikasi di isolate ini
     await NotificationService.init(isBackground: true);
 
+    final stopwatch = Stopwatch()..start();
+    debugPrint('Background sync started');
+
     final updates = await SyncService.checkUpdates(
       isBackground: true,
     ).timeout(const Duration(minutes: 8));
+
+    stopwatch.stop();
+    debugPrint(
+        'Background sync completed in ${stopwatch.elapsedMilliseconds}ms');
+
+    if (updates.isNotEmpty) {
+      debugPrint('Found updates: ${updates.length} repos');
+    }
 
     final status = updates.isEmpty
         ? 'Success — no new updates'
@@ -55,8 +66,9 @@ Future<void> alarmCallback() async {
 /// Menggunakan logic yang mencegah reset jadwal setiap kali aplikasi dibuka.
 Future<void> registerExactAlarm() async {
   final storage = StorageService();
-  final prefs = await storage.getPrefsForInternal(); // Helper to check raw prefs
-  
+  final prefs =
+      await storage.getPrefsForInternal(); // Helper to check raw prefs
+
   // Jika sudah terdaftar, jangan daftar ulang (menghindari reset timer)
   if (prefs.getBool('alarm_registered') == true) {
     debugPrint('AlarmWorker: alarm already registered, skipping registration');
@@ -73,7 +85,7 @@ Future<void> registerExactAlarm() async {
     wakeup: true,
     rescheduleOnReboot: true,
   );
-  
+
   await prefs.setBool('alarm_registered', true);
   debugPrint('AlarmWorker: exact periodic alarm registered (60 min)');
 }
