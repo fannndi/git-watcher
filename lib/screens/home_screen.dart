@@ -26,6 +26,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isSyncing = false;
   String _languageCode = languageIndonesian;
   bool _hasUnreadUpdates = false;
+  bool _isSearching = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -124,6 +126,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  List<WatchedRepo> get _filteredRepos => _searchQuery.isEmpty
+      ? _repos
+      : _repos
+          .where((r) =>
+              r.fullName.toLowerCase().contains(_searchQuery.toLowerCase()))
+          .toList();
+
   @override
   Widget build(BuildContext context) {
     final strings = stringsFor(_languageCode);
@@ -144,6 +153,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         centerTitle: false,
         actions: [
+          IconButton(
+            tooltip: _isSearching ? 'Close search' : 'Search',
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) _searchQuery = '';
+              });
+            },
+          ),
           IconButton(
             tooltip: strings.syncNow,
             icon: _isSyncing
@@ -177,23 +196,46 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await _loadRepos();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Repos refreshed'),
-                duration: Duration(seconds: 1),
+      body: Column(
+        children: [
+          if (_isSearching)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: TextField(
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Cari repo...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() => _searchQuery = value);
+                },
               ),
-            );
-          }
-        },
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _repos.isEmpty
-                ? _buildEmptyState(strings)
-                : _buildRepoList(),
+            ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await _loadRepos();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Repos refreshed'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredRepos.isEmpty
+                      ? _buildEmptyState(strings)
+                      : _buildRepoList(),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: _repos.length >= maxWatchedRepos
           ? null
@@ -254,13 +296,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRepoList() {
+    final repos = _filteredRepos;
     return ListView.separated(
       padding:
-          EdgeInsets.only(bottom: _repos.length >= maxWatchedRepos ? 24 : 96),
-      itemCount: _repos.length,
+          EdgeInsets.only(bottom: repos.length >= maxWatchedRepos ? 24 : 96),
+      itemCount: repos.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final repo = _repos[index];
+        final repo = repos[index];
         return TweenAnimationBuilder<double>(
           duration: Duration(milliseconds: 400 + (index * 100).clamp(0, 400)),
           tween: Tween(begin: 0.0, end: 1.0),
