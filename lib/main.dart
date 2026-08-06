@@ -1,10 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import 'app.dart';
 import 'services/app_settings_controller.dart';
 import 'services/startup_service.dart';
+import 'services/storage_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,12 +25,23 @@ Future<void> main() async {
   // Performance monitoring
   final stopwatch = Stopwatch()..start();
 
-  runApp(const GitHubWatcherApp());
-
-  unawaited(_bootstrap());
+  // Parallel initialization
+  await Future.wait([
+    _bootstrap(),
+    _preloadData(),
+  ]);
 
   stopwatch.stop();
-  debugPrint('Bootstrap completed in ${stopwatch.elapsedMilliseconds}ms');
+  debugPrint('Startup completed in ${stopwatch.elapsedMilliseconds}ms');
+
+  runApp(const GitHubWatcherApp());
+}
+
+Future<void> _preloadData() async {
+  // Preload frequently accessed data
+  final storage = StorageService();
+  await storage.getAppSettings();
+  await storage.getCredentials();
 }
 
 Future<void> _bootstrap() async {
