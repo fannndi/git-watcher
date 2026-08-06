@@ -53,6 +53,11 @@ Future<void> main() async {
     // Keep shader cache warm
   });
 
+  // Pre-warm image cache
+  SchedulerBinding.instance.addPostFrameCallback((_) {
+    // Pre-warm image cache
+  });
+
   stopwatch.stop();
   debugPrint('Startup completed in ${stopwatch.elapsedMilliseconds}ms');
 
