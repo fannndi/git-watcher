@@ -42,6 +42,13 @@ class _UpdateScreenState extends State<UpdateScreen> {
       appBar: AppBar(
         title: Text(strings.history),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: strings.refresh,
+            onPressed: _loadUpdates,
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -56,7 +63,8 @@ class _UpdateScreenState extends State<UpdateScreen> {
                     itemBuilder: (context, index) {
                       final log = _history[index];
                       return TweenAnimationBuilder<double>(
-                        duration: Duration(milliseconds: 400 + (index * 100).clamp(0, 400)),
+                        duration: Duration(
+                            milliseconds: 400 + (index * 100).clamp(0, 400)),
                         tween: Tween(begin: 0.0, end: 1.0),
                         builder: (context, value, child) {
                           return Opacity(
@@ -72,7 +80,10 @@ class _UpdateScreenState extends State<UpdateScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                             side: BorderSide(
-                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .outlineVariant
+                                  .withValues(alpha: 0.5),
                             ),
                           ),
                           child: Padding(
@@ -86,38 +97,54 @@ class _UpdateScreenState extends State<UpdateScreen> {
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
                                         color: (log.hasUpdates
-                                                ? Theme.of(context).colorScheme.primaryContainer
-                                                : Theme.of(context).colorScheme.surfaceContainerHighest)
+                                                ? Theme.of(context)
+                                                    .colorScheme
+                                                    .primaryContainer
+                                                : Theme.of(context)
+                                                    .colorScheme
+                                                    .surfaceContainerHighest)
                                             .withValues(alpha: 0.7),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Icon(
                                         log.hasUpdates
-                                            ? Icons.notifications_active_outlined
+                                            ? Icons
+                                                .notifications_active_outlined
                                             : Icons.notifications_none_outlined,
                                         size: 18,
                                         color: log.hasUpdates
-                                            ? Theme.of(context).colorScheme.primary
-                                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
                                       ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            _dateFormat.format(log.syncedAt.toLocal()),
+                                            _dateFormat
+                                                .format(log.syncedAt.toLocal()),
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w800,
                                               fontSize: 14,
                                             ),
                                           ),
                                           Text(
-                                            log.hasUpdates ? strings.reposHaveUpdates(log.updates.length) : strings.noNewCommits,
+                                            log.hasUpdates
+                                                ? strings.reposHaveUpdates(
+                                                    log.updates.length)
+                                                : strings.noNewCommits,
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
                                             ),
                                           ),
                                         ],
@@ -125,10 +152,14 @@ class _UpdateScreenState extends State<UpdateScreen> {
                                     ),
                                     if (log.hasUpdates)
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 4),
                                         decoration: BoxDecoration(
-                                          color: Theme.of(context).colorScheme.primary,
-                                          borderRadius: BorderRadius.circular(20),
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                          borderRadius:
+                                              BorderRadius.circular(20),
                                         ),
                                         child: Text(
                                           '+${log.totalCommits}',
@@ -154,7 +185,10 @@ class _UpdateScreenState extends State<UpdateScreen> {
                                           Icon(
                                             Icons.commit,
                                             size: 14,
-                                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                                .withValues(alpha: 0.7),
                                           ),
                                           const SizedBox(width: 8),
                                           Expanded(
@@ -173,7 +207,9 @@ class _UpdateScreenState extends State<UpdateScreen> {
                                             style: TextStyle(
                                               fontSize: 13,
                                               fontWeight: FontWeight.w800,
-                                              color: Theme.of(context).colorScheme.primary,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
                                             ),
                                           ),
                                         ],

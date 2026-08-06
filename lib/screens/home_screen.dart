@@ -55,14 +55,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadRepos() async {
     setState(() => _isLoading = true);
-    final repos = await _storage.getRepos();
-    final lastSync = await _storage.getLastSyncAt();
-    if (!mounted) return;
-    setState(() {
-      _repos = repos;
-      _isLoading = false;
-      _lastSyncAt = lastSync;
-    });
+    try {
+      final repos = await _storage.getRepos();
+      final lastSync = await _storage.getLastSyncAt();
+      if (!mounted) return;
+      setState(() {
+        _repos = repos;
+        _isLoading = false;
+        _lastSyncAt = lastSync;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load repos: $e')),
+      );
+    }
   }
 
   Future<void> _openAddRepo() async {
@@ -213,7 +221,8 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: _syncNow,
-            child: _repos.isEmpty ? _buildEmptyState(strings) : _buildRepoList(),
+            child:
+                _repos.isEmpty ? _buildEmptyState(strings) : _buildRepoList(),
           ),
         ),
       ],
@@ -318,15 +327,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildRepoList() {
     return ListView.separated(
-      padding: EdgeInsets.only(
-          bottom: _repos.length >= maxWatchedRepos ? 24 : 96),
+      padding:
+          EdgeInsets.only(bottom: _repos.length >= maxWatchedRepos ? 24 : 96),
       itemCount: _repos.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final repo = _repos[index];
         return TweenAnimationBuilder<double>(
-          duration:
-              Duration(milliseconds: 400 + (index * 100).clamp(0, 400)),
+          duration: Duration(milliseconds: 400 + (index * 100).clamp(0, 400)),
           tween: Tween(begin: 0.0, end: 1.0),
           builder: (context, value, child) {
             return Opacity(
