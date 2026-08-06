@@ -339,7 +339,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     subtitle: Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        '${strings.version} $appVersionName - $appReleaseChannel\n${strings.developer}: $developerName',
+                        '${strings.version} $appVersionName ($appBuildNumber) - $appReleaseChannel\n${strings.developer}: $developerName',
                       ),
                     ),
                     trailing: const Icon(Icons.chevron_right),

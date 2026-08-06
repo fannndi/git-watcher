@@ -11,6 +11,7 @@ const String commitCachePrefix = 'commit_cache_';
 const String notificationChannelId = 'updates';
 const String githubCredentialsKey = 'github_credentials';
 const String appVersionName = '1.0.0';
+const String appBuildNumber = '1';
 const String appReleaseChannel = 'Beta';
 const String developerName = 'alisa';
 const String developerUrl = 'https://github.com/fannndi';
