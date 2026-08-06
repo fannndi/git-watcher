@@ -197,6 +197,35 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_repos.isNotEmpty) _buildSyncCard(strings),
+        if (_repos.isNotEmpty)
+          FutureBuilder<DateTime?>(
+            future: _storage.getLastSyncAt(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const SizedBox.shrink();
+              final lastSync = snapshot.data!;
+              final ago = DateTime.now().difference(lastSync);
+              String timeAgo;
+              if (ago.inMinutes < 1) {
+                timeAgo = 'Baru saja';
+              } else if (ago.inHours < 1) {
+                timeAgo = '${ago.inMinutes} menit lalu';
+              } else if (ago.inDays < 1) {
+                timeAgo = '${ago.inHours} jam lalu';
+              } else {
+                timeAgo = '${ago.inDays} hari lalu';
+              }
+              return Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Text(
+                  'Terakhir sync: $timeAgo',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              );
+            },
+          ),
         const SizedBox(height: 16),
         Row(
           children: [

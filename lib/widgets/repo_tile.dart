@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
+import '../utils/constants.dart';
 import '../utils/strings.dart';
 
 class RepoTile extends StatefulWidget {
@@ -20,7 +21,8 @@ class RepoTile extends StatefulWidget {
   State<RepoTile> createState() => _RepoTileState();
 }
 
-class _RepoTileState extends State<RepoTile> with SingleTickerProviderStateMixin {
+class _RepoTileState extends State<RepoTile>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -54,7 +56,8 @@ class _RepoTileState extends State<RepoTile> with SingleTickerProviderStateMixin
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+          side: BorderSide(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
         ),
         clipBehavior: Clip.hardEdge,
         child: InkWell(
@@ -115,7 +118,8 @@ class _RepoTileState extends State<RepoTile> with SingleTickerProviderStateMixin
                                 child: Icon(
                                   Icons.delete_outline,
                                   size: 18,
-                                  color: colorScheme.error.withValues(alpha: 0.7),
+                                  color:
+                                      colorScheme.error.withValues(alpha: 0.7),
                                 ),
                               ),
                             ),
@@ -134,7 +138,9 @@ class _RepoTileState extends State<RepoTile> with SingleTickerProviderStateMixin
                           ),
                           const SizedBox(width: 8),
                           _Chip(
-                            icon: widget.repo.isPrivate ? Icons.lock_outline : Icons.public,
+                            icon: widget.repo.isPrivate
+                                ? Icons.lock_outline
+                                : Icons.public,
                             label: widget.repo.isPrivate ? 'Private' : 'Public',
                             colorScheme: colorScheme,
                             isAccent: !widget.repo.isPrivate,
@@ -143,20 +149,25 @@ class _RepoTileState extends State<RepoTile> with SingleTickerProviderStateMixin
                       ),
                       const SizedBox(height: 14),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                          color: colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.4),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.history, size: 14, color: colorScheme.primary),
+                            Icon(Icons.history,
+                                size: 14, color: colorScheme.primary),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
                                 widget.repo.lastCommitAt != null
                                     ? '${_formatDate(widget.repo.lastCommitAt!)} • ${widget.repo.lastSha.length >= 7 ? widget.repo.lastSha.substring(0, 7) : widget.repo.lastSha}'
-                                    : stringsFor(appSettingsController.value.languageCode).notSynced,
+                                    : stringsFor(appSettingsController
+                                            .value.languageCode)
+                                        .notSynced,
                                 style: textTheme.labelSmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,
@@ -170,6 +181,38 @@ class _RepoTileState extends State<RepoTile> with SingleTickerProviderStateMixin
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.repo.syncMode != syncModeMinimal)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          widget.repo.syncMode == syncModeExtended
+                              ? '5000'
+                              : '500',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.chevron_right,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ],
                 ),
               ],
             ),
