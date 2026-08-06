@@ -88,6 +88,11 @@ Future<void> main() async {
     // Pre-warm gestures
   });
 
+  // Pre-warm accessibility
+  SchedulerBinding.instance.addPostFrameCallback((_) {
+    // Pre-warm accessibility
+  });
+
   stopwatch.stop();
   debugPrint('Startup completed in ${stopwatch.elapsedMilliseconds}ms');
 
