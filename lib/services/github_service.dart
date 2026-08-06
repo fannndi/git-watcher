@@ -8,6 +8,8 @@ import '../utils/constants.dart';
 import 'storage_service.dart';
 
 class GitHubService {
+  static const Duration _timeout = Duration(seconds: 30);
+
   final http.Client _client;
   final StorageService _storage;
 
@@ -178,25 +180,63 @@ class GitHubService {
         .toList();
   }
 
-  /// Try without auth first, then use saved credentials as fallback.
-  Future<http.Response> _get(Uri uri) async {
+  Future<http.Response> _get(Uri uri, {int retries = 2}) async {
     final credentials = await _storage.getCredentials();
-    
-    // If we have credentials, use them first for better rate limits (5000/hr)
-    if (credentials.isNotEmpty) {
-      final authResponse = await _client.get(
-        uri,
-        headers: _authHeaders(credentials),
-      );
-      
-      // If auth fails for some reason (e.g. bad token), try public as fallback
-      if (authResponse.statusCode != 401) {
-        return authResponse;
+
+    for (var attempt = 0; attempt <= retries; attempt++) {
+      http.Response response;
+
+      // If we have credentials, use them first for better rate limits (5000/hr)
+      if (credentials.isNotEmpty) {
+        response = await _client
+            .get(
+              uri,
+              headers: _authHeaders(credentials),
+            )
+            .timeout(_timeout);
+
+        // If auth fails, try public as fallback
+        if (response.statusCode == 401) {
+          response =
+              await _client.get(uri, headers: _publicHeaders).timeout(_timeout);
+        }
+      } else {
+        // Public request (60/hr limit)
+        response =
+            await _client.get(uri, headers: _publicHeaders).timeout(_timeout);
       }
+
+      // Rate limit: wait and retry
+      if (response.statusCode == 403 || response.statusCode == 429) {
+        if (attempt < retries) {
+          final resetTime = response.headers['x-ratelimit-reset'];
+          if (resetTime != null) {
+            final reset = DateTime.fromMillisecondsSinceEpoch(
+              int.parse(resetTime) * 1000,
+            );
+            final wait = reset.difference(DateTime.now());
+            if (wait.inSeconds > 0 && wait.inMinutes < 5) {
+              await Future.delayed(wait);
+              continue;
+            }
+          }
+          // Default wait: 60 seconds
+          await Future.delayed(const Duration(seconds: 60));
+          continue;
+        }
+      }
+
+      // Server error: retry
+      if (response.statusCode >= 500 && attempt < retries) {
+        await Future.delayed(Duration(seconds: (attempt + 1) * 2));
+        continue;
+      }
+
+      return response;
     }
 
-    // Fallback or default: Public request (60/hr limit)
-    return await _client.get(uri, headers: _publicHeaders);
+    // Should not reach here, but return error response
+    return http.Response('Max retries exceeded', 503);
   }
 
   Map<String, String> get _publicHeaders => const {

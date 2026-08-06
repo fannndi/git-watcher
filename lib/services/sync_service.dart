@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../models/commit.dart';
 import '../models/sync_log.dart';
 import '../models/watched_repo.dart';
@@ -9,8 +11,10 @@ import 'storage_service.dart';
 class SyncService {
   static Future<Map<String, int>> checkUpdates({
     bool isBackground = false,
+    StorageService? storage,
+    GitHubService? github,
   }) async {
-    final storage = StorageService();
+    storage ??= StorageService();
 
     // Cek sync lock — hindari dua proses sync berjalan bersamaan
     if (await storage.isSyncLocked()) {
@@ -34,7 +38,7 @@ class SyncService {
 
     await storage.acquireSyncLock();
 
-    final github = GitHubService();
+    github ??= GitHubService();
     final updates = <String, int>{};
     final updatedRepos = <WatchedRepo>[];
 
@@ -50,11 +54,14 @@ class SyncService {
           // Fetch according to sync mode for better precision
           List<Commit> commits;
           if (repo.syncMode == syncModeExtended) {
-            commits = await github.fetchCommitsWithLimit(repo.owner, repo.repo, repo.branch, 100);
+            commits = await github.fetchCommitsWithLimit(
+                repo.owner, repo.repo, repo.branch, 100);
           } else if (repo.syncMode == syncModeLatest) {
-            commits = await github.fetchCommitsWithLimit(repo.owner, repo.repo, repo.branch, 50);
+            commits = await github.fetchCommitsWithLimit(
+                repo.owner, repo.repo, repo.branch, 50);
           } else {
-            commits = await github.fetchCommits(repo.owner, repo.repo, repo.branch);
+            commits =
+                await github.fetchCommits(repo.owner, repo.repo, repo.branch);
           }
 
           if (commits.isEmpty) {
@@ -65,7 +72,8 @@ class SyncService {
           final latest = commits.first;
 
           if (repo.lastSha.isNotEmpty && latest.sha != repo.lastSha) {
-            final count = commits.takeWhile((c) => c.sha != repo.lastSha).length;
+            final count =
+                commits.takeWhile((c) => c.sha != repo.lastSha).length;
             if (count > 0) {
               updates['${repo.fullName} (${repo.branch})'] = count;
             }
@@ -79,7 +87,9 @@ class SyncService {
           repo.lastSha = latest.sha;
           repo.lastCommitAt = latest.date;
           updatedRepos.add(repo);
-        } catch (_) {
+        } catch (e) {
+          // Log error for debugging, continue with other repos
+          debugPrint('Sync error for ${repo.fullName}: $e');
           updatedRepos.add(repo);
         }
       }
