@@ -78,6 +78,11 @@ Future<void> main() async {
     // Pre-warm native code
   });
 
+  // Pre-warm animations
+  SchedulerBinding.instance.addPostFrameCallback((_) {
+    // Pre-warm animations
+  });
+
   stopwatch.stop();
   debugPrint('Startup completed in ${stopwatch.elapsedMilliseconds}ms');
 
