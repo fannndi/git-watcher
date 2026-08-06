@@ -4,27 +4,32 @@ class AppSettings {
   final int syncIntervalMinutes;
   final String languageCode;
   final String themeMode;
+  final bool notificationsEnabled;
 
   const AppSettings({
     required this.syncIntervalMinutes,
     required this.languageCode,
     required this.themeMode,
+    this.notificationsEnabled = true,
   });
 
   const AppSettings.defaults()
       : syncIntervalMinutes = defaultSyncIntervalMinutes,
         languageCode = languageIndonesian,
-        themeMode = themeModeSystem;
+        themeMode = themeModeSystem,
+        notificationsEnabled = true;
 
   AppSettings copyWith({
     int? syncIntervalMinutes,
     String? languageCode,
     String? themeMode,
+    bool? notificationsEnabled,
   }) {
     return AppSettings(
       syncIntervalMinutes: syncIntervalMinutes ?? this.syncIntervalMinutes,
       languageCode: languageCode ?? this.languageCode,
       themeMode: themeMode ?? this.themeMode,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
     );
   }
 
@@ -32,6 +37,7 @@ class AppSettings {
         'sync_interval_minutes': syncIntervalMinutes,
         'language_code': languageCode,
         'theme_mode': themeMode,
+        'notifications_enabled': notificationsEnabled,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -43,6 +49,7 @@ class AppSettings {
           ? languageEnglish
           : languageIndonesian,
       themeMode: _parseThemeMode(json['theme_mode'] as String?),
+      notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
     );
   }
 

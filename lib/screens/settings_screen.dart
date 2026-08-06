@@ -271,6 +271,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  SwitchListTile(
+                    title: Text(strings.enableNotifications),
+                    subtitle: Text(strings.enableNotificationsDesc),
+                    value: settings.notificationsEnabled,
+                    onChanged: (value) {
+                      _update(settings.copyWith(notificationsEnabled: value));
+                    },
+                  ),
+                  const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(

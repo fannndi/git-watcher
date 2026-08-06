@@ -188,6 +188,13 @@ class AppStrings {
 
   String get syncingNow => isEnglish ? 'Syncing...' : 'Sinkronisasi...';
 
+  // Notifications
+  String get enableNotifications =>
+      isEnglish ? 'Enable Notifications' : 'Aktifkan Notifikasi';
+  String get enableNotificationsDesc => isEnglish
+      ? 'Receive push notifications for new commits and updates.'
+      : 'Terima notifikasi push untuk commit dan update baru.';
+
   // Extreme Precision
   String get extremePrecision =>
       isEnglish ? 'Extreme Precision' : 'Presisi Ekstrem';
