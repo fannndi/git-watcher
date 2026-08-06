@@ -178,7 +178,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _loadRepos,
+        onRefresh: () async {
+          await _loadRepos();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Repos refreshed'),
+                duration: Duration(seconds: 1),
+              ),
+            );
+          }
+        },
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _repos.isEmpty
