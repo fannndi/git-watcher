@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'app.dart';
 import 'services/app_settings_controller.dart';
@@ -34,6 +35,11 @@ Future<void> main() async {
   // Memory optimization
   PaintingBinding.instance.imageCache.maximumSize = 100;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 50 << 20; // 50 MB
+
+  // Startup optimization
+  SchedulerBinding.instance.addPostFrameCallback((_) {
+    debugPrint('First frame rendered');
+  });
 
   stopwatch.stop();
   debugPrint('Startup completed in ${stopwatch.elapsedMilliseconds}ms');
