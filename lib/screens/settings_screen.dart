@@ -25,7 +25,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _hasCredentials = false;
   bool _isSaving = false;
 
-
   @override
   void initState() {
     super.initState();
@@ -38,8 +37,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _tokenController.dispose();
     super.dispose();
   }
-
-
 
   Future<void> _loadCredentials() async {
     final credentials = await _storage.getCredentials();
@@ -110,7 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.palette_outlined,
                 children: [
                   DropdownButtonFormField<String>(
-                    initialValue: settings.languageCode,
+                    value: settings.languageCode,
                     decoration: InputDecoration(
                       labelText: strings.language,
                       border: const OutlineInputBorder(),
@@ -228,7 +225,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Icon(Icons.save_outlined),
                           label: Text(strings.saveCredentials),
@@ -276,10 +274,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer.withAlpha(76),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withAlpha(76),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Theme.of(context).colorScheme.primary.withAlpha(51),
+                        color:
+                            Theme.of(context).colorScheme.primary.withAlpha(51),
                       ),
                     ),
                     child: Column(
@@ -288,7 +290,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Row(
                           children: [
                             Icon(Icons.bolt,
-                                size: 18, color: Theme.of(context).colorScheme.primary),
+                                size: 18,
+                                color: Theme.of(context).colorScheme.primary),
                             const SizedBox(width: 8),
                             Text(
                               strings.extremePrecision,
@@ -309,7 +312,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton.tonal(
-                            onPressed: () => StartupService.requestBatteryOptimizationExemption(),
+                            onPressed: () => StartupService
+                                .requestBatteryOptimizationExemption(),
                             style: FilledButton.styleFrom(
                               visualDensity: VisualDensity.compact,
                               textStyle: const TextStyle(fontSize: 12),
@@ -350,7 +354,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
     );
   }
-
 
   Future<void> _update(AppSettings settings) {
     return appSettingsController.update(settings);
@@ -497,7 +500,8 @@ class _AboutRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 82,
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(label,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
           ),
           Expanded(child: Text(value)),
         ],
@@ -525,7 +529,8 @@ class _AboutLinkRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 82,
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(label,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
           ),
           Expanded(
             child: InkWell(
@@ -549,4 +554,3 @@ class _AboutLinkRow extends StatelessWidget {
     );
   }
 }
-

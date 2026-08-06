@@ -10,10 +10,12 @@ import '../models/watched_repo.dart';
 import '../utils/constants.dart';
 
 class StorageService {
+  SharedPreferences? _cachedPrefs;
+
   Future<SharedPreferences> _getPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    return prefs;
+    _cachedPrefs ??= await SharedPreferences.getInstance();
+    await _cachedPrefs!.reload();
+    return _cachedPrefs!;
   }
 
   /// Helper untuk akses langsung SharedPreferences (internal use)

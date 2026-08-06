@@ -21,6 +21,28 @@ class WatchedRepo {
 
   String get fullName => '$owner/$repo';
 
+  WatchedRepo copyWith({
+    String? owner,
+    String? repo,
+    String? branch,
+    String? syncMode,
+    String? avatarUrl,
+    bool? isPrivate,
+    DateTime? lastCommitAt,
+    String? lastSha,
+  }) {
+    return WatchedRepo(
+      owner: owner ?? this.owner,
+      repo: repo ?? this.repo,
+      branch: branch ?? this.branch,
+      syncMode: syncMode ?? this.syncMode,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      isPrivate: isPrivate ?? this.isPrivate,
+      lastCommitAt: lastCommitAt ?? this.lastCommitAt,
+      lastSha: lastSha ?? this.lastSha,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'owner': owner,
         'repo': repo,

@@ -219,7 +219,7 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          initialValue: _selectedBranch,
+                          value: _selectedBranch,
                           decoration: InputDecoration(
                             labelText: strings.watchedBranch,
                             border: const OutlineInputBorder(),
