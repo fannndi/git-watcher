@@ -94,6 +94,16 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () {
+              final url =
+                  'https://github.com/${widget.repo.fullName}/tree/${widget.repo.branch}';
+              launchUrl(Uri.parse(url));
+            },
+          ),
+        ],
       ),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 400),
