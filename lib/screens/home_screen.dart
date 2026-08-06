@@ -273,7 +273,33 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: const Icon(Icons.delete_outline),
             ),
-            onDismissed: (_) => _deleteRepo(repo),
+            confirmDismiss: (_) async {
+              return await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: Text(strings.confirmDelete),
+                  content: Text(strings.confirmDeleteRepo(repo.fullName)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: Text(strings.cancel),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: Text(strings.delete),
+                    ),
+                  ],
+                ),
+              );
+            },
+            onDismissed: (_) async {
+              await _deleteRepo(repo);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(strings.repoRemoved(repo.fullName))),
+                );
+              }
+            },
             child: RepoTile(
               repo: repo,
               onTap: () => Navigator.of(context).push(
