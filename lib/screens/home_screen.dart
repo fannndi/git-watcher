@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
@@ -32,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isSearching = false;
   String _searchQuery = '';
   bool _isOffline = false;
+  bool _showTour = false;
 
   @override
   void initState() {
@@ -41,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadRepos();
     _checkConnectivity();
     _setupQuickActions();
+    _checkFirstTime();
   }
 
   @override
@@ -83,6 +86,20 @@ class _HomeScreenState extends State<HomeScreen> {
           break;
       }
     });
+  }
+
+  Future<void> _checkFirstTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenTour = prefs.getBool('has_seen_tour') ?? false;
+    if (!hasSeenTour && mounted) {
+      setState(() => _showTour = true);
+    }
+  }
+
+  void _dismissTour() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_tour', true);
+    if (mounted) setState(() => _showTour = false);
   }
 
   Future<void> _loadRepos() async {
@@ -171,124 +188,186 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final strings = stringsFor(_languageCode);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(strings.appTitle),
-            Text(
-              'v$appVersionName',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(strings.appTitle),
+                Text(
+                  'v$appVersionName',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
             ),
-          ],
-        ),
-        centerTitle: false,
-        actions: [
-          if (_isOffline)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.error,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'Offline',
-                style: TextStyle(color: Colors.white, fontSize: 12),
-              ),
-            ),
-          IconButton(
-            tooltip: _isSearching ? 'Close search' : 'Search',
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() {
-                _isSearching = !_isSearching;
-                if (!_isSearching) _searchQuery = '';
-              });
-            },
-          ),
-          IconButton(
-            tooltip: strings.syncNow,
-            icon: _isSyncing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.sync),
-            onPressed: _isSyncing ? null : _syncNow,
-          ),
-          IconButton(
-            tooltip: strings.history,
-            icon: Badge(
-              isLabelVisible: _hasUnreadUpdates,
-              child: const Icon(Icons.notifications_outlined),
-            ),
-            onPressed: () {
-              setState(() => _hasUnreadUpdates = false);
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const UpdateScreen()),
-              );
-            },
-          ),
-          IconButton(
-            tooltip: strings.settings,
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          if (_isSearching)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: TextField(
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Cari repo...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
+            centerTitle: false,
+            actions: [
+              if (_isOffline)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.error,
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  child: const Text(
+                    'Offline',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
                 ),
-                onChanged: (value) {
-                  setState(() => _searchQuery = value);
+              IconButton(
+                tooltip: _isSearching ? 'Close search' : 'Search',
+                icon: Icon(_isSearching ? Icons.close : Icons.search),
+                onPressed: () {
+                  setState(() {
+                    _isSearching = !_isSearching;
+                    if (!_isSearching) _searchQuery = '';
+                  });
                 },
               ),
-            ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                await _loadRepos();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Repos refreshed'),
-                      duration: Duration(seconds: 1),
-                    ),
+              IconButton(
+                tooltip: strings.syncNow,
+                icon: _isSyncing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.sync),
+                onPressed: _isSyncing ? null : _syncNow,
+              ),
+              IconButton(
+                tooltip: strings.history,
+                icon: Badge(
+                  isLabelVisible: _hasUnreadUpdates,
+                  child: const Icon(Icons.notifications_outlined),
+                ),
+                onPressed: () {
+                  setState(() => _hasUnreadUpdates = false);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const UpdateScreen()),
                   );
-                }
-              },
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _filteredRepos.isEmpty
-                      ? _buildEmptyState(strings)
-                      : _buildRepoList(),
-            ),
+                },
+              ),
+              IconButton(
+                tooltip: strings.settings,
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                ),
+              ),
+            ],
           ),
+          body: Column(
+            children: [
+              if (_isSearching)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: TextField(
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: 'Cari repo...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      setState(() => _searchQuery = value);
+                    },
+                  ),
+                ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    await _loadRepos();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Repos refreshed'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    }
+                  },
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _filteredRepos.isEmpty
+                          ? _buildEmptyState(strings)
+                          : _buildRepoList(),
+                ),
+              ),
+            ],
+          ),
+          floatingActionButton: _repos.length >= maxWatchedRepos
+              ? null
+              : FloatingActionButton(
+                  onPressed: _openAddRepo,
+                  child: const Icon(Icons.add),
+                ),
+        ),
+        if (_showTour) _buildTourOverlay(context, strings),
+      ],
+    );
+  }
+
+  Widget _buildTourOverlay(BuildContext context, AppStrings strings) {
+    return Container(
+      color: Colors.black54,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.explore,
+                  size: 64, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(height: 24),
+              Text(
+                strings.appTitle,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                strings.tourWelcome,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              _tourStep(Icons.add, strings.tourAddRepo),
+              _tourStep(Icons.sync, strings.tourSync),
+              _tourStep(Icons.swipe, strings.tourSwipe),
+              const SizedBox(height: 32),
+              FilledButton(
+                onPressed: _dismissTour,
+                child: Text(strings.tourGotIt),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tourStep(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.white70, size: 20),
+          const SizedBox(width: 10),
+          Text(text, style: const TextStyle(color: Colors.white70)),
         ],
       ),
-      floatingActionButton: _repos.length >= maxWatchedRepos
-          ? null
-          : FloatingActionButton(
-              onPressed: _openAddRepo,
-              child: const Icon(Icons.add),
-            ),
     );
   }
 

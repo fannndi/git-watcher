@@ -207,6 +207,19 @@ class AppStrings {
       : 'Memastikan sync berjalan tepat setiap 1 jam, meskipun HP diam lama. Membutuhkan izin baterai.';
   String get allowBatteryExemption =>
       isEnglish ? 'Allow Battery Exemption' : 'Izinkan Pengecualian Baterai';
+
+  // Tour
+  String get tourWelcome => isEnglish
+      ? 'Track your favorite GitHub repos easily!'
+      : 'Pantau repo GitHub favoritmu dengan mudah!';
+  String get tourAddRepo =>
+      isEnglish ? 'Tap + to add a repo' : 'Tekan + untuk menambah repo';
+  String get tourSync => isEnglish
+      ? 'Pull down to sync updates'
+      : 'Tarik ke bawah untuk sinkron update';
+  String get tourSwipe =>
+      isEnglish ? 'Swipe left to delete' : 'Geser kiri untuk menghapus';
+  String get tourGotIt => isEnglish ? 'Got it!' : 'Mengerti!';
 }
 
 AppStrings stringsFor(String code) => AppStrings(code);
