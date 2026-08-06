@@ -48,61 +48,6 @@ Future<void> main() async {
     }
   });
 
-  // Pre-warm shader cache
-  SchedulerBinding.instance.addPersistentFrameCallback((_) {
-    // Keep shader cache warm
-  });
-
-  // Pre-warm image cache
-  SchedulerBinding.instance.addPostFrameCallback((_) {
-    // Pre-warm image cache
-  });
-
-  // Pre-warm font cache
-  SchedulerBinding.instance.addPostFrameCallback((_) {
-    // Pre-warm font cache
-  });
-
-  // Pre-warm platform channels
-  SchedulerBinding.instance.addPostFrameCallback((_) {
-    // Pre-warm platform channels
-  });
-
-  // Pre-warm isolates
-  SchedulerBinding.instance.addPostFrameCallback((_) {
-    // Pre-warm isolates
-  });
-
-  // Pre-warm native code
-  SchedulerBinding.instance.addPostFrameCallback((_) {
-    // Pre-warm native code
-  });
-
-  // Pre-warm animations
-  SchedulerBinding.instance.addPostFrameCallback((_) {
-    // Pre-warm animations
-  });
-
-  // Pre-warm gestures
-  SchedulerBinding.instance.addPostFrameCallback((_) {
-    // Pre-warm gestures
-  });
-
-  // Pre-warm accessibility
-  SchedulerBinding.instance.addPostFrameCallback((_) {
-    // Pre-warm accessibility
-  });
-
-  // Pre-warm text rendering
-  SchedulerBinding.instance.addPostFrameCallback((_) {
-    // Pre-warm text rendering
-  });
-
-  // Pre-warm scroll physics
-  SchedulerBinding.instance.addPostFrameCallback((_) {
-    // Pre-warm scroll physics
-  });
-
   stopwatch.stop();
   debugPrint('Startup completed in ${stopwatch.elapsedMilliseconds}ms');
 
