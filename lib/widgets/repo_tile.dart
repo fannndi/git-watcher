@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
@@ -64,7 +65,10 @@ class _RepoTileState extends State<RepoTile>
           onTapDown: (_) => _controller.forward(),
           onTapUp: (_) => _controller.reverse(),
           onTapCancel: () => _controller.reverse(),
-          onTap: widget.onTap,
+          onTap: () {
+            HapticFeedback.lightImpact();
+            widget.onTap.call();
+          },
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
