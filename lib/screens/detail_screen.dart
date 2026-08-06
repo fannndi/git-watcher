@@ -558,11 +558,70 @@ class _CommitFileSummary extends StatelessWidget {
             strings.noFileDetail,
             style: TextStyle(color: colorScheme.onSurfaceVariant),
           )
-        else
+        else ...[
+          ExpansionTile(
+            title: Text('${detail.files.length} files changed'),
+            children: detail.files.map((file) {
+              return ListTile(
+                leading: Icon(
+                  _statusIcon(file.status),
+                  color: _statusColor(file.status, colorScheme),
+                  size: 20,
+                ),
+                title: Text(
+                  file.filename,
+                  style: const TextStyle(fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '+${file.additions}',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '-${file.deletions}',
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
           ...detail.files.map((file) => _CommitFileTile(file: file)),
+        ],
       ],
     );
   }
+}
+
+IconData _statusIcon(String status) {
+  return switch (status) {
+    'added' => Icons.add_circle_outline,
+    'removed' => Icons.remove_circle_outline,
+    'renamed' => Icons.drive_file_rename_outline,
+    _ => Icons.edit_outlined,
+  };
+}
+
+Color _statusColor(String status, ColorScheme colorScheme) {
+  return switch (status) {
+    'added' => Colors.green,
+    'removed' => colorScheme.error,
+    'renamed' => colorScheme.tertiary,
+    _ => colorScheme.primary,
+  };
 }
 
 class _CommitFileTile extends StatelessWidget {
@@ -616,24 +675,6 @@ class _CommitFileTile extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  IconData _statusIcon(String status) {
-    return switch (status) {
-      'added' => Icons.add_circle_outline,
-      'removed' => Icons.remove_circle_outline,
-      'renamed' => Icons.drive_file_rename_outline,
-      _ => Icons.edit_outlined,
-    };
-  }
-
-  Color _statusColor(String status, ColorScheme colorScheme) {
-    return switch (status) {
-      'added' => Colors.green,
-      'removed' => colorScheme.error,
-      'renamed' => colorScheme.tertiary,
-      _ => colorScheme.primary,
-    };
   }
 }
 
