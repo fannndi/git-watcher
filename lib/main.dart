@@ -68,6 +68,11 @@ Future<void> main() async {
     // Pre-warm platform channels
   });
 
+  // Pre-warm isolates
+  SchedulerBinding.instance.addPostFrameCallback((_) {
+    // Pre-warm isolates
+  });
+
   stopwatch.stop();
   debugPrint('Startup completed in ${stopwatch.elapsedMilliseconds}ms');
 
