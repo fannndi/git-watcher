@@ -4,11 +4,13 @@ import '../models/app_settings.dart';
 import 'storage_service.dart';
 
 class AppSettingsController extends ValueNotifier<AppSettings> {
-  AppSettingsController() : super(const AppSettings.defaults());
-
   final StorageService _storage = StorageService();
 
-  Future<void> load() async {
+  AppSettingsController() : super(const AppSettings.defaults()) {
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
     value = await _storage.getAppSettings();
   }
 
