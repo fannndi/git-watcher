@@ -41,6 +41,13 @@ Future<void> main() async {
     debugPrint('First frame rendered');
   });
 
+  // Pre-warm GPU
+  SchedulerBinding.instance.addTimingsCallback((timings) {
+    for (final timing in timings) {
+      debugPrint('Frame timing: ${timing.totalSpan.inMilliseconds}ms');
+    }
+  });
+
   stopwatch.stop();
   debugPrint('Startup completed in ${stopwatch.elapsedMilliseconds}ms');
 
