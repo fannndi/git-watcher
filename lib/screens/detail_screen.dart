@@ -29,6 +29,7 @@ class _DetailScreenState extends State<DetailScreen> {
   List<Commit> _commits = [];
   String _query = '';
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -43,7 +44,10 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   Future<void> _loadCommits() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       var commits = await _storage.getCachedCommits(widget.repo);
       if (commits.isEmpty) {
@@ -56,13 +60,12 @@ class _DetailScreenState extends State<DetailScreen> {
         _commits = commits;
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
-      final strings = stringsFor(appSettingsController.value.languageCode);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.fetchCommitsFailed)),
-      );
+      setState(() {
+        _isLoading = false;
+        _error = e.toString();
+      });
     }
   }
 
@@ -95,95 +98,139 @@ class _DetailScreenState extends State<DetailScreen> {
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 400),
         child: _isLoading
-            ? const Center(key: ValueKey('loading'), child: CircularProgressIndicator())
-            : Padding(
-                key: const ValueKey('content'),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _query.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: strings.clearSearch,
-                                icon: const Icon(Icons.close),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() => _query = '');
-                                },
-                              ),
-                        labelText: strings.searchCommit,
-                        helperText: strings.searchCommitHelper,
-                        border: const OutlineInputBorder(),
+            ? const Center(
+                key: ValueKey('loading'), child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    key: const ValueKey('error'),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline,
+                              size: 48, color: Colors.red),
+                          const SizedBox(height: 16),
+                          Text(
+                            strings.fetchCommitsFailed,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _loadCommits,
+                            icon: const Icon(Icons.refresh),
+                            label: Text(strings.tryAgain),
+                          ),
+                        ],
                       ),
-                      onChanged: (value) => setState(() => _query = value.trim()),
                     ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _refreshCommits,
-                        child: filteredCommits.isEmpty
-                            ? ListView(
-                                children: [
-                                  const SizedBox(height: 220),
-                                  Center(child: Text(strings.commitNotFound)),
-                                ],
-                              )
-                            : ListView.separated(
-                                padding: const EdgeInsets.only(bottom: 24),
-                                itemCount: groupedCommits.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 4),
-                                itemBuilder: (context, index) {
-                                  final group =
-                                      groupedCommits.entries.elementAt(index);
-
-                                  return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                  )
+                : Padding(
+                    key: const ValueKey('content'),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.search),
+                            suffixIcon: _query.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: strings.clearSearch,
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _query = '');
+                                    },
+                                  ),
+                            labelText: strings.searchCommit,
+                            helperText: strings.searchCommitHelper,
+                            border: const OutlineInputBorder(),
+                          ),
+                          onChanged: (value) =>
+                              setState(() => _query = value.trim()),
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: _refreshCommits,
+                            child: filteredCommits.isEmpty
+                                ? ListView(
                                     children: [
-                                      Padding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                            4, 16, 4, 8),
-                                        child: Text(
-                                          group.key,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                        ),
-                                      ),
-                                      ...group.value.asMap().entries.map((entry) {
-                                        final commitIndex = entry.key;
-                                        final commit = entry.value;
-                                        return TweenAnimationBuilder<double>(
-                                          duration: Duration(milliseconds: 400 + (commitIndex * 80).clamp(0, 400)),
-                                          tween: Tween(begin: 0.0, end: 1.0),
-                                          builder: (context, value, child) {
-                                            return Opacity(
-                                              opacity: value,
-                                              child: Transform.translate(
-                                                offset: Offset(0, 20 * (1 - value)),
-                                                child: child,
-                                              ),
-                                            );
-                                          },
-                                          child: _buildCommitCard(commit),
-                                        );
-                                      }),
+                                      const SizedBox(height: 220),
+                                      Center(
+                                          child: Text(strings.commitNotFound)),
                                     ],
-                                  );
-                                },
-                              ),
-                      ),
+                                  )
+                                : ListView.separated(
+                                    padding: const EdgeInsets.only(bottom: 24),
+                                    itemCount: groupedCommits.length,
+                                    separatorBuilder: (_, __) =>
+                                        const SizedBox(height: 4),
+                                    itemBuilder: (context, index) {
+                                      final group = groupedCommits.entries
+                                          .elementAt(index);
+
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                4, 16, 4, 8),
+                                            child: Text(
+                                              group.key,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                            ),
+                                          ),
+                                          ...group.value
+                                              .asMap()
+                                              .entries
+                                              .map((entry) {
+                                            final commitIndex = entry.key;
+                                            final commit = entry.value;
+                                            return TweenAnimationBuilder<
+                                                double>(
+                                              duration: Duration(
+                                                  milliseconds: 400 +
+                                                      (commitIndex * 80)
+                                                          .clamp(0, 400)),
+                                              tween:
+                                                  Tween(begin: 0.0, end: 1.0),
+                                              builder: (context, value, child) {
+                                                return Opacity(
+                                                  opacity: value,
+                                                  child: Transform.translate(
+                                                    offset: Offset(
+                                                        0, 20 * (1 - value)),
+                                                    child: child,
+                                                  ),
+                                                );
+                                              },
+                                              child: _buildCommitCard(commit),
+                                            );
+                                          }),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
       ),
     );
   }
