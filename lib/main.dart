@@ -23,9 +23,15 @@ Future<void> main() async {
     return true;
   };
 
+  // Performance monitoring
+  final stopwatch = Stopwatch()..start();
+
   runApp(const GitHubWatcherApp());
 
   unawaited(_bootstrap());
+
+  stopwatch.stop();
+  debugPrint('Bootstrap completed in ${stopwatch.elapsedMilliseconds}ms');
 }
 
 Future<void> _bootstrap() async {
