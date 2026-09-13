@@ -1,11 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../models/commit.dart';
+import '../screens/detail_screen.dart';
 import '../screens/update_screen.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
+import 'storage_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+const String updatePayload = 'updates';
+const String repoPayloadPrefix = 'repo:';
+const int _notificationCommitLimit = 3;
+
+String buildUpdateNotificationBody(
+  Map<String, int> updates,
+  Map<String, List<Commit>> newCommits,
+  AppStrings strings,
+) {
+  final lines = <String>[];
+
+  updates.forEach((repo, count) {
+    lines.add(strings.notificationLine(repo, count));
+
+    final commits = newCommits[repo] ?? const <Commit>[];
+    for (final commit in commits.take(_notificationCommitLimit)) {
+      final title = commit.title.isEmpty ? commit.message : commit.title;
+      if (title.isEmpty) continue;
+      lines.add(strings.notificationCommitLine(title, commit.author));
+    }
+
+    if (count > _notificationCommitLimit) {
+      lines.add(strings.notificationMore(count - _notificationCommitLimit));
+    }
+  });
+
+  return lines.join('\n');
+}
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
@@ -18,13 +50,8 @@ class NotificationService {
 
     await _plugin.initialize(
       settings,
-      onDidReceiveNotificationResponse: isBackground
-          ? null
-          : (response) {
-              if (response.payload == notificationChannelId) {
-                openUpdateScreen();
-              }
-            },
+      onDidReceiveNotificationResponse:
+          isBackground ? null : (response) => handlePayload(response.payload),
     );
 
     const channel = AndroidNotificationChannel(
@@ -83,14 +110,16 @@ class NotificationService {
 
   static Future<void> showUpdateNotification(
     Map<String, int> updates,
+    Map<String, List<Commit>> newCommits,
     AppStrings strings,
   ) async {
     final title = updates.length == 1
         ? strings.notificationTitle(updates.keys.first)
         : strings.notificationTitleMultiple(updates.length);
-    final body = updates.entries
-        .map((entry) => strings.notificationLine(entry.key, entry.value))
-        .join('\n');
+    final body = buildUpdateNotificationBody(updates, newCommits, strings);
+    final payload = updates.length == 1
+        ? '$repoPayloadPrefix${updates.keys.first}'
+        : updatePayload;
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -112,17 +141,44 @@ class NotificationService {
       title,
       body,
       details,
-      payload: notificationChannelId,
+      payload: payload,
     );
   }
 
-  static Future<bool> launchedFromUpdateNotification() async {
+  static Future<String?> initialPayload() async {
     try {
       final details = await _plugin.getNotificationAppLaunchDetails();
-      return (details?.didNotificationLaunchApp ?? false) &&
-          details?.notificationResponse?.payload == notificationChannelId;
+      final launched = details?.didNotificationLaunchApp ?? false;
+      return launched ? details?.notificationResponse?.payload : null;
     } catch (_) {
-      return false;
+      return null;
+    }
+  }
+
+  static Future<void> handlePayload(String? payload) async {
+    if (payload == null || payload.isEmpty) {
+      return;
+    }
+
+    if (payload == updatePayload) {
+      openUpdateScreen();
+      return;
+    }
+
+    if (payload.startsWith(repoPayloadPrefix)) {
+      final key = payload.substring(repoPayloadPrefix.length);
+      final repos = await StorageService().getRepos();
+
+      for (final repo in repos) {
+        if ('${repo.fullName} (${repo.branch})' == key) {
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(builder: (_) => DetailScreen(repo: repo)),
+          );
+          return;
+        }
+      }
+
+      openUpdateScreen();
     }
   }
 

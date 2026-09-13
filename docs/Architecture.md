@@ -47,8 +47,10 @@ Models (models/)
    each: one HTTP request per repo per interval. The cache is merged only when there
    are new commits, and `lastSha`/`lastCommitAt` are persisted once per changed repo.
 6. New commits produce a `SyncLog` entry. Background runs also post one local
-   notification when notifications are enabled.
-7. Tapping the notification opens `UpdateScreen` through the global
+   notification listing the newest commit titles + authors (max 3 per repo); the
+   payload opens the repo's `DetailScreen` when a single repo changed, otherwise
+   `UpdateScreen`.
+7. Tapping the notification opens that destination through the global
    `navigatorKey`; cold starts are redirected after the first frame.
 8. Pull-to-refresh in `DetailScreen` fetches only the newest 25 commits and merges
    them into the cache instead of re-downloading the whole sync mode.

@@ -236,6 +236,10 @@ class AppStrings {
       isEnglish ? '$count repos have updates' : '$count repo ada update baru';
   String notificationLine(String repo, int count) =>
       '$repo: +$count commit${count == 1 ? '' : 's'}';
+  String notificationMore(int count) =>
+      isEnglish ? '+$count more' : '+$count lainnya';
+  String notificationCommitLine(String title, String author) =>
+      author.isEmpty ? '• $title' : '• $title — $author';
 
   String timeAgo(DateTime time) {
     final difference = DateTime.now().difference(time);

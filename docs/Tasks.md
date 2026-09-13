@@ -2,6 +2,13 @@
 
 ## Done
 
+### 2026-09 — development round 5
+- [x] Richer reminders: notification body lists newest commit titles + authors
+      (max 3 per repo), payload deep-links to the updated repo when one repo
+      changed, otherwise to sync history
+- [x] Commit model carries the author (GitHub login, falling back to git name); the
+      commit card shows the author chip
+
 ### 2026-09 — development round 4
 - [x] Modular widgets: `home_states.dart`, `commit_card.dart`,
       `commit_detail_sheet.dart`; screens now only hold state + composition

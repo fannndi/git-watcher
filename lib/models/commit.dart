@@ -3,22 +3,28 @@ class Commit {
     required this.sha,
     required this.message,
     required this.date,
+    this.author = '',
   });
 
   final String sha;
   final String message;
   final DateTime date;
+  final String author;
 
   String get title => message.split('\n').first.trim();
 
   factory Commit.fromJson(Map<String, dynamic> json) {
     final commit = json['commit'] as Map<String, dynamic>? ?? const {};
-    final author = commit['author'] as Map<String, dynamic>? ?? const {};
+    final gitAuthor = commit['author'] as Map<String, dynamic>? ?? const {};
+    final account = json['author'] as Map<String, dynamic>? ?? const {};
 
     return Commit(
       sha: json['sha'] as String? ?? '',
       message: commit['message'] as String? ?? '',
-      date: parseDate(author['date']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+      date: parseDate(gitAuthor['date']) ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      author:
+          (account['login'] as String?) ?? (gitAuthor['name'] as String?) ?? '',
     );
   }
 
@@ -27,6 +33,7 @@ class Commit {
       sha: json['sha'] as String? ?? '',
       message: json['message'] as String? ?? '',
       date: parseDate(json['date']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+      author: json['author'] as String? ?? '',
     );
   }
 
@@ -34,6 +41,7 @@ class Commit {
         'sha': sha,
         'message': message,
         'date': date.toIso8601String(),
+        'author': author,
       };
 }
 

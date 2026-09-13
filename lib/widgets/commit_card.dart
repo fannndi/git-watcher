@@ -91,6 +91,11 @@ class CommitCard extends StatelessWidget {
                             icon: Icons.schedule_outlined,
                             label: _timeFormat.format(commit.date.toLocal()),
                           ),
+                          if (commit.author.isNotEmpty)
+                            InfoChip(
+                              icon: Icons.person_outline,
+                              label: commit.author,
+                            ),
                         ],
                       ),
                     ],

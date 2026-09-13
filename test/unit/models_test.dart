@@ -29,6 +29,28 @@ void main() {
       expect(commit.sha, '');
       expect(commit.message, '');
       expect(commit.title, '');
+      expect(commit.author, '');
+    });
+
+    test('fromJson prefers GitHub login, falls back to git author name', () {
+      final withLogin = Commit.fromJson({
+        'sha': 'abc',
+        'commit': {
+          'message': 'Fix',
+          'author': {'name': 'Budi', 'date': '2024-01-15T10:30:00Z'},
+        },
+        'author': {'login': 'budi'},
+      });
+      final withoutLogin = Commit.fromJson({
+        'sha': 'abc',
+        'commit': {
+          'message': 'Fix',
+          'author': {'name': 'Budi', 'date': '2024-01-15T10:30:00Z'},
+        },
+      });
+
+      expect(withLogin.author, 'budi');
+      expect(withoutLogin.author, 'Budi');
     });
 
     test('fromCacheJson parses cached JSON', () {

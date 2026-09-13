@@ -12,7 +12,8 @@ Package: `com.fannndi.gitwatcher` (Dart package `git_watcher`).
 - Battery-friendly exact background sync (30/60/120 minutes, default 60) with
   automatic fallback to inexact alarms when the OS denies exact-alarm permission
 - Every scheduled sync fetches at most 25 commits per repo (one request per repo)
-- Local notifications with deep link to sync history and a test-notification button
+- Local notifications that name the new commits and their authors, deep-linking
+  straight to the updated repo (or sync history when several repos changed)
 - Offline commit cache, grouped by day, search by message/SHA, commit detail sheet
 - Parallel repo fetch with live "Syncing 2/5" progress; cache writes skipped when
   nothing changed, detail refresh merges only the newest commits

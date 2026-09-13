@@ -47,6 +47,7 @@ class SyncService {
 
     github ??= GitHubService();
     final updates = <String, int>{};
+    final newCommits = <String, List<Commit>>{};
     final updatedRepos = <WatchedRepo>[];
     var reposChanged = false;
 
@@ -74,10 +75,13 @@ class SyncService {
         final hasNewCommits = !isNewRepo && latest.sha != repo.lastSha;
 
         if (hasNewCommits) {
-          final count =
-              commits.takeWhile((commit) => commit.sha != repo.lastSha).length;
-          if (count > 0) {
-            updates['${repo.fullName} (${repo.branch})'] = count;
+          final newOnes = commits
+              .takeWhile((commit) => commit.sha != repo.lastSha)
+              .toList();
+          if (newOnes.isNotEmpty) {
+            final key = '${repo.fullName} (${repo.branch})';
+            updates[key] = newOnes.length;
+            newCommits[key] = newOnes;
           }
         }
 
@@ -106,6 +110,7 @@ class SyncService {
           try {
             await NotificationService.showUpdateNotification(
               updates,
+              newCommits,
               stringsFor(settings.languageCode),
             );
           } catch (e) {

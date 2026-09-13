@@ -57,9 +57,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openFromNotification() async {
-    final launched = await NotificationService.launchedFromUpdateNotification();
-    if (launched && mounted) {
-      NotificationService.openUpdateScreen();
+    final payload = await NotificationService.initialPayload();
+    if (payload != null && mounted) {
+      await NotificationService.handlePayload(payload);
     }
   }
 

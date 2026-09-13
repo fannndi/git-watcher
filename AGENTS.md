@@ -73,7 +73,9 @@ test/
 - Commit cache: deduped by SHA, sorted newest-first, capped at `maxCachedCommits`.
   Detail pull-to-refresh merges the newest `backgroundSyncFetchLimit` commits.
 - Notifications are sent only by background sync and only when
-  `AppSettings.notificationsEnabled` is true.
+  `AppSettings.notificationsEnabled` is true. The body lists the newest commit
+  titles with authors (cap 3 per repo) and the payload deep-links to the updated
+  repo when exactly one repo changed; otherwise to `UpdateScreen`.
 - Token is base64-obfuscated in SharedPreferences, not encrypted.
 - Sync modes: `minimal` = commits from the latest day, `latest_500`, `extended_5000`.
 
