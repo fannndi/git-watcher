@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -74,8 +75,14 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Future<void> _refreshCommits() async {
     try {
-      final commits = await _fetchByMode();
-      await _storage.saveCachedCommits(widget.repo, commits);
+      final fresh = await _github.fetchCommits(
+        widget.repo.owner,
+        widget.repo.repo,
+        widget.repo.branch,
+        limit: backgroundSyncFetchLimit,
+      );
+      await _storage.mergeCachedCommits(widget.repo, fresh);
+      final commits = await _storage.getCachedCommits(widget.repo);
       if (!mounted) return;
       setState(() {
         _commits = commits;
@@ -88,6 +95,16 @@ class _DetailScreenState extends State<DetailScreen> {
         SnackBar(content: Text(strings.fetchCommitsFailed)),
       );
     }
+  }
+
+  Future<void> _copySha(String sha) async {
+    await Clipboard.setData(ClipboardData(text: sha));
+    if (!mounted) return;
+
+    final strings = stringsFor(appSettingsController.value.languageCode);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.shaCopied)),
+    );
   }
 
   Future<List<Commit>> _fetchByMode() {
@@ -350,6 +367,7 @@ class _DetailScreenState extends State<DetailScreen> {
                           InfoChip(
                             icon: Icons.tag_outlined,
                             label: _shortSha(commit.sha),
+                            onTap: () => _copySha(commit.sha),
                           ),
                           InfoChip(
                             icon: Icons.schedule_outlined,
@@ -431,6 +449,16 @@ class _CommitDetailSheetState extends State<_CommitDetailSheet> {
     }
   }
 
+  Future<void> _copySha() async {
+    await Clipboard.setData(ClipboardData(text: widget.commit.sha));
+    if (!mounted) return;
+
+    final strings = stringsFor(appSettingsController.value.languageCode);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.shaCopied)),
+    );
+  }
+
   TextSpan _formatMessage(String message, BuildContext context) {
     final lines = message.split('\n');
     final spans = <TextSpan>[
@@ -487,6 +515,11 @@ class _CommitDetailSheetState extends State<_CommitDetailSheet> {
                             .headlineSmall
                             ?.copyWith(fontWeight: FontWeight.w900),
                       ),
+                    ),
+                    IconButton(
+                      tooltip: strings.shaCopied,
+                      icon: const Icon(Icons.copy_all_outlined),
+                      onPressed: _copySha,
                     ),
                     IconButton(
                       tooltip: strings.close,

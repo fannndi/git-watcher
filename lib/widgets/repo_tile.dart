@@ -169,7 +169,7 @@ class _RepoTileState extends State<RepoTile>
                               child: Text(
                                 widget.repo.lastCommitAt == null
                                     ? strings.notSynced
-                                    : '${_formatDate(widget.repo.lastCommitAt!)} • ${_shortSha(widget.repo.lastSha)}',
+                                    : '${strings.timeAgo(widget.repo.lastCommitAt!)} • ${_shortSha(widget.repo.lastSha)}',
                                 style: textTheme.labelSmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,
@@ -211,15 +211,6 @@ class _RepoTileState extends State<RepoTile>
   }
 
   String _shortSha(String sha) => sha.length >= 7 ? sha.substring(0, 7) : sha;
-
-  String _formatDate(DateTime date) {
-    final local = date.toLocal();
-    return '${local.day.toString().padLeft(2, '0')}-'
-        '${local.month.toString().padLeft(2, '0')}-'
-        '${local.year} '
-        '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
-  }
 }
 
 class _RepoAvatar extends StatelessWidget {

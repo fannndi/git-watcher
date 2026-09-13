@@ -2,6 +2,13 @@
 
 ## Done
 
+### 2026-09 — development round 3
+- [x] Repo cleanup: removed `sub-project.md`, moved the product spec to `docs/PRD.md`
+- [x] Fetch optimization: concurrent per-repo sync, cache writes skipped when a repo
+      has no new commits, detail refresh merges the newest 100 commits only
+- [x] UX: "Syncing n/m" progress bar, swipe-to-delete with Undo, relative last-commit
+      time on tiles, tap-to-copy commit SHA, floating snackbars
+
 ### 2026-09 — development round 2
 - [x] Rebrand to **Git Watcher**: applicationId `com.fannndi.gitwatcher`,
       Dart package `git_watcher`, user-facing name and notification channel
@@ -40,7 +47,7 @@
 ### Medium
 - [ ] Inject `GitHubService`/`StorageService` in screens for full widget-test coverage
 - [ ] Release signing: document `android/key.properties` setup for real store builds
-- [ ] Commit count badge per repo on `RepoTile` (needs cached count lookup)
+- [ ] ETag / conditional requests on the commits endpoint to spare rate limit
 - [ ] Verify `flutter build apk --flavor production` in CI
 
 ### Low
@@ -48,3 +55,4 @@
 - [ ] Optional: per-repo sync intervals
 - [ ] Optional: repository search by GitHub API in Add repo
 - [ ] Optional: biometric lock for stored credentials
+- [ ] Optional: commit count badge per `RepoTile`

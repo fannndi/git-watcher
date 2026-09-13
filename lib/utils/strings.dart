@@ -16,6 +16,9 @@ class AppStrings {
       : '$count dari $maxWatchedRepos slot terpakai';
   String get lastSync => isEnglish ? 'Last sync' : 'Sinkron terakhir';
   String get never => isEnglish ? 'Never' : 'Belum pernah';
+  String get syncing => isEnglish ? 'Syncing' : 'Menyinkronkan';
+  String get undo => isEnglish ? 'Undo' : 'Urungkan';
+  String get shaCopied => isEnglish ? 'SHA copied' : 'SHA disalin';
   String get search => isEnglish ? 'Search' : 'Cari';
   String get closeSearch => isEnglish ? 'Close search' : 'Tutup pencarian';
   String get searchRepo => isEnglish ? 'Search repo...' : 'Cari repo...';
@@ -223,6 +226,34 @@ class AppStrings {
       isEnglish ? '$count repos have updates' : '$count repo ada update baru';
   String notificationLine(String repo, int count) =>
       '$repo: +$count commit${count == 1 ? '' : 's'}';
+
+  String timeAgo(DateTime time) {
+    final difference = DateTime.now().difference(time);
+    if (difference.inMinutes < 1) {
+      return isEnglish ? 'just now' : 'baru saja';
+    }
+    if (difference.inHours < 1) {
+      return isEnglish
+          ? '${difference.inMinutes}m ago'
+          : '${difference.inMinutes} mnt lalu';
+    }
+    if (difference.inDays < 1) {
+      return isEnglish
+          ? '${difference.inHours}h ago'
+          : '${difference.inHours} jam lalu';
+    }
+    if (difference.inDays < 30) {
+      return isEnglish
+          ? '${difference.inDays}d ago'
+          : '${difference.inDays} hari lalu';
+    }
+    if (difference.inDays < 365) {
+      final months = difference.inDays ~/ 30;
+      return isEnglish ? '${months}mo ago' : '$months bln lalu';
+    }
+    final years = difference.inDays ~/ 365;
+    return isEnglish ? '${years}y ago' : '$years thn lalu';
+  }
 }
 
 AppStrings stringsFor(String code) => AppStrings(code);

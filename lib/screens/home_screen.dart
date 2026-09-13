@@ -41,6 +41,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isSearching = false;
   bool _hasUnreadUpdates = false;
   bool _showTour = false;
+  int _syncCompleted = 0;
+  int _syncTotal = 0;
   String _searchQuery = '';
 
   @override
@@ -155,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _deleteRepo(WatchedRepo repo) async {
+  Future<void> _deleteRepo(WatchedRepo repo, int index) async {
     final updated = _repos
         .where(
           (item) =>
@@ -168,26 +170,63 @@ class _HomeScreenState extends State<HomeScreen> {
     await _storage.saveRepos(updated);
     if (!mounted) return;
 
+    final strings = stringsFor(appSettingsController.value.languageCode);
     setState(() => _repos = updated);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          stringsFor(appSettingsController.value.languageCode)
-              .repoDeleted(repo.fullName),
+        content: Text(strings.repoDeleted(repo.fullName)),
+        action: SnackBarAction(
+          label: strings.undo,
+          onPressed: () => _restoreRepo(repo, index),
         ),
       ),
     );
   }
 
+  Future<void> _restoreRepo(WatchedRepo repo, int index) async {
+    final repos = await _storage.getRepos();
+    final exists = repos.any(
+      (item) =>
+          item.owner == repo.owner &&
+          item.repo == repo.repo &&
+          item.branch == repo.branch,
+    );
+    if (exists) return;
+
+    final restored = [...repos];
+    if (index >= 0 && index <= restored.length) {
+      restored.insert(index, repo);
+    } else {
+      restored.add(repo);
+    }
+
+    await _storage.saveRepos(restored);
+    if (!mounted) return;
+    setState(() => _repos = restored);
+  }
+
   Future<void> _syncNow() async {
     if (_isSyncing) return;
 
-    setState(() => _isSyncing = true);
+    setState(() {
+      _isSyncing = true;
+      _syncCompleted = 0;
+      _syncTotal = 0;
+    });
     final strings = stringsFor(appSettingsController.value.languageCode);
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      final updates = await SyncService.checkUpdates();
+      final updates = await SyncService.checkUpdates(
+        onProgress: (completed, total) {
+          if (mounted) {
+            setState(() {
+              _syncCompleted = completed;
+              _syncTotal = total;
+            });
+          }
+        },
+      );
       final repos = await _storage.getRepos();
       final lastSyncAt = await _storage.getLastSyncAt();
       if (!mounted) return;
@@ -212,7 +251,11 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } finally {
       if (mounted) {
-        setState(() => _isSyncing = false);
+        setState(() {
+          _isSyncing = false;
+          _syncCompleted = 0;
+          _syncTotal = 0;
+        });
       }
     }
   }
@@ -393,7 +436,9 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '${strings.lastSync}: ${lastSyncAt == null ? strings.never : _syncDateFormat.format(lastSyncAt.toLocal())}',
+              _isSyncing && _syncTotal > 0
+                  ? '${strings.syncing} $_syncCompleted/$_syncTotal'
+                  : '${strings.lastSync}: ${lastSyncAt == null ? strings.never : _syncDateFormat.format(lastSyncAt.toLocal())}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -538,13 +583,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            onDismissed: (_) => _deleteRepo(repo),
+            onDismissed: (_) => _deleteRepo(repo, index),
             child: RepoTile(
               repo: repo,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => DetailScreen(repo: repo)),
               ),
-              onDelete: () => _deleteRepo(repo),
+              onDelete: () => _deleteRepo(repo, index),
             ),
           ),
         );

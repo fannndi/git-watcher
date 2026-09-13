@@ -34,16 +34,21 @@ Models (models/)
    `HomeScreen`.
 3. Foreground sync: pull-to-refresh or the app-bar button calls
    `SyncService.checkUpdates()`. A 20-second debounce and a single-flight lock
-   (auto-released after 10 minutes) prevent overlapping runs.
+   (auto-released after 10 minutes) prevent overlapping runs. `onProgress` reports
+   per-repo completion to the Home status bar.
 4. Background sync: the alarm isolate calls the same `SyncService.checkUpdates()`
    with `isBackground: true` and an 8-minute timeout.
-5. For each watched repo, sync fetches the newest commits (20 for `minimal`,
-   100 for the larger modes), counts commits newer than `lastSha`, merges the
-   batch into the cache, and updates `lastSha`/`lastCommitAt`.
+5. Watched repos are fetched concurrently. Per repo, sync fetches the newest commits
+   (20 for `minimal`, 100 for the larger modes) and counts commits newer than
+   `lastSha`. The cache is merged only when there are new commits, and
+   `lastSha`/`lastCommitAt` are updated from a single `saveRepos` write.
 6. New commits produce a `SyncLog` entry. Background runs also post one local
    notification when notifications are enabled.
 7. Tapping the notification opens `UpdateScreen` through the global
    `navigatorKey`; cold starts are redirected after the first frame.
+8. Pull-to-refresh in `DetailScreen` fetches only the newest
+   `backgroundSyncFetchLimit` commits and merges them into the cache instead of
+   re-downloading the whole sync mode.
 
 ## Storage keys (SharedPreferences)
 

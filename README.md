@@ -12,7 +12,11 @@ Package: `com.fannndi.gitwatcher` (Dart package `git_watcher`).
 - Configurable exact background sync (15/30/60/120 minutes, default 60)
 - Local notifications with deep link to sync history and a test-notification button
 - Offline commit cache, grouped by day, search by message/SHA, commit detail sheet
+- Parallel repo fetch with live "Syncing 2/5" progress; cache writes skipped when
+  nothing changed, detail refresh merges only the newest commits
+- Swipe to delete with Undo; tap a commit SHA to copy it
 - Repo preview when adding: description, visibility, language, stars
+- Relative "last commit" time on repo tiles
 - Last-sync status bar and retry state on Home
 - Private repo access with base64-obfuscated token
 - Bahasa Indonesia + English, light/dark/system theme
@@ -50,4 +54,4 @@ flutter test      # 50 tests
 - `docs/Context.md` — business context and decisions
 - `docs/Rules.md` — coding conventions
 - `docs/Tasks.md` — backlog
-- `PRD_GitHubWatcher.md` — original product requirements
+- `docs/PRD.md` — original product requirements

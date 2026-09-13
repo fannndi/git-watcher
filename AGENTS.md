@@ -57,7 +57,10 @@ test/
   from `AppSettings.syncIntervalMinutes` (15/30/60/120, default 60), re-registered
   by `registerExactAlarm()` when the interval changes.
 - Foreground sync: 20 s debounce, 10 min stale-lock auto-release, single-flight lock.
+  Repos are fetched concurrently, `onProgress(completed, total)` drives the Home bar,
+  and the cache is only rewritten when a repo actually has new commits.
 - Commit cache: deduped by SHA, sorted newest-first, capped at `maxCachedCommits`.
+  Detail pull-to-refresh merges the newest `backgroundSyncFetchLimit` commits.
 - Notifications are sent only by background sync and only when
   `AppSettings.notificationsEnabled` is true.
 - Token is base64-obfuscated in SharedPreferences, not encrypted.
@@ -69,4 +72,4 @@ test/
 - `docs/Context.md` — business rules and key decisions
 - `docs/Rules.md` — coding conventions
 - `docs/Tasks.md` — backlog and known gaps
-- `PRD_GitHubWatcher.md` — original product spec (partially historical)
+- `docs/PRD.md` — original product spec (partially historical)

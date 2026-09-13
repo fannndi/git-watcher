@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:git_watcher/app.dart';
+import 'package:git_watcher/models/watched_repo.dart';
 import 'package:git_watcher/screens/settings_screen.dart';
+import 'package:git_watcher/utils/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -46,6 +50,38 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Cari repo...'), findsOneWidget);
+    });
+
+    testWidgets('delete offers undo and restores the repo', (tester) async {
+      final repo = WatchedRepo(
+        owner: 'flutter',
+        repo: 'flutter',
+        branch: 'master',
+        syncMode: syncModeMinimal,
+        lastSha: 'abc123',
+        lastCommitAt: DateTime.now(),
+      );
+      SharedPreferences.setMockInitialValues({
+        'has_seen_tour': true,
+        watchedReposKey: jsonEncode([repo.toJson()]),
+      });
+
+      await tester.pumpWidget(const GitHubWatcherApp());
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text('flutter / flutter', findRichText: true), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Urungkan'), findsOneWidget);
+
+      await tester.tap(find.text('Urungkan'));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text('flutter / flutter', findRichText: true), findsOneWidget);
     });
   });
 

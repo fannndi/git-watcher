@@ -7,12 +7,14 @@ class InfoChip extends StatelessWidget {
     this.icon,
     this.color,
     this.accent = false,
+    this.onTap,
   });
 
   final String label;
   final IconData? icon;
   final Color? color;
   final bool accent;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,7 @@ class InfoChip extends StatelessWidget {
             ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.6)
             : color!.withValues(alpha: 0.14);
 
-    return Container(
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: background,
@@ -55,6 +57,16 @@ class InfoChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    if (onTap == null) {
+      return chip;
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: chip,
     );
   }
 }
