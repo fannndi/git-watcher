@@ -11,6 +11,11 @@ class AppStrings {
   String get settings => isEnglish ? 'Settings' : 'Pengaturan';
   String get history => isEnglish ? 'Sync History' : 'Riwayat Sinkron';
   String get syncNow => isEnglish ? 'Sync now' : 'Sync sekarang';
+  String repoCount(int count) => isEnglish
+      ? '$count of $maxWatchedRepos slots used'
+      : '$count dari $maxWatchedRepos slot terpakai';
+  String get lastSync => isEnglish ? 'Last sync' : 'Sinkron terakhir';
+  String get never => isEnglish ? 'Never' : 'Belum pernah';
   String get search => isEnglish ? 'Search' : 'Cari';
   String get closeSearch => isEnglish ? 'Close search' : 'Tutup pencarian';
   String get searchRepo => isEnglish ? 'Search repo...' : 'Cari repo...';
@@ -115,6 +120,9 @@ class AppStrings {
       ? 'Failed to fetch commit file details.'
       : 'Gagal mengambil detail file commit.';
   String get seeDetail => isEnglish ? 'See detail' : 'Lihat detail';
+  String commitCount(int count) =>
+      isEnglish ? '$count commits' : '$count commit';
+  String stars(int count) => isEnglish ? '$count stars' : '$count bintang';
 
   String get appearance => isEnglish ? 'Appearance' : 'Tampilan';
   String get language => isEnglish ? 'Language' : 'Bahasa';
@@ -150,14 +158,27 @@ class AppStrings {
   String get credentialsEmpty =>
       isEnglish ? 'No credentials saved' : 'Belum ada kredensial';
   String get syncSettings => isEnglish ? 'Sync' : 'Sinkronisasi';
-  String get syncEveryHour => isEnglish
-      ? 'Background Sync: Every 1 hour'
-      : 'Sync Latar Belakang: Setiap 1 jam';
+  String get syncInterval =>
+      isEnglish ? 'Background sync interval' : 'Interval sync background';
+  String minutes(int value) => isEnglish ? '$value minutes' : '$value menit';
+  String get syncIntervalHelper => isEnglish
+      ? 'Exact alarms may still be delayed by battery optimization.'
+      : 'Alarm exact tetap dapat tertunda oleh optimasi baterai.';
   String get enableNotifications =>
       isEnglish ? 'Enable Notifications' : 'Aktifkan Notifikasi';
   String get enableNotificationsDesc => isEnglish
       ? 'Receive push notifications for new commits and updates.'
       : 'Terima notifikasi push untuk commit dan update baru.';
+  String get testNotification =>
+      isEnglish ? 'Send test notification' : 'Kirim notifikasi uji';
+  String get testNotificationTitle =>
+      isEnglish ? 'Test notification' : 'Notifikasi uji';
+  String get testNotificationBody => isEnglish
+      ? 'If you can see this, notifications work on this device.'
+      : 'Jika Anda melihat ini, notifikasi berfungsi di perangkat ini.';
+  String get notificationsBlocked => isEnglish
+      ? 'Notifications are blocked in system settings.'
+      : 'Notifikasi diblokir di pengaturan sistem.';
   String get extremePrecision =>
       isEnglish ? 'Extreme Precision' : 'Presisi Ekstrem';
   String get extremePrecisionDesc => isEnglish

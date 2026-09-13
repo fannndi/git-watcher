@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/app_settings.dart';
@@ -29,10 +30,13 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final StorageService _storage = StorageService();
+  final DateFormat _syncDateFormat = DateFormat('yyyy-MM-dd HH:mm');
 
   List<WatchedRepo> _repos = [];
+  DateTime? _lastSyncAt;
   bool _isLoading = true;
   bool _isSyncing = false;
+  bool _loadFailed = false;
   bool _isOffline = false;
   bool _isSearching = false;
   bool _hasUnreadUpdates = false;
@@ -123,22 +127,20 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoading = true);
     try {
       final repos = await _storage.getRepos();
+      final lastSyncAt = await _storage.getLastSyncAt();
       if (!mounted) return;
       setState(() {
         _repos = repos;
+        _lastSyncAt = lastSyncAt;
         _isLoading = false;
+        _loadFailed = false;
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            stringsFor(appSettingsController.value.languageCode)
-                .loadReposFailed,
-          ),
-        ),
-      );
+      setState(() {
+        _isLoading = false;
+        _loadFailed = true;
+      });
     }
   }
 
@@ -186,10 +188,13 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final updates = await SyncService.checkUpdates();
       final repos = await _storage.getRepos();
+      final lastSyncAt = await _storage.getLastSyncAt();
       if (!mounted) return;
 
       setState(() {
         _repos = repos;
+        _lastSyncAt = lastSyncAt;
+        _loadFailed = false;
         if (updates.isNotEmpty) {
           _hasUnreadUpdates = true;
         }
@@ -238,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(strings.appTitle),
                     Text(
-                      'v$appVersionName',
+                      'v$appVersionName • ${strings.repoCount(_repos.length)}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color:
                                 Theme.of(context).colorScheme.onSurfaceVariant,
@@ -332,14 +337,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             setState(() => _searchQuery = value),
                       ),
                     ),
+                  if (_lastSyncAt != null) _buildSyncStatusBar(strings),
                   Expanded(
                     child: RefreshIndicator(
                       onRefresh: _syncNow,
                       child: _isLoading
                           ? const Center(child: CircularProgressIndicator())
-                          : _filteredRepos.isEmpty
-                              ? _buildEmptyState(strings)
-                              : _buildRepoList(strings),
+                          : _loadFailed && _repos.isEmpty
+                              ? _buildErrorState(strings)
+                              : _filteredRepos.isEmpty
+                                  ? _buildEmptyState(strings)
+                                  : _buildRepoList(strings),
                     ),
                   ),
                 ],
@@ -355,6 +363,65 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildSyncStatusBar(AppStrings strings) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final lastSyncAt = _lastSyncAt;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: Row(
+        children: [
+          if (_isSyncing)
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Icon(
+              Icons.cloud_done_outlined,
+              size: 16,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '${strings.lastSync}: ${lastSyncAt == null ? strings.never : _syncDateFormat.format(lastSyncAt.toLocal())}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(AppStrings strings) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ListView(
+      children: [
+        const SizedBox(height: 160),
+        Center(
+          child: Icon(Icons.error_outline, size: 56, color: colorScheme.error),
+        ),
+        const SizedBox(height: 16),
+        Center(child: Text(strings.loadReposFailed)),
+        const SizedBox(height: 16),
+        Center(
+          child: FilledButton.icon(
+            onPressed: _loadRepos,
+            icon: const Icon(Icons.refresh),
+            label: Text(strings.tryAgain),
+          ),
+        ),
+      ],
     );
   }
 

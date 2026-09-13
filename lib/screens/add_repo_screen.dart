@@ -6,6 +6,7 @@ import '../services/github_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
+import '../widgets/chips.dart';
 
 class AddRepoScreen extends StatefulWidget {
   const AddRepoScreen({super.key});
@@ -158,6 +159,19 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
     return '';
   }
 
+  String? _description(Map<String, dynamic> repo) {
+    final description = repo['description'] as String?;
+    return description == null || description.isEmpty ? null : description;
+  }
+
+  String? _language(Map<String, dynamic> repo) {
+    return repo['language'] as String?;
+  }
+
+  int? _stars(Map<String, dynamic> repo) {
+    return (repo['stargazers_count'] as num?)?.toInt();
+  }
+
   String get _syncModeDescription {
     final strings = _strings;
     if (_syncMode == syncModeLatest) {
@@ -223,6 +237,46 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
                         Text(
                           '${strings.defaultBranch}: '
                           '${foundRepo['default_branch'] ?? 'main'}',
+                        ),
+                        if (_description(foundRepo) != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            _description(foundRepo)!,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                          ),
+                        ],
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            InfoChip(
+                              icon: foundRepo['private'] == true
+                                  ? Icons.lock_outline
+                                  : Icons.public,
+                              label: foundRepo['private'] == true
+                                  ? strings.privateRepo
+                                  : strings.publicRepo,
+                              accent: foundRepo['private'] != true,
+                            ),
+                            if (_language(foundRepo) != null)
+                              InfoChip(
+                                icon: Icons.code,
+                                label: _language(foundRepo)!,
+                              ),
+                            if (_stars(foundRepo) != null)
+                              InfoChip(
+                                icon: Icons.star_outline,
+                                label: strings.stars(_stars(foundRepo)!),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(

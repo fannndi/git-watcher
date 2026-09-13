@@ -1,12 +1,18 @@
 # Product Requirements Document (PRD)
-# GitHub Watcher — Aplikasi Pemantau Commit GitHub
+# Git Watcher — Aplikasi Pemantau Commit GitHub
+
+> **Catatan rebrand:** dokumen ini adalah spesifikasi awal saat proyek masih bernama
+> *GitHub Watcher* dengan package `github_watcher`. Sejak pengembangan lanjutan,
+> aplikasi bernama **Git Watcher** dengan app id `com.fannndi.gitwatcher` dan
+> Dart package `git_watcher`. Bagian lain dokumen ini dipertahankan sebagai sejarah.
 
 ---
 
-**Nama Proyek:** GitHub Watcher  
-**Nama Package:** `github_watcher`  
+**Nama Proyek:** Git Watcher (dulu GitHub Watcher)  
+**Nama Package:** `git_watcher`  
+**App id:** `com.fannndi.gitwatcher`  
 **Platform:** Android (Flutter)  
-**Versi Aplikasi:** 1.0.0+2 (Release Candidate)  
+**Versi Aplikasi:** 1.0.0+2  
 **Developer:** alisa ([github.com/fannndi](https://github.com/fannndi))  
 **Tanggal Dokumen:** 16 Mei 2026  
 **Jenis Dokumen:** Product Requirements Document

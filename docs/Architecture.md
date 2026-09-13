@@ -1,7 +1,7 @@
-# Architecture — GitHub Watcher
+# Architecture — Git Watcher
 
-Android-only Flutter app. No server component; all state is local (SharedPreferences)
-and remote data comes from the public GitHub REST API v3.
+Android-only Flutter app (`com.fannndi.gitwatcher`). No server component; all state is
+local (SharedPreferences) and remote data comes from the public GitHub REST API v3.
 
 ## Layers
 
@@ -28,8 +28,8 @@ Models (models/)
 
 1. `main()` loads `AppSettings` from storage, then `StartupService.init()`:
    initialize notifications (and request POST_NOTIFICATIONS permission once),
-   initialize `AndroidAlarmManager`, register the hourly exact alarm if the
-   `alarm_registered` flag is unset.
+   initialize `AndroidAlarmManager`, register the exact periodic alarm if it is
+   missing or the configured interval changed.
 2. `GitHubWatcherApp` rebuilds on settings changes (theme + language) and hosts
    `HomeScreen`.
 3. Foreground sync: pull-to-refresh or the app-bar button calls
@@ -57,6 +57,7 @@ Models (models/)
 | `last_sync_at` | ISO 8601 | last successful sync (foreground debounce) |
 | `sync_lock` | ISO 8601 | sync single-flight lock |
 | `alarm_registered` | bool | exact alarm already scheduled |
+| `alarm_interval_minutes` | int | interval the current alarm was registered with |
 | `has_seen_tour` | bool | onboarding overlay dismissed |
 
 ## External APIs
@@ -76,5 +77,5 @@ one failing repo cannot stall the rest.
 ## Gradle note
 
 `android/app/build.gradle` (Groovy) is the authoritative build config: namespace and
-applicationId `com.ti24a4.app32`, `emulator`/`production` flavors, release signing,
-and core library desugaring. There are intentionally no `.kts` duplicates.
+applicationId `com.fannndi.gitwatcher`, `emulator`/`production` flavors, release
+signing, and core library desugaring. There are intentionally no `.kts` duplicates.

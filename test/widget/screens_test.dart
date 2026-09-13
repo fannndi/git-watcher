@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:github_watcher/app.dart';
-import 'package:github_watcher/screens/settings_screen.dart';
+import 'package:git_watcher/app.dart';
+import 'package:git_watcher/screens/settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -77,6 +77,8 @@ void main() {
       expect(find.text('Gelap'), findsOneWidget);
       expect(find.text('Username GitHub'), findsOneWidget);
       expect(find.text('Personal Access Token'), findsOneWidget);
+      expect(find.text('Interval sync background'), findsOneWidget);
+      expect(find.text('Kirim notifikasi uji'), findsOneWidget);
       expect(find.text('Presisi Ekstrem'), findsOneWidget);
     });
   });

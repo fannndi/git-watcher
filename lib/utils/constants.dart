@@ -1,10 +1,10 @@
-const String appName = 'GitHub Watcher';
+const String appName = 'Git Watcher';
 const String appVersionName = '1.0.0';
 const String appBuildNumber = '2';
 const String appReleaseChannel = 'Beta';
 const String developerName = 'alisa';
 const String developerUrl = 'https://github.com/fannndi';
-const String appId = 'com.ti24a4.app32';
+const String appId = 'com.fannndi.gitwatcher';
 
 const int maxWatchedRepos = 5;
 const int maxFetchedCommits = 20;
@@ -13,6 +13,7 @@ const int maxSyncHistory = 30;
 const int githubPageSize = 100;
 const int backgroundSyncFetchLimit = 100;
 const int defaultSyncIntervalMinutes = 60;
+const List<int> syncIntervalOptions = [15, 30, 60, 120];
 
 const String syncModeMinimal = 'minimal';
 const String syncModeLatest = 'latest_500';
@@ -43,12 +44,12 @@ const String syncLockKey = 'sync_lock';
 const String githubCredentialsKey = 'github_credentials';
 const String commitCachePrefix = 'commit_cache_';
 const String alarmRegisteredKey = 'alarm_registered';
+const String alarmIntervalKey = 'alarm_interval_minutes';
 const String hasSeenTourKey = 'has_seen_tour';
 
 const String notificationChannelId = 'updates';
-const String notificationChannelName = 'GitHub Updates';
+const String notificationChannelName = 'Git Watcher Updates';
 const int updateNotificationId = 1;
+const int testNotificationId = 99;
 
 const int alarmId = 42;
-const Duration alarmInterval = Duration(hours: 1);
-const Duration alarmInitialDelay = Duration(minutes: 15);

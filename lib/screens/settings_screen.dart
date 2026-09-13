@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/app_settings.dart';
 import '../models/github_credentials.dart';
 import '../services/app_settings_controller.dart';
+import '../services/notification_service.dart';
 import '../services/startup_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
@@ -25,6 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _tokenObscured = true;
   bool _hasCredentials = false;
   bool _isSaving = false;
+  bool _isTestingNotification = false;
 
   @override
   void initState() {
@@ -94,6 +96,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _update(AppSettings settings) {
     return appSettingsController.update(settings);
+  }
+
+  Future<void> _changeInterval(AppSettings settings, int? value) async {
+    if (value == null || value == settings.syncIntervalMinutes) {
+      return;
+    }
+
+    await _update(settings.copyWith(syncIntervalMinutes: value));
+    await StartupService.applySyncInterval();
+  }
+
+  Future<void> _sendTestNotification(AppStrings strings) async {
+    setState(() => _isTestingNotification = true);
+    try {
+      final granted = await NotificationService.ensurePermission();
+      if (!mounted) return;
+
+      if (!granted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.notificationsBlocked)),
+        );
+        return;
+      }
+
+      await NotificationService.testNotification(strings);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.notificationsBlocked)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isTestingNotification = false);
+    }
   }
 
   Future<void> _showAboutApp(AppStrings strings) {
@@ -287,17 +323,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: strings.syncSettings,
                 icon: Icons.sync_outlined,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.timer_outlined, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          strings.syncEveryHour,
-                          style: Theme.of(context).textTheme.bodyMedium,
+                  DropdownButtonFormField<int>(
+                    initialValue: settings.syncIntervalMinutes,
+                    decoration: InputDecoration(
+                      labelText: strings.syncInterval,
+                      helperText: strings.syncIntervalHelper,
+                      prefixIcon: const Icon(Icons.timer_outlined),
+                    ),
+                    items: [
+                      for (final minutes in syncIntervalOptions)
+                        DropdownMenuItem(
+                          value: minutes,
+                          child: Text(strings.minutes(minutes)),
                         ),
-                      ),
                     ],
+                    onChanged: (value) => _changeInterval(settings, value),
                   ),
                   const SizedBox(height: 12),
                   SwitchListTile(
@@ -307,6 +347,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (value) {
                       _update(settings.copyWith(notificationsEnabled: value));
                     },
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _isTestingNotification
+                          ? null
+                          : () => _sendTestNotification(strings),
+                      icon: _isTestingNotification
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.notifications_active_outlined),
+                      label: Text(strings.testNotification),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Container(

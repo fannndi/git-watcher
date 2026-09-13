@@ -1,4 +1,4 @@
-name: github_watcher
+name: git_watcher
 description: A Flutter Android app to watch recent commits from GitHub repositories.
 publish_to: "none"
 

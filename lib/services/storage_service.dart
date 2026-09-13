@@ -140,6 +140,16 @@ class StorageService {
     await prefs.setBool(alarmRegisteredKey, value);
   }
 
+  Future<int?> getAlarmIntervalMinutes() async {
+    final prefs = await _instance();
+    return prefs.getInt(alarmIntervalKey);
+  }
+
+  Future<void> setAlarmIntervalMinutes(int minutes) async {
+    final prefs = await _instance();
+    await prefs.setInt(alarmIntervalKey, minutes);
+  }
+
   Future<bool> hasSeenTour() async {
     final prefs = await _instance();
     return prefs.getBool(hasSeenTourKey) ?? false;

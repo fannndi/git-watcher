@@ -47,6 +47,40 @@ class NotificationService {
     }
   }
 
+  static Future<bool> ensurePermission() async {
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (android == null) {
+      return true;
+    }
+
+    if (await android.areNotificationsEnabled() ?? false) {
+      return true;
+    }
+
+    return await android.requestNotificationsPermission() ?? false;
+  }
+
+  static Future<void> testNotification(AppStrings strings) async {
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        notificationChannelId,
+        notificationChannelName,
+        channelDescription:
+            'Notifications for watched GitHub repository updates.',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+    );
+
+    await _plugin.show(
+      testNotificationId,
+      strings.testNotificationTitle,
+      strings.testNotificationBody,
+      details,
+    );
+  }
+
   static Future<void> showUpdateNotification(
     Map<String, int> updates,
     AppStrings strings,

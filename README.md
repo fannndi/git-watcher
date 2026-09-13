@@ -1,15 +1,19 @@
-# GitHub Watcher
+# Git Watcher
 
 Flutter Android app to watch GitHub repositories and get local notifications when new
 commits land. Public repos work without login; private repos use a Personal Access Token.
+
+Package: `com.fannndi.gitwatcher` (Dart package `git_watcher`).
 
 ## Features
 
 - Watch up to 5 repositories, each with its own branch and sync mode
 - Sync modes: latest day (minimal), latest 500 commits, latest 5000 commits
-- Exact hourly background sync via `android_alarm_manager_plus`
-- Local notifications with deep link to sync history
+- Configurable exact background sync (15/30/60/120 minutes, default 60)
+- Local notifications with deep link to sync history and a test-notification button
 - Offline commit cache, grouped by day, search by message/SHA, commit detail sheet
+- Repo preview when adding: description, visibility, language, stars
+- Last-sync status bar and retry state on Home
 - Private repo access with base64-obfuscated token
 - Bahasa Indonesia + English, light/dark/system theme
 - Onboarding tour and battery optimization exemption helper

@@ -24,19 +24,31 @@ Future<void> alarmCallback() async {
 
 Future<void> registerExactAlarm() async {
   final storage = StorageService();
-  if (await storage.isAlarmRegistered()) {
+  final settings = await storage.getAppSettings();
+  final intervalMinutes = settings.syncIntervalMinutes;
+  final registered = await storage.isAlarmRegistered();
+  final currentInterval = await storage.getAlarmIntervalMinutes();
+
+  if (registered && currentInterval == intervalMinutes) {
     return;
   }
 
+  if (registered) {
+    await AndroidAlarmManager.cancel(alarmId);
+  }
+
+  final interval = Duration(minutes: intervalMinutes);
+
   await AndroidAlarmManager.periodic(
-    alarmInterval,
+    interval,
     alarmId,
     alarmCallback,
-    startAt: DateTime.now().add(alarmInitialDelay),
+    startAt: DateTime.now().add(interval),
     exact: true,
     wakeup: true,
     rescheduleOnReboot: true,
   );
 
+  await storage.setAlarmIntervalMinutes(intervalMinutes);
   await storage.setAlarmRegistered(true);
 }

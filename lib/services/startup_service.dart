@@ -23,6 +23,14 @@ class StartupService {
     }
   }
 
+  static Future<void> applySyncInterval() async {
+    try {
+      await registerExactAlarm();
+    } catch (e) {
+      debugPrint('StartupService: alarm reschedule failed: $e');
+    }
+  }
+
   static Future<void> requestBatteryOptimizationExemption() async {
     if (!Platform.isAndroid) {
       return;

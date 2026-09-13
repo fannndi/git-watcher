@@ -1,4 +1,4 @@
-package com.ti24a4.app32
+package com.fannndi.gitwatcher
 
 import io.flutter.embedding.android.FlutterActivity
 

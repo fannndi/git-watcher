@@ -11,7 +11,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.ti24a4.app32"
+    namespace "com.fannndi.gitwatcher"
     compileSdk 36
     ndkVersion flutter.ndkVersion
 
@@ -26,7 +26,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.ti24a4.app32"
+        applicationId "com.fannndi.gitwatcher"
         minSdkVersion 29
         targetSdkVersion 36
         versionCode flutter.versionCode

@@ -42,14 +42,22 @@ class AppSettings {
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
     return AppSettings(
-      syncIntervalMinutes: (json['sync_interval_minutes'] as num?)?.toInt() ??
-          defaultSyncIntervalMinutes,
+      syncIntervalMinutes: normalizeInterval(
+        (json['sync_interval_minutes'] as num?)?.toInt(),
+      ),
       languageCode: json['language_code'] == languageEnglish
           ? languageEnglish
           : languageIndonesian,
       themeMode: _parseThemeMode(json['theme_mode'] as String?),
       notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
     );
+  }
+
+  static int normalizeInterval(int? value) {
+    if (value != null && syncIntervalOptions.contains(value)) {
+      return value;
+    }
+    return defaultSyncIntervalMinutes;
   }
 
   static String _parseThemeMode(String? value) {

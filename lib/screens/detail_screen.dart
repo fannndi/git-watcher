@@ -148,7 +148,9 @@ class _DetailScreenState extends State<DetailScreen> {
               children: [
                 Text(widget.repo.fullName),
                 Text(
-                  widget.repo.branch,
+                  _isLoading
+                      ? widget.repo.branch
+                      : '${widget.repo.branch} • ${strings.commitCount(_commits.length)}',
                   style: Theme.of(context).textTheme.labelMedium,
                 ),
               ],

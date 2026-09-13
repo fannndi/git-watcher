@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:github_watcher/models/app_settings.dart';
-import 'package:github_watcher/models/commit.dart';
-import 'package:github_watcher/models/github_credentials.dart';
-import 'package:github_watcher/models/sync_log.dart';
-import 'package:github_watcher/models/watched_repo.dart';
-import 'package:github_watcher/utils/constants.dart';
+import 'package:git_watcher/models/app_settings.dart';
+import 'package:git_watcher/models/commit.dart';
+import 'package:git_watcher/models/github_credentials.dart';
+import 'package:git_watcher/models/sync_log.dart';
+import 'package:git_watcher/models/watched_repo.dart';
+import 'package:git_watcher/utils/constants.dart';
 
 void main() {
   group('Commit', () {
@@ -156,6 +156,19 @@ void main() {
       expect(settings.themeMode, themeModeSystem);
     });
 
+    test('fromJson normalizes unsupported sync interval', () {
+      expect(
+        AppSettings.fromJson(const {'sync_interval_minutes': 7})
+            .syncIntervalMinutes,
+        defaultSyncIntervalMinutes,
+      );
+      expect(
+        AppSettings.fromJson(const {'sync_interval_minutes': 15})
+            .syncIntervalMinutes,
+        15,
+      );
+    });
+
     test('copyWith only changes given fields', () {
       const original = AppSettings.defaults();
       final modified = original.copyWith(
@@ -171,14 +184,14 @@ void main() {
 
     test('toJson round-trips through fromJson', () {
       const settings = AppSettings(
-        syncIntervalMinutes: 45,
+        syncIntervalMinutes: 30,
         languageCode: 'en',
         themeMode: 'dark',
         notificationsEnabled: false,
       );
 
       final restored = AppSettings.fromJson(settings.toJson());
-      expect(restored.syncIntervalMinutes, 45);
+      expect(restored.syncIntervalMinutes, 30);
       expect(restored.languageCode, 'en');
       expect(restored.themeMode, 'dark');
       expect(restored.notificationsEnabled, false);

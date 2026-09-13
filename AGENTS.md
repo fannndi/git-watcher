@@ -1,6 +1,7 @@
-# AGENTS.md — GitHub Watcher
+# AGENTS.md — Git Watcher
 
 Flutter Android app that watches GitHub repositories and notifies about new commits.
+App id: `com.fannndi.gitwatcher`, Dart package: `git_watcher`.
 
 ## Commands
 
@@ -52,8 +53,9 @@ test/
 
 ## Behavior contracts
 
-- Background sync: hourly exact alarm (`AndroidAlarmManager.periodic`), idempotent
-  through the `alarm_registered` flag in `alarm_worker.dart`.
+- Background sync: exact periodic alarm (`AndroidAlarmManager.periodic`), interval
+  from `AppSettings.syncIntervalMinutes` (15/30/60/120, default 60), re-registered
+  by `registerExactAlarm()` when the interval changes.
 - Foreground sync: 20 s debounce, 10 min stale-lock auto-release, single-flight lock.
 - Commit cache: deduped by SHA, sorted newest-first, capped at `maxCachedCommits`.
 - Notifications are sent only by background sync and only when

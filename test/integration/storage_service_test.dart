@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:github_watcher/models/app_settings.dart';
-import 'package:github_watcher/models/commit.dart';
-import 'package:github_watcher/models/github_credentials.dart';
-import 'package:github_watcher/models/sync_log.dart';
-import 'package:github_watcher/models/watched_repo.dart';
-import 'package:github_watcher/services/storage_service.dart';
-import 'package:github_watcher/utils/constants.dart';
+import 'package:git_watcher/models/app_settings.dart';
+import 'package:git_watcher/models/commit.dart';
+import 'package:git_watcher/models/github_credentials.dart';
+import 'package:git_watcher/models/sync_log.dart';
+import 'package:git_watcher/models/watched_repo.dart';
+import 'package:git_watcher/services/storage_service.dart';
+import 'package:git_watcher/utils/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -209,6 +209,13 @@ void main() {
 
       await storage.setAlarmRegistered(false);
       expect(await storage.isAlarmRegistered(), false);
+    });
+
+    test('alarm interval minutes', () async {
+      expect(await storage.getAlarmIntervalMinutes(), isNull);
+
+      await storage.setAlarmIntervalMinutes(30);
+      expect(await storage.getAlarmIntervalMinutes(), 30);
     });
 
     test('tour flag', () async {
