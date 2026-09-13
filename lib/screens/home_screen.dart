@@ -50,7 +50,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _checkConnectivity();
     _checkTour();
     _checkAppUpdate();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _openFromNotification());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _openFromNotification());
   }
 
   Future<void> _openFromNotification() async {
@@ -271,7 +272,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   IconButton(
-                    tooltip: _isSearching ? strings.closeSearch : strings.search,
+                    tooltip:
+                        _isSearching ? strings.closeSearch : strings.search,
                     icon: Icon(_isSearching ? Icons.close : Icons.search),
                     onPressed: () {
                       setState(() {
@@ -346,7 +348,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           : _loadFailed && _repos.isEmpty
                               ? _buildErrorState(strings)
                               : _filteredRepos.isEmpty
-                                  ? _buildEmptyState(strings)
+                                  ? (_repos.isEmpty
+                                      ? _buildEmptyState(strings)
+                                      : _buildNoResultsState(strings))
                                   : _buildRepoList(strings),
                     ),
                   ),
@@ -425,6 +429,23 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildNoResultsState(AppStrings strings) {
+    return ListView(
+      children: [
+        const SizedBox(height: 160),
+        Center(
+          child: Icon(
+            Icons.search_off,
+            size: 56,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Center(child: Text(strings.noSearchResults)),
+      ],
+    );
+  }
+
   Widget _buildEmptyState(AppStrings strings) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -479,7 +500,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final repos = _filteredRepos;
 
     return ListView.separated(
-      padding: EdgeInsets.only(bottom: repos.length >= maxWatchedRepos ? 24 : 96),
+      padding:
+          EdgeInsets.only(bottom: repos.length >= maxWatchedRepos ? 24 : 96),
       itemCount: repos.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {

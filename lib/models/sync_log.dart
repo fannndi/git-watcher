@@ -11,7 +11,8 @@ class SyncLog {
 
   bool get hasUpdates => updates.isNotEmpty;
 
-  int get totalCommits => updates.values.fold(0, (total, count) => total + count);
+  int get totalCommits =>
+      updates.values.fold(0, (total, count) => total + count);
 
   Map<String, dynamic> toJson() => {
         'synced_at': syncedAt.toIso8601String(),
@@ -21,7 +22,8 @@ class SyncLog {
   factory SyncLog.fromJson(Map<String, dynamic> json) {
     final rawUpdates = json['updates'] as Map<String, dynamic>? ?? const {};
     return SyncLog(
-      syncedAt: parseDate(json['synced_at']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+      syncedAt: parseDate(json['synced_at']) ??
+          DateTime.fromMillisecondsSinceEpoch(0),
       updates: rawUpdates.map(
         (key, value) => MapEntry(key, (value as num).toInt()),
       ),

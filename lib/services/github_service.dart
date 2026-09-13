@@ -142,7 +142,8 @@ class GitHubService {
       throw Exception('Failed to fetch commit detail ($sha)');
     }
 
-    return CommitDetail.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return CommitDetail.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Future<List<Commit>> _fetchCommitPage(
@@ -176,14 +177,17 @@ class GitHubService {
       credentials.isNotEmpty ? credentials.basicAuth : null,
     );
 
-    var response = await _client.get(uri, headers: authHeaders).timeout(apiTimeout);
+    var response =
+        await _client.get(uri, headers: authHeaders).timeout(apiTimeout);
     if (response.statusCode == 401 && credentials.isNotEmpty) {
-      response = await _client.get(uri, headers: _headers(null)).timeout(apiTimeout);
+      response =
+          await _client.get(uri, headers: _headers(null)).timeout(apiTimeout);
     }
 
     if (response.statusCode >= 500) {
       await Future.delayed(const Duration(seconds: 2));
-      response = await _client.get(uri, headers: authHeaders).timeout(apiTimeout);
+      response =
+          await _client.get(uri, headers: authHeaders).timeout(apiTimeout);
     }
 
     return response;

@@ -141,7 +141,8 @@ void main() {
       await storage.saveCachedCommits(repo, [
         Commit(sha: 'abc', message: 'First', date: DateTime.utc(2024, 1, 15)),
         Commit(sha: 'def', message: 'Second', date: DateTime.utc(2024, 1, 14)),
-        Commit(sha: 'abc', message: 'Duplicate', date: DateTime.utc(2024, 1, 16)),
+        Commit(
+            sha: 'abc', message: 'Duplicate', date: DateTime.utc(2024, 1, 16)),
       ]);
 
       final loaded = await storage.getCachedCommits(repo);

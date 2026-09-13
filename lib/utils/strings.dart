@@ -33,6 +33,8 @@ class AppStrings {
   String get noReposSubtitle => isEnglish
       ? 'Add a repository to start watching commit activity.'
       : 'Tambahkan repository untuk mulai memantau aktivitas commit.';
+  String get noSearchResults =>
+      isEnglish ? 'No repo matches your search' : 'Tidak ada repo yang cocok';
   String get addRepo => isEnglish ? 'Add repo' : 'Tambah repo';
   String repoDeleted(String repo) =>
       isEnglish ? '$repo deleted' : '$repo dihapus';
@@ -48,15 +50,15 @@ class AppStrings {
       : 'Sinkronisasi gagal. Cek koneksi internet.';
   String get loadReposFailed =>
       isEnglish ? 'Failed to load repos' : 'Gagal memuat repo';
-  String updateAvailable(String version) => isEnglish
-      ? 'Update available: v$version'
-      : 'Update tersedia: v$version';
+  String updateAvailable(String version) =>
+      isEnglish ? 'Update available: v$version' : 'Update tersedia: v$version';
   String get updateAction => isEnglish ? 'Update' : 'Perbarui';
 
   String get repository => isEnglish ? 'Repository' : 'Repository';
   String get repositoryInputHelper => isEnglish
       ? 'Use owner/repo format, for example: torvalds/linux'
       : 'Masukkan format owner/repo, contoh: torvalds/linux';
+  String get paste => isEnglish ? 'Paste' : 'Tempel';
   String get check => 'Check';
   String get repositoryFound =>
       isEnglish ? 'Repository found' : 'Repository ditemukan';
@@ -217,9 +219,8 @@ class AppStrings {
 
   String notificationTitle(String repo) =>
       isEnglish ? 'Update in $repo' : 'Update di $repo';
-  String notificationTitleMultiple(int count) => isEnglish
-      ? '$count repos have updates'
-      : '$count repo ada update baru';
+  String notificationTitleMultiple(int count) =>
+      isEnglish ? '$count repos have updates' : '$count repo ada update baru';
   String notificationLine(String repo, int count) =>
       '$repo: +$count commit${count == 1 ? '' : 's'}';
 }

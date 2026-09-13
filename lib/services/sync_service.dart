@@ -68,8 +68,9 @@ class SyncService {
 
           final latest = commits.first;
           if (repo.lastSha.isNotEmpty && latest.sha != repo.lastSha) {
-            final count =
-                commits.takeWhile((commit) => commit.sha != repo.lastSha).length;
+            final count = commits
+                .takeWhile((commit) => commit.sha != repo.lastSha)
+                .length;
             if (count > 0) {
               updates['${repo.fullName} (${repo.branch})'] = count;
             }

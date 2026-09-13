@@ -258,15 +258,13 @@ class _DetailScreenState extends State<DetailScreen> {
                       itemCount: groupedCommits.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 4),
                       itemBuilder: (context, index) {
-                        final group =
-                            groupedCommits.entries.elementAt(index);
+                        final group = groupedCommits.entries.elementAt(index);
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(4, 16, 4, 8),
+                              padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
                               child: Text(
                                 group.key,
                                 style: Theme.of(context)
@@ -339,10 +337,7 @@ class _DetailScreenState extends State<DetailScreen> {
                         commit.title.isEmpty ? commit.message : commit.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
-                            ?.copyWith(
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w800,
                               height: 1.25,
                             ),

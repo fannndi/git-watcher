@@ -112,14 +112,14 @@ class _RepoTileState extends State<RepoTile>
                               child: Padding(
                                 padding: const EdgeInsets.all(4),
                                 child: Tooltip(
-                                message: strings.delete,
-                                child: Icon(
-                                  Icons.delete_outline,
-                                  size: 18,
-                                  color:
-                                      colorScheme.error.withValues(alpha: 0.7),
+                                  message: strings.delete,
+                                  child: Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: colorScheme.error
+                                        .withValues(alpha: 0.7),
+                                  ),
                                 ),
-                              ),
                               ),
                             ),
                           ),

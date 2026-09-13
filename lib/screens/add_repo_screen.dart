@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
@@ -146,6 +147,17 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
     }
   }
 
+  Future<void> _pasteFromClipboard() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim();
+    if (text == null || text.isEmpty || !mounted) {
+      return;
+    }
+
+    _controller.text = text;
+    await _checkRepo();
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
@@ -202,6 +214,12 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
                 decoration: InputDecoration(
                   labelText: strings.repository,
                   helperText: strings.repositoryInputHelper,
+                  prefixIcon: const Icon(Icons.folder_outlined),
+                  suffixIcon: IconButton(
+                    tooltip: strings.paste,
+                    icon: const Icon(Icons.content_paste),
+                    onPressed: _pasteFromClipboard,
+                  ),
                 ),
                 onSubmitted: (_) => _checkRepo(),
               ),
@@ -242,14 +260,12 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
                           const SizedBox(height: 8),
                           Text(
                             _description(foundRepo)!,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
                           ),
                         ],
                         const SizedBox(height: 10),

@@ -37,5 +37,6 @@ class GitHubCredentials {
     );
   }
 
-  String get basicAuth => 'Basic ${base64Encode(utf8.encode('$username:$token'))}';
+  String get basicAuth =>
+      'Basic ${base64Encode(utf8.encode('$username:$token'))}';
 }

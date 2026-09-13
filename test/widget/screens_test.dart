@@ -68,7 +68,8 @@ void main() {
       expect(find.text('Tentang aplikasi'), findsOneWidget);
     });
 
-    testWidgets('shows language, theme and credential controls', (tester) async {
+    testWidgets('shows language, theme and credential controls',
+        (tester) async {
       await pumpSettings(tester);
 
       expect(find.text('Bahasa'), findsOneWidget);
