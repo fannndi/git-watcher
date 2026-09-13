@@ -60,22 +60,34 @@ test/
 ## Behavior contracts
 
 - Up to `maxWatchedRepos` (10) repos.
-- Background sync: exact periodic alarm via `AndroidAlarmManager`, interval from
-  `AppSettings.syncIntervalMinutes` (30/60/120, default 60), re-registered by
-  `registerSyncAlarm()` when the interval changes. Exact alarms fall back to
-  inexact+`allowWhileIdle` when the OS denies `SCHEDULE_EXACT_ALARM`, so the app
-  stays battery friendly on Android 13+.
-- Every scheduled sync fetches at most `syncFetchLimit` (25) commits per repo: one
-  HTTP request per repo per interval.
+- Background sync: periodic alarm via `AndroidAlarmManager`, interval from
+  `AppSettings.syncIntervalMinutes` (30/60/120, default 60). Exact alarms are used
+  only when `AppSettings.preciseSync` is on; otherwise inexact + `allowWhileIdle`.
+  `registerSyncAlarm()` re-registers when interval or precision changes.
+- Battery guards in `alarmCallback`, in order: quiet hours skip -> adaptive backoff
+  skip -> Wi-Fi-only skip (inside `SyncService`) -> fetch.
+  - Quiet hours (`quietHoursEnabled`, default 23-07) skip syncing entirely; the
+    first sync after the window is sent as a morning digest (once per day).
+  - Adaptive backoff: if the previous update notification is still active (user has
+    not seen it), the effective interval doubles up to `maxSyncBackoffLevel` (2 ->
+    4x). Level resets when the app is resumed or the notification is tapped.
+- Every scheduled sync: stale repos (`lastCommitAt` older than `staleRepoDays`) are
+  only fetched on even hours; active repos every run. Each repo is capped at
+  `syncFetchLimit` (25) commits.
+- Fetches use one GraphQL request for all repos when GitHub credentials exist
+  (`fetchCommitsBatch`), falling back to parallel REST requests otherwise.
 - Foreground sync: 20 s debounce, 10 min stale-lock auto-release, single-flight lock.
   Repos are fetched concurrently, `onProgress(completed, total)` drives the Home bar,
   and repo/cache data is only rewritten when a repo actually has new commits.
 - Commit cache: deduped by SHA, sorted newest-first, capped at `maxCachedCommits`.
-  Detail pull-to-refresh merges the newest `backgroundSyncFetchLimit` commits.
+  Detail pull-to-refresh merges the newest `syncFetchLimit` commits.
 - Notifications are sent only by background sync and only when
-  `AppSettings.notificationsEnabled` is true. The body lists the newest commit
-  titles with authors (cap 3 per repo) and the payload deep-links to the updated
-  repo when exactly one repo changed; otherwise to `UpdateScreen`.
+  `AppSettings.notificationsEnabled` is true. Muted repos are still synced and
+  cached but excluded from notifications. The body lists the newest commit titles
+  with authors (cap 3 per repo); the payload deep-links to the updated repo when
+  exactly one repo changed, otherwise to `UpdateScreen`.
+- Unread badge is persisted via `last_seen_at`: history is "unread" while the newest
+  `SyncLog` is newer than the stored last-seen timestamp.
 - Token is base64-obfuscated in SharedPreferences, not encrypted.
 - Sync modes: `minimal` = commits from the latest day, `latest_500`, `extended_5000`.
 

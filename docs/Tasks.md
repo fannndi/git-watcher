@@ -2,6 +2,20 @@
 
 ## Done
 
+### 2026-09 — development round 6 (battery & sync intelligence)
+- [x] Adaptive backoff: when the last update notification is still unread the
+      effective interval doubles (cap `maxSyncBackoffLevel`); resets on app resume
+      and notification tap
+- [x] Exact alarms are now opt-in via the Extreme Precision switch; default is
+      inexact + `allowWhileIdle`
+- [x] Quiet hours (default 23-07, configurable): no syncs during the window; first
+      sync afterwards sends a once-a-day morning digest
+- [x] Stale repos (no commit for `staleRepoDays`) are only checked on even hours
+- [x] GraphQL batching: one request for all repos when a token exists, with
+      parallel REST fallback (`fetchCommitsBatch`)
+- [x] Wi-Fi-only sync option, per-repo mute via long-press, persisted unread badge
+      (`last_seen_at`)
+
 ### 2026-09 — development round 5
 - [x] Richer reminders: notification body lists newest commit titles + authors
       (max 3 per repo), payload deep-links to the updated repo when one repo

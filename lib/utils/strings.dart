@@ -22,6 +22,14 @@ class AppStrings {
   String get openInBrowser => isEnglish ? 'Open in browser' : 'Buka di browser';
   String get copyLink => isEnglish ? 'Copy link' : 'Salin tautan';
   String get linkCopied => isEnglish ? 'Link copied' : 'Tautan disalin';
+  String get muteRepo =>
+      isEnglish ? 'Mute notifications' : 'Bisukan notifikasi';
+  String get unmuteRepo =>
+      isEnglish ? 'Unmute notifications' : 'Aktifkan notifikasi';
+  String repoMuted(String repo) =>
+      isEnglish ? '$repo muted' : '$repo dibisukan';
+  String repoUnmuted(String repo) =>
+      isEnglish ? '$repo unmuted' : 'Notifikasi $repo aktif';
   String get search => isEnglish ? 'Search' : 'Cari';
   String get closeSearch => isEnglish ? 'Close search' : 'Tutup pencarian';
   String get searchRepo => isEnglish ? 'Search repo...' : 'Cari repo...';
@@ -179,6 +187,21 @@ class AppStrings {
       : 'Terima notifikasi push untuk commit dan update baru.';
   String get testNotification =>
       isEnglish ? 'Send test notification' : 'Kirim notifikasi uji';
+  String get wifiOnly =>
+      isEnglish ? 'Sync on Wi-Fi only' : 'Sync hanya via Wi-Fi';
+  String get wifiOnlyDesc => isEnglish
+      ? 'Skip scheduled syncs on mobile data.'
+      : 'Lewati sync terjadwal saat memakai data seluler.';
+  String get quietHours => isEnglish ? 'Quiet hours' : 'Jam tenang';
+  String get quietHoursDesc => isEnglish
+      ? 'No syncs during these hours; the first sync after wakes up with a morning digest.'
+      : 'Tidak ada sync di jam ini; sync pertama setelahnya dikirim sebagai digest pagi.';
+  String get quietStart => isEnglish ? 'Start' : 'Mulai';
+  String get quietEnd => isEnglish ? 'End' : 'Selesai';
+  String hourLabel(int hour) => '${hour.toString().padLeft(2, '0')}:00';
+  String morningDigestTitle(int count) => isEnglish
+      ? 'Good morning — $count repo${count == 1 ? '' : 's'} updated'
+      : 'Selamat pagi — $count repo update';
   String get testNotificationTitle =>
       isEnglish ? 'Test notification' : 'Notifikasi uji';
   String get testNotificationBody => isEnglish

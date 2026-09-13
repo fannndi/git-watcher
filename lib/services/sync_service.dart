@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/commit.dart';
@@ -19,6 +20,7 @@ class _RepoFetch {
 class SyncService {
   static Future<Map<String, int>> checkUpdates({
     bool isBackground = false,
+    bool morningDigest = false,
     StorageService? storage,
     GitHubService? github,
     void Function(int completed, int total)? onProgress,
@@ -43,10 +45,17 @@ class SyncService {
       }
     }
 
+    final settings = await storage.getAppSettings();
+
+    if (isBackground && settings.wifiOnly && !await _hasWifi()) {
+      return {};
+    }
+
     await storage.acquireSyncLock();
 
     github ??= GitHubService();
     final updates = <String, int>{};
+    final notifyUpdates = <String, int>{};
     final newCommits = <String, List<Commit>>{};
     final updatedRepos = <WatchedRepo>[];
     var reposChanged = false;
@@ -58,8 +67,17 @@ class SyncService {
         return {};
       }
 
-      final settings = await storage.getAppSettings();
-      final results = await _fetchAll(github, repos, onProgress);
+      final now = DateTime.now();
+      final dueRepos = <WatchedRepo>[];
+      for (final repo in repos) {
+        if (_isDue(repo, now)) {
+          dueRepos.add(repo);
+        } else {
+          updatedRepos.add(repo);
+        }
+      }
+
+      final results = await _fetchAll(github, dueRepos, onProgress);
 
       for (final result in results) {
         final repo = result.repo;
@@ -81,7 +99,10 @@ class SyncService {
           if (newOnes.isNotEmpty) {
             final key = '${repo.fullName} (${repo.branch})';
             updates[key] = newOnes.length;
-            newCommits[key] = newOnes;
+            if (!repo.muted) {
+              notifyUpdates[key] = newOnes.length;
+              newCommits[key] = newOnes;
+            }
           }
         }
 
@@ -100,18 +121,25 @@ class SyncService {
         await storage.saveRepos(updatedRepos);
       }
 
-      final now = DateTime.now();
-      await storage.setLastSyncAt(now);
+      final syncedAt = DateTime.now();
+      await storage.setLastSyncAt(syncedAt);
 
       if (updates.isNotEmpty) {
-        await storage.addSyncLog(SyncLog(syncedAt: now, updates: updates));
+        await storage.addSyncLog(SyncLog(syncedAt: syncedAt, updates: updates));
+      }
 
-        if (isBackground && settings.notificationsEnabled) {
+      if (isBackground) {
+        if (morningDigest) {
+          await storage.setMorningDigestDate(_dateKey(syncedAt));
+        }
+
+        if (notifyUpdates.isNotEmpty && settings.notificationsEnabled) {
           try {
             await NotificationService.showUpdateNotification(
-              updates,
+              notifyUpdates,
               newCommits,
               stringsFor(settings.languageCode),
+              morningDigest: morningDigest,
             );
           } catch (e) {
             debugPrint('Sync notification failed: $e');
@@ -125,25 +153,61 @@ class SyncService {
     return updates;
   }
 
+  static bool _isDue(WatchedRepo repo, DateTime now) {
+    final lastCommitAt = repo.lastCommitAt;
+    if (lastCommitAt == null) {
+      return true;
+    }
+    if (now.difference(lastCommitAt).inDays < staleRepoDays) {
+      return true;
+    }
+    return now.hour.isEven;
+  }
+
+  static Future<bool> _hasWifi() async {
+    try {
+      final results = await Connectivity().checkConnectivity();
+      return results.contains(ConnectivityResult.wifi) ||
+          results.contains(ConnectivityResult.ethernet);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static String _dateKey(DateTime time) =>
+      '${time.year}-${time.month}-${time.day}';
+
   static Future<List<_RepoFetch>> _fetchAll(
     GitHubService github,
     List<WatchedRepo> repos,
     void Function(int completed, int total)? onProgress,
   ) async {
-    var completed = 0;
-    onProgress?.call(completed, repos.length);
+    if (repos.isEmpty) {
+      return const [];
+    }
 
+    onProgress?.call(0, repos.length);
+
+    final batched = await github.fetchCommitsBatch(repos);
+    if (batched != null) {
+      onProgress?.call(repos.length, repos.length);
+      return [
+        for (final repo in repos)
+          _RepoFetch(
+            repo,
+            batched['${repo.fullName} (${repo.branch})'] ?? const [],
+          ),
+      ];
+    }
+
+    var completed = 0;
     return Future.wait(
       repos.map((repo) async {
         _RepoFetch result;
         try {
           result = _RepoFetch(
             repo,
-            await github.fetchCommits(
-              repo.owner,
-              repo.repo,
-              repo.branch,
-            ),
+            await github.fetchCommits(repo.owner, repo.repo, repo.branch),
           );
         } catch (e) {
           debugPrint('Sync error for ${repo.fullName}: $e');

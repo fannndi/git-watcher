@@ -5,8 +5,10 @@
 > *GitHub Watcher* dengan package `github_watcher`. Sejak pengembangan lanjutan,
 > aplikasi bernama **Git Watcher** dengan app id `com.fannndi.gitwatcher` dan
 > Dart package `git_watcher`. Perubahan perilaku terkini: batas repo menjadi 10,
-> fetch rutin maksimal 25 commit per repo (1 request/repo), dan interval sync
-> dapat diatur 30/60/120 menit (default 60). Bagian lain dipertahankan sebagai sejarah.
+> fetch rutin maksimal 25 commit per repo, interval sync dapat diatur 30/60/120
+> menit (default 60), alarm inexact secara default (exact opt-in), jam tenang +
+> morning digest, adaptive backoff, dan batching GraphQL bila token tersedia.
+> Bagian lain dipertahankan sebagai sejarah.
 
 ---
 

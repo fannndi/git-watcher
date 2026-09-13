@@ -191,6 +191,12 @@ class _RepoTileState extends State<RepoTile>
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (widget.repo.muted)
+                      Icon(
+                        Icons.notifications_off_outlined,
+                        size: 16,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                     if (widget.repo.syncMode != syncModeMinimal)
                       InfoChip(
                         label: widget.repo.syncMode == syncModeExtended

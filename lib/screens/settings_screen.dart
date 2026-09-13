@@ -366,56 +366,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer.withAlpha(76),
-                      borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: colorScheme.primary.withAlpha(51)),
+                  SwitchListTile(
+                    title: Text(strings.extremePrecision),
+                    subtitle: Text(strings.extremePrecisionDesc),
+                    value: settings.preciseSync,
+                    onChanged: (value) async {
+                      await _update(settings.copyWith(preciseSync: value));
+                      await StartupService.applySyncInterval();
+                    },
+                  ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.tonal(
+                      onPressed: () =>
+                          StartupService.requestBatteryOptimizationExemption(),
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
+                      child: Text(strings.allowBatteryExemption),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    title: Text(strings.wifiOnly),
+                    subtitle: Text(strings.wifiOnlyDesc),
+                    value: settings.wifiOnly,
+                    onChanged: (value) {
+                      _update(settings.copyWith(wifiOnly: value));
+                    },
+                  ),
+                  SwitchListTile(
+                    title: Text(strings.quietHours),
+                    subtitle: Text(strings.quietHoursDesc),
+                    value: settings.quietHoursEnabled,
+                    onChanged: (value) {
+                      _update(settings.copyWith(quietHoursEnabled: value));
+                    },
+                  ),
+                  if (settings.quietHoursEnabled) ...[
+                    const SizedBox(height: 8),
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.bolt,
-                              size: 18,
-                              color: colorScheme.primary,
+                        Expanded(
+                          child: DropdownButtonFormField<int>(
+                            initialValue: settings.quietStartHour,
+                            decoration: InputDecoration(
+                              labelText: strings.quietStart,
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              strings.extremePrecision,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: colorScheme.primary,
-                              ),
-                            ),
-                          ],
+                            items: [
+                              for (var hour = 0; hour < 24; hour++)
+                                DropdownMenuItem(
+                                  value: hour,
+                                  child: Text(strings.hourLabel(hour)),
+                                ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                _update(
+                                  settings.copyWith(quietStartHour: value),
+                                );
+                              }
+                            },
+                          ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          strings.extremePrecisionDesc,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.tonal(
-                            onPressed: () => StartupService
-                                .requestBatteryOptimizationExemption(),
-                            style: FilledButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              textStyle: const TextStyle(fontSize: 12),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<int>(
+                            initialValue: settings.quietEndHour,
+                            decoration: InputDecoration(
+                              labelText: strings.quietEnd,
                             ),
-                            child: Text(strings.allowBatteryExemption),
+                            items: [
+                              for (var hour = 0; hour < 24; hour++)
+                                DropdownMenuItem(
+                                  value: hour,
+                                  child: Text(strings.hourLabel(hour)),
+                                ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                _update(settings.copyWith(quietEndHour: value));
+                              }
+                            },
                           ),
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ],
               ),
               const SizedBox(height: 16),

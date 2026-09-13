@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/commit.dart';
+import '../models/watched_repo.dart';
 import '../utils/constants.dart';
 import 'storage_service.dart';
 
@@ -144,6 +145,103 @@ class GitHubService {
 
     return CommitDetail.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<Map<String, List<Commit>>?> fetchCommitsBatch(
+    List<WatchedRepo> repos, {
+    int limit = syncFetchLimit,
+  }) async {
+    if (repos.isEmpty) {
+      return const {};
+    }
+
+    final credentials = await _storage.getCredentials();
+    if (credentials.isEmpty) {
+      return null;
+    }
+
+    final variables = <String, dynamic>{'first': limit};
+    final variableDefs = <String>['\$first: Int!'];
+    final fields = StringBuffer();
+
+    for (var i = 0; i < repos.length; i++) {
+      final repo = repos[i];
+      variables['owner$i'] = repo.owner;
+      variables['name$i'] = repo.repo;
+      variables['ref$i'] = 'refs/heads/${repo.branch}';
+      variableDefs
+        ..add('\$owner$i: String!')
+        ..add('\$name$i: String!')
+        ..add('\$ref$i: String!');
+      fields.write(
+        'r$i: repository(owner: \$owner$i, name: \$name$i) {'
+        ' ref(qualifiedName: \$ref$i) { target { ... on Commit {'
+        ' history(first: \$first) { nodes { oid message committedDate'
+        ' author { name user { login } } } } } } } }',
+      );
+    }
+
+    final query = 'query(${variableDefs.join(', ')}) { $fields }';
+
+    http.Response response;
+    try {
+      response = await _client
+          .post(
+            Uri.https(githubApiHost, '/graphql'),
+            headers: _headers(credentials.basicAuth),
+            body: jsonEncode({'query': query, 'variables': variables}),
+          )
+          .timeout(apiTimeout);
+    } catch (_) {
+      return null;
+    }
+
+    if (response.statusCode != 200) {
+      return null;
+    }
+
+    try {
+      final decoded =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      if (decoded['errors'] != null) {
+        return null;
+      }
+
+      final data = decoded['data'] as Map<String, dynamic>?;
+      if (data == null) {
+        return null;
+      }
+
+      final result = <String, List<Commit>>{};
+      for (var i = 0; i < repos.length; i++) {
+        final repoData = data['r$i'] as Map<String, dynamic>?;
+        final ref = repoData?['ref'] as Map<String, dynamic>?;
+        final target = ref?['target'] as Map<String, dynamic>?;
+        final history = target?['history'] as Map<String, dynamic>?;
+        final nodes = history?['nodes'] as List<dynamic>? ?? const [];
+
+        result['${repos[i].fullName} (${repos[i].branch})'] = nodes
+            .map((node) => _commitFromGraphql(node as Map<String, dynamic>))
+            .toList();
+      }
+
+      return result;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Commit _commitFromGraphql(Map<String, dynamic> node) {
+    final author = node['author'] as Map<String, dynamic>? ?? const {};
+    final user = author['user'] as Map<String, dynamic>? ?? const {};
+
+    return Commit(
+      sha: node['oid'] as String? ?? '',
+      message: node['message'] as String? ?? '',
+      date: parseDate(node['committedDate']) ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      author: (user['login'] as String?) ?? (author['name'] as String?) ?? '',
+    );
   }
 
   Future<List<Commit>> _fetchCommitPage(

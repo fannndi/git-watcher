@@ -17,13 +17,23 @@ lightweight alternative to the GitHub app.
 - Max 10 watched repositories per device (API rate limit consideration)
 - Max 30 sync history entries, max 1000 cached commits per repo
 - Background sync interval is user-configurable: 30/60/120 minutes, default 60
-- Each scheduled sync fetches at most 25 commits per repo (one request per repo),
-  which keeps the radio wake-up short and the battery cost low
-- Exact alarms fall back to inexact `allowWhileIdle` alarms when Android denies
-  `SCHEDULE_EXACT_ALARM`, so sync still runs without a battery-draining workaround
+- Each scheduled sync fetches at most 25 commits per repo
 - Notifications only fire for background sync and can be disabled in settings
+- Muted repos are still synced and cached, but excluded from notifications
+- Morning digest: the first sync after quiet hours sends one digest per day
 - Public repos: 60 requests/hour; authenticated: 5000 requests/hour
 - Token is base64-obfuscated, not encrypted (production upgrade: flutter_secure_storage)
+
+## Battery strategy
+
+- Inexact alarms by default; exact alarms only behind the "Extreme Precision" opt-in
+- Quiet hours skip syncs entirely instead of waking the radio
+- Adaptive backoff: while the last notification is still unread, the effective
+  interval doubles (up to 4x); any engagement (app resume or notification tap) resets it
+- Stale repos (no commit for a week) are checked at most every other hour
+- Optional Wi-Fi-only sync avoids mobile radio use
+- One GraphQL request per sync for all repos when a token is configured
+- Cache and repo prefs are written only when commits actually changed
 
 ## Key decisions
 

@@ -108,14 +108,27 @@ class NotificationService {
     );
   }
 
+  static Future<bool> hasActiveUpdateNotification() async {
+    try {
+      final active = await _plugin.getActiveNotifications();
+      return active
+          .any((notification) => notification.id == updateNotificationId);
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<void> showUpdateNotification(
     Map<String, int> updates,
     Map<String, List<Commit>> newCommits,
-    AppStrings strings,
-  ) async {
-    final title = updates.length == 1
-        ? strings.notificationTitle(updates.keys.first)
-        : strings.notificationTitleMultiple(updates.length);
+    AppStrings strings, {
+    bool morningDigest = false,
+  }) async {
+    final title = morningDigest
+        ? strings.morningDigestTitle(updates.length)
+        : updates.length == 1
+            ? strings.notificationTitle(updates.keys.first)
+            : strings.notificationTitleMultiple(updates.length);
     final body = buildUpdateNotificationBody(updates, newCommits, strings);
     final payload = updates.length == 1
         ? '$repoPayloadPrefix${updates.keys.first}'
@@ -159,6 +172,8 @@ class NotificationService {
     if (payload == null || payload.isEmpty) {
       return;
     }
+
+    await StorageService().setSyncBackoffLevel(0);
 
     if (payload == updatePayload) {
       openUpdateScreen();

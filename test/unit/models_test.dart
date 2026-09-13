@@ -191,6 +191,66 @@ void main() {
       );
     });
 
+    test('fromJson parses sync efficiency fields', () {
+      final settings = AppSettings.fromJson(const {
+        'precise_sync': true,
+        'wifi_only': true,
+        'quiet_hours_enabled': false,
+        'quiet_start_hour': 22,
+        'quiet_end_hour': 6,
+      });
+
+      expect(settings.preciseSync, true);
+      expect(settings.wifiOnly, true);
+      expect(settings.quietHoursEnabled, false);
+      expect(settings.quietStartHour, 22);
+      expect(settings.quietEndHour, 6);
+    });
+
+    test('isQuietHour handles overnight and daytime windows', () {
+      const overnight = AppSettings(
+        syncIntervalMinutes: 60,
+        languageCode: languageIndonesian,
+        themeMode: themeModeSystem,
+        quietStartHour: 23,
+        quietEndHour: 7,
+      );
+      const daytime = AppSettings(
+        syncIntervalMinutes: 60,
+        languageCode: languageIndonesian,
+        themeMode: themeModeSystem,
+        quietStartHour: 9,
+        quietEndHour: 17,
+      );
+
+      expect(overnight.isQuietHour(DateTime(2026, 1, 1, 23)), true);
+      expect(overnight.isQuietHour(DateTime(2026, 1, 1, 3)), true);
+      expect(overnight.isQuietHour(DateTime(2026, 1, 1, 7)), false);
+      expect(overnight.isQuietHour(DateTime(2026, 1, 1, 12)), false);
+      expect(daytime.isQuietHour(DateTime(2026, 1, 1, 10)), true);
+      expect(daytime.isQuietHour(DateTime(2026, 1, 1, 18)), false);
+    });
+
+    test('isQuietHour respects the toggle', () {
+      const disabled = AppSettings(
+        syncIntervalMinutes: 60,
+        languageCode: languageIndonesian,
+        themeMode: themeModeSystem,
+        quietHoursEnabled: false,
+      );
+
+      expect(disabled.isQuietHour(DateTime(2026, 1, 1, 2)), false);
+    });
+
+    test('effectiveSyncIntervalMinutes doubles up to the cap', () {
+      const settings = AppSettings.defaults();
+
+      expect(settings.effectiveSyncIntervalMinutes(0), 60);
+      expect(settings.effectiveSyncIntervalMinutes(1), 120);
+      expect(settings.effectiveSyncIntervalMinutes(2), 240);
+      expect(settings.effectiveSyncIntervalMinutes(9), 240);
+    });
+
     test('copyWith only changes given fields', () {
       const original = AppSettings.defaults();
       final modified = original.copyWith(
@@ -366,6 +426,19 @@ void main() {
       expect(modified.lastSha, 'def456');
       expect(modified.isPrivate, true);
       expect(modified.lastCommitAt, repo.lastCommitAt);
+    });
+
+    test('muted flag round-trips and copies', () {
+      const repo = WatchedRepo(
+        owner: 'a',
+        repo: 'b',
+        branch: 'main',
+        syncMode: syncModeMinimal,
+        muted: true,
+      );
+
+      expect(WatchedRepo.fromJson(repo.toJson()).muted, true);
+      expect(repo.copyWith(muted: false).muted, false);
     });
 
     test('toJson round-trips through fromJson', () {

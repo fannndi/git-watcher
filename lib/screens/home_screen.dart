@@ -29,7 +29,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final StorageService _storage = StorageService();
 
   List<WatchedRepo> _repos = [];
@@ -48,12 +48,26 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadRepos();
     _checkConnectivity();
     _checkTour();
     _checkAppUpdate();
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _openFromNotification());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _storage.setSyncBackoffLevel(0);
+    }
   }
 
   Future<void> _openFromNotification() async {
@@ -131,12 +145,18 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final repos = await _storage.getRepos();
       final lastSyncAt = await _storage.getLastSyncAt();
+      final lastSeenAt = await _storage.getLastSeenAt();
+      final history = await _storage.getSyncHistory();
       if (!mounted) return;
+
+      final latestLog = history.isEmpty ? null : history.first.syncedAt;
       setState(() {
         _repos = repos;
         _lastSyncAt = lastSyncAt;
         _isLoading = false;
         _loadFailed = false;
+        _hasUnreadUpdates = latestLog != null &&
+            (lastSeenAt == null || latestLog.isAfter(lastSeenAt));
       });
     } catch (_) {
       if (!mounted) return;
@@ -205,6 +225,34 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _repos = restored);
   }
 
+  Future<void> _toggleMuted(WatchedRepo repo) async {
+    final index = _repos.indexWhere(
+      (item) =>
+          item.owner == repo.owner &&
+          item.repo == repo.repo &&
+          item.branch == repo.branch,
+    );
+    if (index < 0) return;
+
+    final muted = !repo.muted;
+    final updated = [..._repos];
+    updated[index] = repo.copyWith(muted: muted);
+    await _storage.saveRepos(updated);
+    if (!mounted) return;
+
+    final strings = stringsFor(appSettingsController.value.languageCode);
+    setState(() => _repos = updated);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          muted
+              ? strings.repoMuted(repo.fullName)
+              : strings.repoUnmuted(repo.fullName),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showRepoActions(WatchedRepo repo) async {
     final strings = stringsFor(appSettingsController.value.languageCode);
     final colorScheme = Theme.of(context).colorScheme;
@@ -230,6 +278,18 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pop(sheetContext);
                 _copyRepoLink(repo, strings);
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                repo.muted
+                    ? Icons.notifications_active_outlined
+                    : Icons.notifications_off_outlined,
+              ),
+              title: Text(repo.muted ? strings.unmuteRepo : strings.muteRepo),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _toggleMuted(repo);
               },
             ),
             ListTile(
@@ -405,8 +465,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       isLabelVisible: _hasUnreadUpdates,
                       child: const Icon(Icons.notifications_outlined),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       setState(() => _hasUnreadUpdates = false);
+                      await _storage.setLastSeenAt(DateTime.now());
+                      if (!context.mounted) return;
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const UpdateScreen(),

@@ -8,6 +8,7 @@ class WatchedRepo {
     required this.syncMode,
     this.avatarUrl = '',
     this.isPrivate = false,
+    this.muted = false,
     this.lastCommitAt,
     this.lastSha = '',
   });
@@ -18,6 +19,7 @@ class WatchedRepo {
   final String syncMode;
   final String avatarUrl;
   final bool isPrivate;
+  final bool muted;
   final DateTime? lastCommitAt;
   final String lastSha;
 
@@ -27,6 +29,7 @@ class WatchedRepo {
     String? syncMode,
     String? avatarUrl,
     bool? isPrivate,
+    bool? muted,
     DateTime? lastCommitAt,
     String? lastSha,
   }) {
@@ -37,6 +40,7 @@ class WatchedRepo {
       syncMode: syncMode ?? this.syncMode,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       isPrivate: isPrivate ?? this.isPrivate,
+      muted: muted ?? this.muted,
       lastCommitAt: lastCommitAt ?? this.lastCommitAt,
       lastSha: lastSha ?? this.lastSha,
     );
@@ -49,6 +53,7 @@ class WatchedRepo {
         'sync_mode': syncMode,
         'avatar_url': avatarUrl,
         'is_private': isPrivate,
+        'muted': muted,
         'last_commit_at': lastCommitAt?.toIso8601String(),
         'last_sha': lastSha,
       };
@@ -63,6 +68,7 @@ class WatchedRepo {
       syncMode: rawSyncMode == 'full' ? 'extended_5000' : rawSyncMode,
       avatarUrl: json['avatar_url'] as String? ?? '',
       isPrivate: json['is_private'] == true,
+      muted: json['muted'] == true,
       lastCommitAt: parseDate(json['last_commit_at']),
       lastSha: json['last_sha'] as String? ?? '',
     );

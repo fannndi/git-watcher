@@ -155,6 +155,46 @@ class StorageService {
     await prefs.setInt(alarmIntervalKey, minutes);
   }
 
+  Future<bool> isAlarmPrecise() async {
+    final prefs = await _instance();
+    return prefs.getBool(alarmPreciseKey) ?? false;
+  }
+
+  Future<void> setAlarmPrecise(bool value) async {
+    final prefs = await _instance();
+    await prefs.setBool(alarmPreciseKey, value);
+  }
+
+  Future<int> getSyncBackoffLevel() async {
+    final prefs = await _instance();
+    return (prefs.getInt(syncBackoffKey) ?? 0).clamp(0, maxSyncBackoffLevel);
+  }
+
+  Future<void> setSyncBackoffLevel(int level) async {
+    final prefs = await _instance();
+    await prefs.setInt(syncBackoffKey, level.clamp(0, maxSyncBackoffLevel));
+  }
+
+  Future<DateTime?> getLastSeenAt() async {
+    final raw = (await _instance()).getString(lastSeenAtKey);
+    return parseDate(raw);
+  }
+
+  Future<void> setLastSeenAt(DateTime time) async {
+    final prefs = await _instance();
+    await prefs.setString(lastSeenAtKey, time.toIso8601String());
+  }
+
+  Future<String?> getMorningDigestDate() async {
+    final prefs = await _instance();
+    return prefs.getString(morningDigestKey);
+  }
+
+  Future<void> setMorningDigestDate(String date) async {
+    final prefs = await _instance();
+    await prefs.setString(morningDigestKey, date);
+  }
+
   Future<bool> hasSeenTour() async {
     final prefs = await _instance();
     return prefs.getBool(hasSeenTourKey) ?? false;

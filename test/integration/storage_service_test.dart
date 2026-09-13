@@ -231,6 +231,41 @@ void main() {
       expect(await storage.getAlarmIntervalMinutes(), 30);
     });
 
+    test('alarm precise flag', () async {
+      expect(await storage.isAlarmPrecise(), false);
+
+      await storage.setAlarmPrecise(true);
+      expect(await storage.isAlarmPrecise(), true);
+    });
+
+    test('sync backoff level is clamped', () async {
+      expect(await storage.getSyncBackoffLevel(), 0);
+
+      await storage.setSyncBackoffLevel(5);
+      expect(await storage.getSyncBackoffLevel(), maxSyncBackoffLevel);
+
+      await storage.setSyncBackoffLevel(-1);
+      expect(await storage.getSyncBackoffLevel(), 0);
+    });
+
+    test('last seen timestamp', () async {
+      expect(await storage.getLastSeenAt(), isNull);
+
+      final now = DateTime.now();
+      await storage.setLastSeenAt(now);
+      final loaded = await storage.getLastSeenAt();
+
+      expect(loaded, isNotNull);
+      expect(loaded!.difference(now).inSeconds, lessThan(1));
+    });
+
+    test('morning digest date', () async {
+      expect(await storage.getMorningDigestDate(), isNull);
+
+      await storage.setMorningDigestDate('2026-1-1');
+      expect(await storage.getMorningDigestDate(), '2026-1-1');
+    });
+
     test('tour flag', () async {
       expect(await storage.hasSeenTour(), false);
 

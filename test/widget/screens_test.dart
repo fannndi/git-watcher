@@ -89,7 +89,7 @@ void main() {
 
   group('SettingsScreen', () {
     Future<void> pumpSettings(WidgetTester tester) async {
-      tester.view.physicalSize = const Size(1200, 3200);
+      tester.view.physicalSize = const Size(1200, 4200);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
@@ -119,6 +119,10 @@ void main() {
       expect(find.text('Interval sync background'), findsOneWidget);
       expect(find.text('Kirim notifikasi uji'), findsOneWidget);
       expect(find.text('Presisi Ekstrem'), findsOneWidget);
+      expect(find.text('Sync hanya via Wi-Fi'), findsOneWidget);
+      expect(find.text('Jam tenang'), findsOneWidget);
+      expect(find.text('Mulai'), findsOneWidget);
+      expect(find.text('Selesai'), findsOneWidget);
     });
   });
 
