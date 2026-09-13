@@ -114,6 +114,17 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                       _update(settings.copyWith(notificationsEnabled: value));
                     },
                   ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(strings.hideNotificationContent),
+                    subtitle: Text(strings.hideNotificationContentDesc),
+                    value: settings.hideNotificationContent,
+                    onChanged: (value) {
+                      _update(
+                        settings.copyWith(hideNotificationContent: value),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 4),
                   SizedBox(
                     width: double.infinity,

@@ -22,7 +22,8 @@ lightweight alternative to the GitHub app.
 - Muted repos are still synced and cached, but excluded from notifications
 - Morning digest: the first sync after quiet hours sends one digest per day
 - Public repos: 60 requests/hour; authenticated: 5000 requests/hour
-- Token is base64-obfuscated, not encrypted (production upgrade: flutter_secure_storage)
+- Credentials are encrypted at rest with `flutter_secure_storage`; cloud backup is
+  disabled so tokens stay on the device
 
 ## Battery strategy
 
@@ -50,7 +51,7 @@ lightweight alternative to the GitHub app.
 
 ## Known limitations
 
-- Base64 is obfuscation, not encryption
 - Background sync can be delayed by Android Doze unless battery exemption is granted
 - No server-side push, no multi-user collaboration, no diff view
 - In-app update check reads GitHub releases tags; no auto-update
+- Personal-use build: no Play Store listing or privacy policy requirement

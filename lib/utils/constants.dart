@@ -4,6 +4,7 @@ const String appBuildNumber = '2';
 const String appReleaseChannel = 'Beta';
 const String developerName = 'alisa';
 const String developerUrl = 'https://github.com/fannndi';
+const String repositoryUrl = 'https://github.com/fannndi/git-watcher';
 const String appId = 'com.fannndi.gitwatcher';
 const int brandSeedColorValue = 0xFF2563EB;
 

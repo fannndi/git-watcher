@@ -2,6 +2,21 @@
 
 ## Done
 
+### 2026-09 — development round 10 (verification, security, polish)
+- [x] Toolchain fixed: Gradle 9.3.1 + AGP 9.1.1 + Kotlin 2.4.20; verified
+      `flutter build apk --debug --flavor production` produces an APK
+- [x] CI workflow (format check, analyze, test) on push/PR
+- [x] `SyncService` integration tests with injected fake HTTP/prefs (REST diff,
+      GraphQL batching, lock, no-op writes)
+- [x] Credentials in `flutter_secure_storage` with base64 prefs migration fallback;
+      `allowBackup=false`; optional lock-screen content hiding
+- [x] Notification action buttons: mark read + mute repo (background handler)
+- [x] Edit watched repo (branch + sync mode) from the long-press menu
+- [x] Runtime version via `package_info_plus`; GitHub links instead of Play Store;
+      privacy policy removed (personal use)
+- [x] Two-pane selection highlight, FAB feedback at the repo limit, deterministic
+      M3 theme tests
+
 ### 2026-09 — development round 9 (UI/UX deep pass)
 - [x] Settings split into a hub + sub-pages (appearance, sync, private access, about)
       with current-value subtitles
@@ -100,22 +115,25 @@
 ## Backlog
 
 ### High
-- [ ] Encrypt credentials with `flutter_secure_storage`
-- [ ] Fix build environment: Gradle 8.14 rejects Java 25. Either point Flutter at a
-      JDK 21 (`flutter config --jdk-dir=...`) or upgrade Gradle/AGP/Kotlin together
-      (AGP 9.x + Gradle 9.x + Kotlin 2.3+), then verify `flutter build apk --flavor production`
+- [ ] Device smoke test on an emulator: alarms, notification actions, dynamic color,
+      predictive back, background isolate plugins (everything currently verified only
+      by build + analyzer + tests)
+- [ ] Release build (`flutter build apk --flavor production`) currently fails on this
+      machine with `dl.google.com` connection timeouts while Gradle downloads R8 /
+      desugaring artifacts; retry when the network is stable. Debug APK builds fine.
+- [ ] Migrate to Built-in Kotlin before a future Flutter release breaks KGP plugins
+      (build warning: android_alarm_manager_plus, shared_preferences_android)
 - [ ] Request exact-alarm permission (`SCHEDULE_EXACT_ALARM`) on Android 13+ with UX
       fallback to inexact alarms
 
 ### Medium
-- [ ] Inject `GitHubService`/`StorageService` in screens for full widget-test coverage
-- [ ] Release signing: document `android/key.properties` setup for real store builds
-- [ ] ETag / conditional requests on the commits endpoint to spare rate limit
-- [ ] Verify `flutter build apk --flavor production` in CI
+- [ ] Screenshots/GIF for the README (needs a device run)
+- [ ] Inject `GitHubService`/`StorageService` into screens for deeper widget tests
+- [ ] Release signing: `android/key.properties` setup for real builds
+- [ ] Verify the GitHub release update-check path once a release tag exists
 
 ### Low
-- [ ] Optional: paginate commit cache instead of truncating at 1000
+- [ ] Optional: paginate or shard the commit cache if repos/modes grow (the current
+      1000-entry JSON rewrite is fine at present scale)
 - [ ] Optional: per-repo sync intervals
-- [ ] Optional: repository search by GitHub API in Add repo
 - [ ] Optional: biometric lock for stored credentials
-- [ ] Optional: commit count badge per `RepoTile`

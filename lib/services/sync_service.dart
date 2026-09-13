@@ -161,6 +161,7 @@ class SyncService {
               stringsFor(settings.languageCode),
               morningDigest: morningDigest,
               alert: alertUnread,
+              hideContent: settings.hideNotificationContent,
             );
           } catch (e) {
             debugPrint('Sync notification failed: $e');

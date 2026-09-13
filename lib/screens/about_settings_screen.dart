@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/app_settings.dart';
+import '../services/app_info.dart';
 import '../services/app_settings_controller.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
@@ -28,13 +29,11 @@ class AboutSettingsScreen extends StatelessWidget {
                 children: [
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.star_outline),
-                    title: Text(strings.rateApp),
-                    subtitle: Text(strings.rateAppDesc),
-                    onTap: () => _openUrl(
-                      context,
-                      'https://play.google.com/store/apps/details?id=$appId',
-                    ),
+                    leading: const Icon(Icons.code),
+                    title: Text(strings.sourceCode),
+                    subtitle: const Text(repositoryUrl),
+                    trailing: const Icon(Icons.open_in_new),
+                    onTap: () => _openUrl(context, repositoryUrl),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -43,14 +42,14 @@ class AboutSettingsScreen extends StatelessWidget {
                     subtitle: Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        '${strings.version} $appVersionName '
-                        '($appBuildNumber) - $appReleaseChannel',
+                        '${strings.version} ${AppInfo.version} '
+                        '(${AppInfo.build}) - $appReleaseChannel',
                       ),
                     ),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.code),
+                    leading: const Icon(Icons.person_outline),
                     title: Text(strings.developer),
                     subtitle: const Text(developerName),
                     trailing: const Icon(Icons.open_in_new),

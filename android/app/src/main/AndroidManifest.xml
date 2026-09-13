@@ -11,6 +11,7 @@
         android:label="Git Watcher"
         android:icon="@mipmap/launcher_icon"
         android:roundIcon="@mipmap/launcher_icon"
+        android:allowBackup="false"
         android:enableOnBackInvokedCallback="true"
         android:name="${applicationName}">
         <activity

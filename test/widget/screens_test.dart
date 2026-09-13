@@ -194,7 +194,7 @@ void main() {
     testWidgets('shows about entries', (tester) async {
       await pumpScreen(tester, const AboutSettingsScreen());
 
-      expect(find.text('Beri Nilai'), findsOneWidget);
+      expect(find.text('Kode sumber'), findsOneWidget);
       expect(find.text('alisa'), findsOneWidget);
     });
   });
@@ -233,6 +233,21 @@ void main() {
       expect(materialApp.darkTheme?.useMaterial3, true);
       expect(materialApp.theme?.brightness, Brightness.light);
       expect(materialApp.darkTheme?.brightness, Brightness.dark);
+    });
+
+    testWidgets('applies M3 component themes and motion', (tester) async {
+      await pumpApp(tester);
+
+      final theme = tester.widget<MaterialApp>(find.byType(MaterialApp)).theme!;
+      final cardShape = theme.cardTheme.shape! as RoundedRectangleBorder;
+
+      expect((cardShape.borderRadius as BorderRadius).topLeft.x, 16);
+      expect(theme.snackBarTheme.behavior, SnackBarBehavior.floating);
+      expect(
+        theme.pageTransitionsTheme.builders[TargetPlatform.android],
+        isA<FadeForwardsPageTransitionsBuilder>(),
+      );
+      expect(theme.inputDecorationTheme.filled, true);
     });
   });
 }

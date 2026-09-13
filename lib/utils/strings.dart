@@ -214,6 +214,14 @@ class AppStrings {
   String get alertOnUnreadDesc => isEnglish
       ? 'Second and later notifications play a sound until you check them.'
       : 'Notifikasi kedua dan setelahnya berbunyi sampai kamu cek.';
+  String get hideNotificationContent => isEnglish
+      ? 'Hide content on lock screen'
+      : 'Sembunyikan isi di layar kunci';
+  String get hideNotificationContentDesc => isEnglish
+      ? 'Notifications show only a generic message when the phone is locked.'
+      : 'Notifikasi hanya menampilkan pesan umum saat HP terkunci.';
+  String get markRead => isEnglish ? 'Mark read' : 'Tandai dibaca';
+  String get editRepo => isEnglish ? 'Edit repo' : 'Edit repo';
   String get openNotificationSettings => isEnglish
       ? 'Android notification settings'
       : 'Pengaturan notifikasi Android';
@@ -276,10 +284,7 @@ class AppStrings {
   String get version => isEnglish ? 'Version' : 'Versi';
   String get channel => isEnglish ? 'Channel' : 'Channel';
   String get developer => isEnglish ? 'Developer' : 'Developer';
-  String get rateApp => isEnglish ? 'Rate App' : 'Beri Nilai';
-  String get rateAppDesc => isEnglish
-      ? 'Rate this app on Google Play Store'
-      : 'Beri nilai aplikasi ini di Google Play Store';
+  String get sourceCode => isEnglish ? 'Source code' : 'Kode sumber';
 
   String get noSyncHistory =>
       isEnglish ? 'No sync results yet' : 'Belum ada hasil sinkron';

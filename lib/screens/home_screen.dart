@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/app_settings.dart';
 import '../models/watched_repo.dart';
+import '../services/app_info.dart';
 import '../services/app_settings_controller.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
@@ -20,6 +21,7 @@ import '../widgets/repo_tile.dart';
 import '../widgets/skeleton.dart';
 import 'add_repo_screen.dart';
 import 'detail_screen.dart';
+import 'edit_repo_screen.dart';
 import 'settings_screen.dart';
 import 'update_screen.dart';
 
@@ -118,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final latest = body['tag_name']?.toString().replaceFirst('v', '');
-      if (latest == null || latest == appVersionName || !mounted) {
+      if (latest == null || latest == AppInfo.version || !mounted) {
         return;
       }
 
@@ -128,16 +130,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           content: Text(strings.updateAvailable(latest)),
           action: SnackBarAction(
             label: strings.updateAction,
-            onPressed: _openStoreListing,
+            onPressed: _openReleases,
           ),
         ),
       );
     } catch (_) {}
   }
 
-  Future<void> _openStoreListing() async {
+  Future<void> _openReleases() async {
     await launchUrl(
-      Uri.parse('https://play.google.com/store/apps/details?id=$appId'),
+      Uri.parse('$repositoryUrl/releases'),
       mode: LaunchMode.externalApplication,
     );
   }
@@ -238,6 +240,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() => _repos = restored);
   }
 
+  Future<void> _editRepo(WatchedRepo repo) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => EditRepoScreen(repo: repo)),
+    );
+    if (changed != true) return;
+
+    final selected = _selectedRepo;
+    await _loadRepos();
+    if (!mounted || selected == null) return;
+
+    final match = _repos
+        .where(
+          (item) => item.owner == selected.owner && item.repo == selected.repo,
+        )
+        .toList();
+    setState(() => _selectedRepo = match.isEmpty ? null : match.first);
+  }
+
   Future<void> _toggleMuted(WatchedRepo repo) async {
     final index = _repos.indexWhere(
       (item) =>
@@ -291,6 +311,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               onTap: () {
                 Navigator.pop(sheetContext);
                 _copyRepoLink(repo, strings);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(strings.editRepo),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _editRepo(repo);
               },
             ),
             ListTile(
@@ -535,20 +563,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ],
         ),
       ),
-      floatingActionButton: _repos.length >= maxWatchedRepos
-          ? null
-          : _repos.isEmpty
-              ? FloatingActionButton.extended(
-                  onPressed: _openAddRepo,
-                  tooltip: strings.addRepo,
-                  icon: const Icon(Icons.add),
-                  label: Text(strings.addRepo),
-                )
-              : FloatingActionButton(
-                  onPressed: _openAddRepo,
-                  tooltip: strings.addRepo,
-                  child: const Icon(Icons.add),
-                ),
+      floatingActionButton: _repos.isEmpty
+          ? FloatingActionButton.extended(
+              onPressed: _repos.length >= maxWatchedRepos
+                  ? _showMaxReposMessage
+                  : _openAddRepo,
+              tooltip: strings.addRepo,
+              icon: const Icon(Icons.add),
+              label: Text(strings.addRepo),
+            )
+          : FloatingActionButton(
+              onPressed: _repos.length >= maxWatchedRepos
+                  ? _showMaxReposMessage
+                  : _openAddRepo,
+              tooltip: strings.addRepo,
+              child: const Icon(Icons.add),
+            ),
+    );
+  }
+
+  void _showMaxReposMessage() {
+    final strings = stringsFor(appSettingsController.value.languageCode);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.maxRepos)),
     );
   }
 
@@ -613,6 +650,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       case 'settings':
         _openSettings();
     }
+  }
+
+  bool _isSelected(WatchedRepo repo) {
+    final selected = _selectedRepo;
+    return selected != null &&
+        selected.owner == repo.owner &&
+        selected.repo == repo.repo &&
+        selected.branch == repo.branch;
   }
 
   Widget _buildDetailPane(AppStrings strings) {
@@ -753,6 +798,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         onDismissed: (_) => _deleteRepo(repo, index),
         child: RepoTile(
           repo: repo,
+          selected: wide && _isSelected(repo),
           onTap: () {
             if (wide) {
               setState(() => _selectedRepo = repo);

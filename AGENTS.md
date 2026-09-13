@@ -34,6 +34,20 @@ App id: `com.fannndi.gitwatcher`, Dart package: `git_watcher`.
 | Release build | `flutter build apk --flavor production` |
 | Regenerate launcher icons | `dart run flutter_launcher_icons` |
 | Helper script | `.\run_tests.ps1 [-Type unit|widget|integration|all]` |
+| CI | `.github/workflows/ci.yml` — format check, analyze, test |
+
+Toolchain note: Gradle 9.3.1 + AGP 9.1.1 + Kotlin 2.4.20 (required for Java 25;
+older Gradle 8.x cannot run on this machine). `android/builtInKotlin=false` and
+`android.newDsl=false` are Flutter-migrator flags, keep them.
+
+## Security
+
+- GitHub credentials live in `flutter_secure_storage`; older base64 prefs are
+  migrated on first read. `StorageService` falls back to prefs only when the
+  secure plugin is unavailable (tests).
+- `android:allowBackup="false"` so tokens never leave the device via cloud backup.
+- `hideNotificationContent` maps to `NotificationVisibility.secret` for lock-screen
+  privacy.
 
 ## Layout
 
@@ -115,7 +129,10 @@ test/
   `AppSettings.notificationsEnabled` is true. Muted repos are still synced and
   cached but excluded from notifications. The body lists the newest commit titles
   with authors (cap 3 per repo); the payload deep-links to the updated repo when
-  exactly one repo changed, otherwise to `UpdateScreen`.
+  exactly one repo changed, otherwise to `UpdateScreen`. Notification actions:
+  `mark_read` resets the unread counter and cancels, `mute_repo` mutes the
+  payload's repo (single-repo notifications only). The background action handler is
+  the top-level `notificationActionBackground` entry point.
 - Unread badge is persisted via `last_seen_at`: history is "unread" while the newest
   `SyncLog` is newer than the stored last-seen timestamp.
 - Token is base64-obfuscated in SharedPreferences, not encrypted.

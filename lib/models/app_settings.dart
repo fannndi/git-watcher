@@ -10,6 +10,7 @@ class AppSettings {
     this.wifiOnly = false,
     this.alertOnUnread = false,
     this.dynamicColor = true,
+    this.hideNotificationContent = false,
     this.quietHoursEnabled = true,
     this.wakeMinutes = defaultWakeMinutes,
     this.sleepMinutes = defaultSleepMinutes,
@@ -24,6 +25,7 @@ class AppSettings {
         wifiOnly = false,
         alertOnUnread = false,
         dynamicColor = true,
+        hideNotificationContent = false,
         quietHoursEnabled = true,
         wakeMinutes = defaultWakeMinutes,
         sleepMinutes = defaultSleepMinutes;
@@ -36,6 +38,7 @@ class AppSettings {
   final bool wifiOnly;
   final bool alertOnUnread;
   final bool dynamicColor;
+  final bool hideNotificationContent;
   final bool quietHoursEnabled;
   final int wakeMinutes;
   final int sleepMinutes;
@@ -49,6 +52,7 @@ class AppSettings {
     bool? wifiOnly,
     bool? alertOnUnread,
     bool? dynamicColor,
+    bool? hideNotificationContent,
     bool? quietHoursEnabled,
     int? wakeMinutes,
     int? sleepMinutes,
@@ -62,6 +66,8 @@ class AppSettings {
       wifiOnly: wifiOnly ?? this.wifiOnly,
       alertOnUnread: alertOnUnread ?? this.alertOnUnread,
       dynamicColor: dynamicColor ?? this.dynamicColor,
+      hideNotificationContent:
+          hideNotificationContent ?? this.hideNotificationContent,
       quietHoursEnabled: quietHoursEnabled ?? this.quietHoursEnabled,
       wakeMinutes: wakeMinutes ?? this.wakeMinutes,
       sleepMinutes: sleepMinutes ?? this.sleepMinutes,
@@ -77,6 +83,7 @@ class AppSettings {
         'wifi_only': wifiOnly,
         'alert_on_unread': alertOnUnread,
         'dynamic_color': dynamicColor,
+        'hide_notification_content': hideNotificationContent,
         'quiet_hours_enabled': quietHoursEnabled,
         'wake_minutes': wakeMinutes,
         'sleep_minutes': sleepMinutes,
@@ -96,6 +103,8 @@ class AppSettings {
       wifiOnly: json['wifi_only'] as bool? ?? false,
       alertOnUnread: json['alert_on_unread'] as bool? ?? false,
       dynamicColor: json['dynamic_color'] as bool? ?? true,
+      hideNotificationContent:
+          json['hide_notification_content'] as bool? ?? false,
       quietHoursEnabled: json['quiet_hours_enabled'] as bool? ?? true,
       wakeMinutes: normalizeTime(
         (json['wake_minutes'] as num?)?.toInt(),

@@ -73,9 +73,18 @@ Models (models/)
    repo's `DetailScreen` when a single repo changed, otherwise `UpdateScreen`.
 8. Tapping the notification opens that destination through the global
    `navigatorKey` and resets the unread counter; cold starts are redirected after
-   the first frame. Resuming the app also resets the counter.
+   the first frame. Resuming the app also resets the counter. Notification action
+   buttons (`mark_read`, `mute_repo`) are handled in the background isolate by
+   `notificationActionBackground`.
 9. Pull-to-refresh in `DetailScreen` fetches only the newest 25 commits and merges
    them into the cache instead of re-downloading the whole sync mode.
+10. Editing a watched repo (branch or sync mode) refetches its commits, writes the
+    new cache key, removes the old one, and replaces the stored repo entry.
+
+## Quality pipeline
+
+`.github/workflows/ci.yml` runs `dart format --set-exit-if-changed`, `flutter
+analyze` and `flutter test` on every push and pull request.
 
 ## Storage keys (SharedPreferences)
 
@@ -85,7 +94,7 @@ Models (models/)
 | `app_settings` | JSON object | `AppSettings` |
 | `sync_history` | JSON array | last `maxSyncHistory` (30) `SyncLog` entries |
 | `commit_cache_{owner}_{repo}_{branch}_{mode}` | JSON array | deduped commits, max 1000 |
-| `github_credentials` | JSON object | base64-obfuscated username/token |
+| `github_credentials` | secure storage | username/token (base64 fallback in prefs when unavailable) |
 | `last_sync_at` | ISO 8601 | last successful sync (foreground debounce) |
 | `sync_lock` | ISO 8601 | sync single-flight lock |
 | `alarm_registered` | bool | sync alarm already scheduled |

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -12,6 +14,8 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 const String updatePayload = 'updates';
 const String repoPayloadPrefix = 'repo:';
+const String markReadAction = 'mark_read';
+const String muteRepoAction = 'mute_repo';
 const int _notificationCommitLimit = 3;
 
 String buildUpdateNotificationBody(
@@ -39,6 +43,16 @@ String buildUpdateNotificationBody(
   return lines.join('\n');
 }
 
+@pragma('vm:entry-point')
+Future<void> notificationActionBackground(NotificationResponse response) async {
+  DartPluginRegistrant.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.handlePayload(
+    response.payload,
+    actionId: response.actionId,
+  );
+}
+
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -50,8 +64,13 @@ class NotificationService {
 
     await _plugin.initialize(
       settings,
-      onDidReceiveNotificationResponse:
-          isBackground ? null : (response) => handlePayload(response.payload),
+      onDidReceiveNotificationResponse: isBackground
+          ? null
+          : (response) => handlePayload(
+                response.payload,
+                actionId: response.actionId,
+              ),
+      onDidReceiveBackgroundNotificationResponse: notificationActionBackground,
     );
 
     const channel = AndroidNotificationChannel(
@@ -122,8 +141,9 @@ class NotificationService {
   static Future<bool> hasActiveUpdateNotification() async {
     try {
       final active = await _plugin.getActiveNotifications();
-      return active
-          .any((notification) => notification.id == updateNotificationId);
+      return active.any(
+        (notification) => notification.id == updateNotificationId,
+      );
     } catch (_) {
       return false;
     }
@@ -135,6 +155,7 @@ class NotificationService {
     AppStrings strings, {
     bool morningDigest = false,
     bool alert = false,
+    bool hideContent = false,
   }) async {
     final title = morningDigest
         ? strings.morningDigestTitle(updates.length)
@@ -157,8 +178,16 @@ class NotificationService {
         priority: Priority.high,
         enableVibration: true,
         playSound: true,
+        visibility: hideContent
+            ? NotificationVisibility.secret
+            : NotificationVisibility.private,
         styleInformation:
             updates.length > 1 ? BigTextStyleInformation(body) : null,
+        actions: [
+          AndroidNotificationAction(markReadAction, strings.markRead),
+          if (updates.length == 1)
+            AndroidNotificationAction(muteRepoAction, strings.muteRepo),
+        ],
       ),
     );
 
@@ -181,7 +210,22 @@ class NotificationService {
     }
   }
 
-  static Future<void> handlePayload(String? payload) async {
+  static Future<void> handlePayload(
+    String? payload, {
+    String? actionId,
+  }) async {
+    if (actionId == markReadAction) {
+      await StorageService().setUnreadCycles(0);
+      await _cancelUpdateNotification();
+      return;
+    }
+
+    if (actionId == muteRepoAction) {
+      await _muteRepoFromPayload(payload);
+      await _cancelUpdateNotification();
+      return;
+    }
+
     if (payload == null || payload.isEmpty) {
       return;
     }
@@ -208,6 +252,34 @@ class NotificationService {
 
       openUpdateScreen();
     }
+  }
+
+  static Future<void> _muteRepoFromPayload(String? payload) async {
+    if (payload == null || !payload.startsWith(repoPayloadPrefix)) {
+      return;
+    }
+
+    final key = payload.substring(repoPayloadPrefix.length);
+    final storage = StorageService();
+    final repos = await storage.getRepos();
+    var changed = false;
+    final updated = repos.map((repo) {
+      if ('${repo.fullName} (${repo.branch})' == key) {
+        changed = true;
+        return repo.copyWith(muted: true);
+      }
+      return repo;
+    }).toList();
+
+    if (changed) {
+      await storage.saveRepos(updated);
+    }
+  }
+
+  static Future<void> _cancelUpdateNotification() async {
+    try {
+      await _plugin.cancel(updateNotificationId);
+    } catch (_) {}
   }
 
   static void openUpdateScreen() {

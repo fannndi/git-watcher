@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/app_settings.dart';
+import '../services/app_info.dart';
 import '../services/app_settings_controller.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
@@ -94,7 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _SettingsTile(
                 icon: Icons.info_outline,
                 title: strings.aboutApp,
-                subtitle: 'v$appVersionName ($appBuildNumber)',
+                subtitle: 'v${AppInfo.version} (${AppInfo.build})',
                 onTap: () => _open(const AboutSettingsScreen()),
               ),
             ],

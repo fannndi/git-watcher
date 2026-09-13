@@ -269,6 +269,17 @@ void main() {
       expect(defaults.copyWith(dynamicColor: false).dynamicColor, false);
     });
 
+    test('hide notification content defaults off', () {
+      const defaults = AppSettings.defaults();
+
+      expect(defaults.hideNotificationContent, false);
+      expect(
+        AppSettings.fromJson(const {'hide_notification_content': true})
+            .hideNotificationContent,
+        true,
+      );
+    });
+
     test('copyWith only changes given fields', () {
       const original = AppSettings.defaults();
       final modified = original.copyWith(

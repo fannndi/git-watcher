@@ -23,9 +23,13 @@ Package: `com.fannndi.gitwatcher` (Dart package `git_watcher`).
   straight to the updated repo (or sync history when several repos changed), plus
   a once-a-day morning digest after wake-up
 - Optional sound alerts for unread updates (second channel) with a shortcut to
-  Android notification settings for Do Not Disturb override
-- Per-repo mute (long-press), persisted unread badge, offline commit cache grouped
-  by day, search by message/SHA, and a commit detail sheet with copy-SHA
+  Android notification settings for Do Not Disturb override; action buttons let you
+  mark updates read or mute a repo straight from the notification
+- Edit a watched repo (branch + sync mode) from the long-press menu
+- Credentials in `flutter_secure_storage`, cloud backup disabled, optional
+  lock-screen content hiding
+- Per-repo mute, persisted unread badge, offline commit cache grouped by day,
+  search by message/SHA, and a commit detail sheet with copy-SHA
 - Two-pane master-detail layout on tablets, pinned date headers, Today/7-day commit
   filters, skeleton loading, and repo/day filters in sync history
 - Settings hub split into appearance, sync, private access, and about pages
@@ -59,11 +63,14 @@ Release APK:
 flutter build apk --flavor production
 ```
 
+Toolchain: Gradle 9.3.1 + AGP 9.1.1 + Kotlin 2.4.20 (Java 25 compatible).
+CI runs `dart format --set-exit-if-changed`, `flutter analyze`, and `flutter test`.
+
 ## Quality gates
 
 ```powershell
 flutter analyze   # must report zero issues
-flutter test      # 50 tests
+flutter test      # 92 tests
 ```
 
 ## Documentation

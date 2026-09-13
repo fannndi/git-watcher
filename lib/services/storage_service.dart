@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_settings.dart';
@@ -10,6 +11,8 @@ import '../models/watched_repo.dart';
 import '../utils/constants.dart';
 
 class StorageService {
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+
   SharedPreferences? _prefs;
 
   Future<SharedPreferences> _instance() async {
@@ -97,12 +100,62 @@ class StorageService {
     await saveCachedCommits(repo, [...commits, ...existing]);
   }
 
+  Future<void> removeCachedCommits(WatchedRepo repo) async {
+    final prefs = await _instance();
+    await prefs.remove(_commitCacheKey(repo));
+  }
+
+  Future<void> replaceRepo(WatchedRepo repo) async {
+    final repos = await getRepos();
+    final updated = repos
+        .map(
+          (item) => item.owner == repo.owner &&
+                  item.repo == repo.repo &&
+                  item.branch == repo.branch
+              ? repo
+              : item,
+        )
+        .toList();
+    await saveRepos(updated);
+  }
+
   Future<GitHubCredentials> getCredentials() async {
+    final secure = await _readSecure(githubCredentialsKey);
+    if (secure != null && secure.isNotEmpty) {
+      return _decodeCredentials(secure);
+    }
+
     final raw = (await _instance()).getString(githubCredentialsKey);
     if (raw == null || raw.isEmpty) {
       return const GitHubCredentials.empty();
     }
 
+    final credentials = _decodeCredentials(raw);
+    if (credentials.isNotEmpty) {
+      await _writeSecure(githubCredentialsKey, raw);
+      await (await _instance()).remove(githubCredentialsKey);
+    }
+    return credentials;
+  }
+
+  Future<void> saveCredentials(GitHubCredentials credentials) async {
+    final raw = jsonEncode(credentials.toJson());
+    if (await _writeSecure(githubCredentialsKey, raw)) {
+      await (await _instance()).remove(githubCredentialsKey);
+      return;
+    }
+
+    final prefs = await _instance();
+    await prefs.setString(githubCredentialsKey, raw);
+  }
+
+  Future<void> clearCredentials() async {
+    await _deleteSecure(githubCredentialsKey);
+    final prefs = await _instance();
+    await prefs.remove(githubCredentialsKey);
+  }
+
+  GitHubCredentials _decodeCredentials(String raw) {
     try {
       return GitHubCredentials.fromJson(
         jsonDecode(raw) as Map<String, dynamic>,
@@ -112,17 +165,27 @@ class StorageService {
     }
   }
 
-  Future<void> saveCredentials(GitHubCredentials credentials) async {
-    final prefs = await _instance();
-    await prefs.setString(
-      githubCredentialsKey,
-      jsonEncode(credentials.toJson()),
-    );
+  Future<String?> _readSecure(String key) async {
+    try {
+      return await _secureStorage.read(key: key);
+    } catch (_) {
+      return null;
+    }
   }
 
-  Future<void> clearCredentials() async {
-    final prefs = await _instance();
-    await prefs.remove(githubCredentialsKey);
+  Future<bool> _writeSecure(String key, String value) async {
+    try {
+      await _secureStorage.write(key: key, value: value);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _deleteSecure(String key) async {
+    try {
+      await _secureStorage.delete(key: key);
+    } catch (_) {}
   }
 
   Future<DateTime?> getLastSyncAt() async {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app.dart';
+import 'services/app_info.dart';
 import 'services/app_settings_controller.dart';
 import 'services/startup_service.dart';
 import 'services/storage_service.dart';
@@ -29,6 +30,8 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('Settings load failed, using defaults: $e');
   }
+
+  await AppInfo.load();
 
   await StartupService.init();
 

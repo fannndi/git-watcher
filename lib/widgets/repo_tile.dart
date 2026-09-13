@@ -14,12 +14,14 @@ class RepoTile extends StatefulWidget {
     required this.onTap,
     required this.onDelete,
     this.onLongPress,
+    this.selected = false,
   });
 
   final WatchedRepo repo;
   final VoidCallback onTap;
   final VoidCallback onDelete;
   final VoidCallback? onLongPress;
+  final bool selected;
 
   @override
   State<RepoTile> createState() => _RepoTileState();
@@ -50,10 +52,16 @@ class _RepoTileState extends State<RepoTile>
       scale: _scale,
       child: Card(
         clipBehavior: Clip.hardEdge,
+        color: widget.selected
+            ? colorScheme.secondaryContainer.withValues(alpha: 0.35)
+            : null,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            color: widget.selected
+                ? colorScheme.primary
+                : colorScheme.outlineVariant.withValues(alpha: 0.5),
+            width: widget.selected ? 1.5 : 1,
           ),
         ),
         child: InkWell(
