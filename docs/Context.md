@@ -1,30 +1,37 @@
 # Context — GitHub Watcher
 
-## Business Context
-GitHub Watcher is a Flutter Android app for monitoring GitHub repository commits. Built as a mobile programming project (tugas pemrograman mobile).
+## Business context
 
-## Target Users
+GitHub Watcher is a Flutter Android app for monitoring GitHub repository commits.
+It was built as a mobile programming project and is maintained as a focused,
+lightweight alternative to the GitHub app.
+
+## Target users
+
 - Developers tracking repo activity
 - Students monitoring project commits
 - Small teams watching shared repositories
 
-## Business Rules
-- Max 5 watched repositories (API rate limit consideration)
-- Max 30 sync history entries (storage optimization)
-- Max 1000 cached commits per repo (performance)
-- 60-minute background sync interval
-- Token stored as Base64 (not encryption — noted for production upgrade)
-- Public repos: 60 req/hr limit; Authenticated: 5000 req/hr
+## Business rules
 
-## Key Decisions
-- ValueNotifier over Provider/Riverpod for simplicity
-- SharedPreferences over SQLite for key-value data
-- AndroidAlarmManager over WorkManager for precision
-- Conditional exports over runtime platform checks
-- Custom i18n over flutter_localizations for simplicity
+- Max 5 watched repositories per device (API rate limit consideration)
+- Max 30 sync history entries, max 1000 cached commits per repo
+- Background sync interval is fixed at 60 minutes
+- Notifications only fire for background sync and can be disabled in settings
+- Public repos: 60 requests/hour; authenticated: 5000 requests/hour
+- Token is base64-obfuscated, not encrypted (production upgrade: flutter_secure_storage)
 
-## Known Limitations
-- Base64 is not encryption (production: use flutter_secure_storage)
-- iOS not primary target (stubs only)
-- No server-side push notifications
-- No multi-user collaboration
+## Key decisions
+
+- ValueNotifier over Provider/Riverpod: one global setting, no extra dependency
+- SharedPreferences over SQLite: small key-value payloads only
+- AndroidAlarmManager over WorkManager: exact hourly cadence instead of eventual
+- Single platform (Android) and no conditional-export stubs: less code to maintain
+- Custom AppStrings i18n over flutter_localizations: two languages, no codegen
+
+## Known limitations
+
+- Base64 is obfuscation, not encryption
+- Background sync can be delayed by Android Doze unless battery exemption is granted
+- No server-side push, no multi-user collaboration, no diff view
+- In-app update check reads GitHub releases tags; no auto-update

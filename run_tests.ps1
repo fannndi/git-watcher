@@ -1,4 +1,4 @@
-# run_tests.ps1 — Run all tests for git-watcher
+# run_tests.ps1 — quality gates for GitHub Watcher
 # Usage: .\run_tests.ps1 [-Type "unit|widget|integration|all"]
 
 param(
@@ -6,27 +6,16 @@ param(
     [string]$Type = "all"
 )
 
-Write-Host "=== Git Watcher Tests ===" -ForegroundColor Cyan
-Write-Host ""
+Write-Host "=== GitHub Watcher Quality Gates ===" -ForegroundColor Cyan
+
+Write-Host "flutter analyze" -ForegroundColor Yellow
+flutter analyze
 
 switch ($Type) {
-    "unit" {
-        Write-Host "Running unit tests..." -ForegroundColor Yellow
-        flutter test test/unit/
-    }
-    "widget" {
-        Write-Host "Running widget tests..." -ForegroundColor Yellow
-        flutter test test/widget/
-    }
-    "integration" {
-        Write-Host "Running integration tests..." -ForegroundColor Yellow
-        flutter test test/integration/
-    }
-    "all" {
-        Write-Host "Running all tests..." -ForegroundColor Yellow
-        flutter test
-    }
+    "unit" { flutter test test/unit/ }
+    "widget" { flutter test test/widget/ }
+    "integration" { flutter test test/integration/ }
+    "all" { flutter test }
 }
 
-Write-Host ""
-Write-Host "=== Tests Complete ===" -ForegroundColor Cyan
+Write-Host "=== Done ===" -ForegroundColor Cyan

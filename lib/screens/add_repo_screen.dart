@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../models/commit.dart';
 import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
 import '../services/github_service.dart';
@@ -29,6 +28,9 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
   bool _isChecking = false;
   bool _isAdding = false;
 
+  AppStrings get _strings =>
+      stringsFor(appSettingsController.value.languageCode);
+
   @override
   void dispose() {
     _controller.dispose();
@@ -37,20 +39,16 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
 
   Future<void> _checkRepo() async {
     final input = _controller.text.trim();
+    final strings = _strings;
+
     setState(() {
       _foundRepo = null;
       _branches = [];
       _selectedBranch = null;
     });
-    final strings = stringsFor(appSettingsController.value.languageCode);
 
     if (input.isEmpty) {
       _showError(strings.emptyRepositoryInput);
-      return;
-    }
-
-    if (!input.contains('/')) {
-      _showError(strings.invalidRepositoryFormat);
       return;
     }
 
@@ -62,28 +60,27 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
 
     final owner = parts[0].trim();
     final repo = parts[1].trim();
-    final existing = await _storage.getRepos();
 
-    if (existing.length >= maxWatchedRepos) {
-      _showError(strings.maxRepos);
+    if ((await _storage.getRepos()).length >= maxWatchedRepos) {
+      if (mounted) _showError(strings.maxRepos);
       return;
     }
 
     setState(() => _isChecking = true);
     try {
-      final result = await _github.getRepo(owner, repo);
+      final found = await _github.getRepo(owner, repo);
       if (!mounted) return;
-
-      if (result == null) {
+      if (found == null) {
         _showError(strings.repositoryNotFound);
         return;
       }
 
       final branches = await _github.fetchBranches(owner, repo);
       if (!mounted) return;
-      final defaultBranch = result['default_branch'] as String? ?? 'main';
+
+      final defaultBranch = found['default_branch'] as String? ?? 'main';
       setState(() {
-        _foundRepo = result;
+        _foundRepo = found;
         _owner = owner;
         _repo = repo;
         _branches = branches;
@@ -94,26 +91,24 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
                 : branches.first;
       });
     } catch (_) {
-      if (!mounted) return;
-      _showError(strings.connectionFailed);
+      if (mounted) _showError(strings.connectionFailed);
     } finally {
-      if (mounted) {
-        setState(() => _isChecking = false);
-      }
+      if (mounted) setState(() => _isChecking = false);
     }
   }
 
   Future<void> _addRepo() async {
     final owner = _owner;
     final repo = _repo;
-    final foundRepo = _foundRepo;
-    final strings = stringsFor(appSettingsController.value.languageCode);
     final branch = _selectedBranch;
-    if (owner == null || repo == null || foundRepo == null || branch == null) {
+    final found = _foundRepo;
+    if (owner == null || repo == null || branch == null || found == null) {
       return;
     }
 
+    final strings = _strings;
     setState(() => _isAdding = true);
+
     try {
       final existing = await _storage.getRepos();
       final duplicate = existing.any(
@@ -123,33 +118,30 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
             item.branch.toLowerCase() == branch.toLowerCase(),
       );
       if (duplicate) {
-        _showError(strings.duplicateRepository);
+        if (mounted) _showError(strings.duplicateRepository);
         return;
       }
 
-      final commits = await _fetchInitialCommits(owner, repo, branch);
+      final commits =
+          await _github.fetchCommitsForMode(owner, repo, branch, _syncMode);
       final newRepo = WatchedRepo(
         owner: owner,
         repo: repo,
         branch: branch,
         syncMode: _syncMode,
-        avatarUrl: _repoAvatarUrl(foundRepo),
-        isPrivate: foundRepo['private'] == true,
+        avatarUrl: _avatarUrl(found),
+        isPrivate: found['private'] == true,
         lastCommitAt: commits.isEmpty ? null : commits.first.date,
         lastSha: commits.isEmpty ? '' : commits.first.sha,
       );
 
       await _storage.saveRepos([...existing, newRepo]);
       await _storage.saveCachedCommits(newRepo, commits);
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
+      if (mounted) Navigator.of(context).pop(true);
     } catch (_) {
-      if (!mounted) return;
-      _showError(strings.addRepositoryFailed);
+      if (mounted) _showError(strings.addRepositoryFailed);
     } finally {
-      if (mounted) {
-        setState(() => _isAdding = false);
-      }
+      if (mounted) setState(() => _isAdding = false);
     }
   }
 
@@ -158,14 +150,32 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
+  String _avatarUrl(Map<String, dynamic> repo) {
+    final owner = repo['owner'];
+    if (owner is Map<String, dynamic>) {
+      return owner['avatar_url'] as String? ?? '';
+    }
+    return '';
+  }
+
+  String get _syncModeDescription {
+    final strings = _strings;
+    if (_syncMode == syncModeLatest) {
+      return strings.latestSyncDescription;
+    }
+    if (_syncMode == syncModeExtended) {
+      return strings.extendedSyncDescription;
+    }
+    return strings.minimalSyncDescription;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final foundRepo = _foundRepo;
-
     return ValueListenableBuilder(
       valueListenable: appSettingsController,
       builder: (context, settings, _) {
         final strings = stringsFor(settings.languageCode);
+        final foundRepo = _foundRepo;
 
         return Scaffold(
           appBar: AppBar(title: Text(strings.addRepo)),
@@ -178,7 +188,6 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
                 decoration: InputDecoration(
                   labelText: strings.repository,
                   helperText: strings.repositoryInputHelper,
-                  border: const OutlineInputBorder(),
                 ),
                 onSubmitted: (_) => _checkRepo(),
               ),
@@ -197,9 +206,6 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
               if (foundRepo != null) ...[
                 const SizedBox(height: 16),
                 Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -215,14 +221,14 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
                               '${_owner ?? ''}/${_repo ?? ''}',
                         ),
                         Text(
-                          '${strings.defaultBranch}: ${foundRepo['default_branch'] ?? 'main'}',
+                          '${strings.defaultBranch}: '
+                          '${foundRepo['default_branch'] ?? 'main'}',
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _selectedBranch,
+                          initialValue: _selectedBranch,
                           decoration: InputDecoration(
                             labelText: strings.watchedBranch,
-                            border: const OutlineInputBorder(),
                           ),
                           items: _branches.isEmpty && _selectedBranch != null
                               ? [
@@ -304,53 +310,5 @@ class _AddRepoScreenState extends State<AddRepoScreen> {
         );
       },
     );
-  }
-
-  Future<List<Commit>> _fetchInitialCommits(
-    String owner,
-    String repo,
-    String branch,
-  ) {
-    if (_syncMode == syncModeLatest) {
-      return _github.fetchCommitsWithLimit(
-        owner,
-        repo,
-        branch,
-        latestSyncCommitLimit,
-      );
-    }
-
-    if (_syncMode == syncModeExtended) {
-      return _github.fetchCommitsWithLimit(
-        owner,
-        repo,
-        branch,
-        extendedSyncCommitLimit,
-      );
-    }
-
-    return _github.fetchLatestDayCommits(owner, repo, branch);
-  }
-
-  String get _syncModeDescription {
-    final strings = stringsFor(appSettingsController.value.languageCode);
-
-    if (_syncMode == syncModeLatest) {
-      return strings.latestSyncDescription;
-    }
-
-    if (_syncMode == syncModeExtended) {
-      return strings.extendedSyncDescription;
-    }
-
-    return strings.minimalSyncDescription;
-  }
-
-  String _repoAvatarUrl(Map<String, dynamic> repo) {
-    final owner = repo['owner'];
-    if (owner is Map<String, dynamic>) {
-      return owner['avatar_url'] as String? ?? '';
-    }
-    return '';
   }
 }

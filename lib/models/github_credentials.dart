@@ -1,9 +1,6 @@
 import 'dart:convert';
 
 class GitHubCredentials {
-  final String username;
-  final String token;
-
   const GitHubCredentials({
     required this.username,
     required this.token,
@@ -13,10 +10,12 @@ class GitHubCredentials {
       : username = '',
         token = '';
 
+  final String username;
+  final String token;
+
   bool get isEmpty => username.isEmpty || token.isEmpty;
   bool get isNotEmpty => !isEmpty;
 
-  /// Encode ke base64 sebelum disimpan supaya tidak plain text
   Map<String, dynamic> toJson() => {
         'username': base64Encode(utf8.encode(username)),
         'token': base64Encode(utf8.encode(token)),
@@ -38,9 +37,5 @@ class GitHubCredentials {
     );
   }
 
-  /// Header Authorization untuk GitHub API
-  String get basicAuth {
-    final raw = '$username:$token';
-    return 'Basic ${base64Encode(utf8.encode(raw))}';
-  }
+  String get basicAuth => 'Basic ${base64Encode(utf8.encode('$username:$token'))}';
 }

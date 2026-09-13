@@ -1,58 +1,80 @@
 # Architecture — GitHub Watcher
 
-## Tech Stack
-- **Framework:** Flutter 3.24+ (Dart >=3.5.0 <4.0.0)
-- **Platform:** Android (primary), iOS/Web/Linux/macOS (stubs)
-- **State Management:** ValueNotifier + ValueListenableBuilder
-- **Storage:** SharedPreferences (JSON serialization)
-- **HTTP:** http package
-- **Background:** android_alarm_manager_plus (Exact Alarm, 60min)
-- **Notifications:** flutter_local_notifications
-- **Design:** Material Design 3, colorSchemeSeed: blue
+Android-only Flutter app. No server component; all state is local (SharedPreferences)
+and remote data comes from the public GitHub REST API v3.
 
-## Layer Architecture
+## Layers
+
 ```
-┌─────────────────────────────────────────┐
-│ UI Layer (5 screens + 1 widget)         │
-│ HomeScreen, AddRepoScreen, DetailScreen │
-│ SettingsScreen, UpdateScreen, RepoTile  │
-├─────────────────────────────────────────┤
-│ Controller Layer (1)                    │
-│ AppSettingsController (ValueNotifier)   │
-├─────────────────────────────────────────┤
-│ Service Layer (7 services)              │
-│ GitHubService, StorageService           │
-│ SyncService, NotificationService        │
-│ StartupService, AppSettingsController   │
-│ (conditional exports for mobile/stub)   │
-├─────────────────────────────────────────┤
-│ Data Layer (5 models)                   │
-│ WatchedRepo, Commit, CommitDetail       │
-│ CommitFile, AppSettings                 │
-│ GitHubCredentials, SyncLog              │
-└─────────────────────────────────────────┘
+UI (screens/)
+  HomeScreen, AddRepoScreen, DetailScreen, SettingsScreen, UpdateScreen
+  Widgets: RepoTile, InfoChip, FadeInSlideUp
+State (services/app_settings_controller.dart)
+  AppSettingsController : ValueNotifier<AppSettings>  (global singleton)
+Services (services/)
+  StorageService      SharedPreferences persistence (single access point)
+  GitHubService       HTTP client for api.github.com
+  SyncService         change detection, caching, notification trigger
+  NotificationService flutter_local_notifications + navigatorKey deep link
+  StartupService      init notifications, register exact alarm
+Background (workers/alarm_worker.dart)
+  alarmCallback       runs in a separate isolate, top-level @pragma entry point
+Models (models/)
+  WatchedRepo, Commit, CommitDetail, CommitFile, AppSettings,
+  GitHubCredentials, SyncLog
 ```
 
-## Directory Structure
-```
-lib/
-├── main.dart                 # Entry point, bootstrap
-├── app.dart                  # MaterialApp root widget
-├── models/                   # Data models (5 files)
-├── screens/                  # UI screens (5 files)
-├── services/                 # Business logic (10 files, 3 conditional pairs)
-├── utils/                    # Constants + i18n strings (2 files)
-├── widgets/                  # Reusable widgets (1 file)
-└── workers/                  # Background isolate (1 file)
-```
+## Runtime flow
 
-## Platform Strategy
-- Conditional exports: `notification_service.dart`, `startup_service.dart`
-- Mobile: full implementation with AlarmManager, notifications
-- Stub: no-op implementation for web/desktop
+1. `main()` loads `AppSettings` from storage, then `StartupService.init()`:
+   initialize notifications (and request POST_NOTIFICATIONS permission once),
+   initialize `AndroidAlarmManager`, register the hourly exact alarm if the
+   `alarm_registered` flag is unset.
+2. `GitHubWatcherApp` rebuilds on settings changes (theme + language) and hosts
+   `HomeScreen`.
+3. Foreground sync: pull-to-refresh or the app-bar button calls
+   `SyncService.checkUpdates()`. A 20-second debounce and a single-flight lock
+   (auto-released after 10 minutes) prevent overlapping runs.
+4. Background sync: the alarm isolate calls the same `SyncService.checkUpdates()`
+   with `isBackground: true` and an 8-minute timeout.
+5. For each watched repo, sync fetches the newest commits (20 for `minimal`,
+   100 for the larger modes), counts commits newer than `lastSha`, merges the
+   batch into the cache, and updates `lastSha`/`lastCommitAt`.
+6. New commits produce a `SyncLog` entry. Background runs also post one local
+   notification when notifications are enabled.
+7. Tapping the notification opens `UpdateScreen` through the global
+   `navigatorKey`; cold starts are redirected after the first frame.
 
-## Background Sync
-- AndroidAlarmManager.periodic (exact: true, wakeup: true)
-- 60-minute interval, idempotent registration
-- Sync lock with 10-minute auto-release
-- Foreground debounce: 20 seconds
+## Storage keys (SharedPreferences)
+
+| Key | Type | Contents |
+|-----|------|----------|
+| `watched_repos` | JSON array | `WatchedRepo` list |
+| `app_settings` | JSON object | `AppSettings` |
+| `sync_history` | JSON array | last `maxSyncHistory` (30) `SyncLog` entries |
+| `commit_cache_{owner}_{repo}_{branch}_{mode}` | JSON array | deduped commits, max 1000 |
+| `github_credentials` | JSON object | base64-obfuscated username/token |
+| `last_sync_at` | ISO 8601 | last successful sync (foreground debounce) |
+| `sync_lock` | ISO 8601 | sync single-flight lock |
+| `alarm_registered` | bool | exact alarm already scheduled |
+| `has_seen_tour` | bool | onboarding overlay dismissed |
+
+## External APIs
+
+| Endpoint | Used by |
+|----------|---------|
+| `GET /repos/{owner}/{repo}` | Add repo validation, avatar/visibility |
+| `GET /repos/{owner}/{repo}/branches` | Branch picker (100 per page) |
+| `GET /repos/{owner}/{repo}/commits` | Sync and commit list (`sha`, `per_page`, `page`) |
+| `GET /repos/{owner}/{repo}/commits/{sha}` | Commit detail sheet |
+| `GET /repos/fannndi/git-watcher/releases/latest` | In-app update hint |
+
+Requests send Basic auth when credentials exist and fall back to anonymous on 401.
+Server errors are retried once; rate-limit responses are surfaced to the caller so
+one failing repo cannot stall the rest.
+
+## Gradle note
+
+`android/app/build.gradle` (Groovy) is the authoritative build config: namespace and
+applicationId `com.ti24a4.app32`, `emulator`/`production` flavors, release signing,
+and core library desugaring. There are intentionally no `.kts` duplicates.

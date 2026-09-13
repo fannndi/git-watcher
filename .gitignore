@@ -2,13 +2,15 @@
 .idea/
 .metadata
 build/
+coverage/
+.flutter-plugins-dependencies
+*.iml
+
+# Android signing
 android/.gradle/
 android/local.properties
 android/app/debug
 android/app/profile
 android/app/release
-*.iml
-
-# Android signing
 android/key.properties
 *.jks

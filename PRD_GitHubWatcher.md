@@ -171,9 +171,9 @@ Ini memungkinkan aplikasi bekerja optimal untuk repo publik tanpa memerlukan set
 ## 6. Struktur Proyek
 
 ```
-git-watcher-main/
+git-watcher/
 ├── lib/
-│   ├── main.dart                          # Entry point aplikasi
+│   ├── main.dart                          # Entry point + bootstrap
 │   ├── app.dart                           # Root widget (GitHubWatcherApp)
 │   ├── models/
 │   │   ├── app_settings.dart              # Model pengaturan aplikasi
@@ -190,26 +190,25 @@ git-watcher-main/
 │   ├── services/
 │   │   ├── app_settings_controller.dart   # ValueNotifier untuk settings
 │   │   ├── github_service.dart            # Klien GitHub REST API
-│   │   ├── notification_service.dart      # Factory/stub notifikasi
-│   │   ├── notification_service_mobile.dart  # Implementasi notifikasi Android
-│   │   ├── notification_service_stub.dart    # Stub untuk non-mobile
-│   │   ├── startup_service.dart           # Factory/stub startup
-│   │   ├── startup_service_mobile.dart    # Implementasi AlarmManager & Battery settings
-│   │   ├── startup_service_stub.dart      # Stub untuk non-mobile
+│   │   ├── notification_service.dart      # Notifikasi lokal Android
+│   │   ├── startup_service.dart           # Init notifikasi, alarm, battery settings
 │   │   ├── storage_service.dart           # Manajemen SharedPreferences & Cache Capping
 │   │   └── sync_service.dart              # Logika cek pembaruan (Mode-Aware)
 │   ├── utils/
-│   │   ├── constants.dart                 # Konstanta global aplikasi
+│   │   ├── animations.dart                # FadeInSlideUp (animasi list)
+│   │   ├── constants.dart                 # Satu-satunya sumber konstanta
 │   │   └── strings.dart                   # Kelas lokalisasi (ID/EN)
 │   ├── widgets/
-│   │   └── repo_tile.dart                 # Tile item repository (Animated & Localized)
+│   │   ├── chips.dart                     # InfoChip bersama
+│   │   └── repo_tile.dart                 # Tile item repository
 │   └── workers/
 │       └── alarm_worker.dart              # Isolate entry point untuk AlarmManager
-├── android/                               # Konfigurasi native Android
-├── ios/                                   # Konfigurasi native iOS (opsional)
-├── pubspec.yaml                           # Konfigurasi dependensi Flutter
-└── test/
-    └── widget_test.dart                   # Test dasar widget
+├── android/                               # Konfigurasi native Android (authoritative)
+├── test/
+│   ├── unit/models_test.dart
+│   ├── integration/storage_service_test.dart
+│   └── widget/screens_test.dart
+└── pubspec.yaml                           # Konfigurasi dependensi Flutter
 ```
 
 ---
@@ -355,9 +354,9 @@ Authorization: Basic <base64> (opsional, hanya jika 401/404)
 
 | Metode | Keterangan |
 |--------|------------|
-| `fetchCommits()` | Ambil maksimal `maxFetchedCommits` (20) commit terbaru, tanpa paginasi |
+| `fetchCommits(limit:)` | Ambil commit terbaru secara paginated (default 20, 100 per halaman) |
 | `fetchLatestDayCommits()` | Ambil semua commit pada hari aktif terakhir saja |
-| `fetchCommitsWithLimit()` | Ambil commit dengan batas jumlah tertentu (paginated) |
+| `fetchCommitsForMode()` | Pilih jumlah commit sesuai mode repo (minimal/500/5000) |
 | `fetchCommitDetail()` | Ambil detail satu commit berdasarkan SHA |
 | `fetchBranches()` | Ambil semua branch (paginated, 100 per halaman) |
 
@@ -393,7 +392,7 @@ Orkestrasi logika pengecekan pembaruan commit. Dipanggil baik dari foreground ma
 
 **Alur `checkUpdates()`:**
 1. Ambil semua repo yang dipantau dari `StorageService`.
-2. Untuk setiap repo, panggil `GitHubService.fetchCommits()` (20 commit terbaru).
+2. Untuk setiap repo, panggil `GitHubService.fetchCommits()` (20 commit untuk mode minimal, 100 untuk mode lain).
 3. Bandingkan SHA commit terbaru dengan `repo.lastSha` tersimpan.
 4. Jika berbeda, hitung jumlah commit baru (dengan `takeWhile` sampai SHA lama ditemukan).
 5. Merge commit baru ke cache lokal.
@@ -605,12 +604,12 @@ Aplikasi menggunakan `navigatorKey` global (`GlobalKey<NavigatorState>`) yang te
 
 ### 12.2 Keandalan
 - Startup tidak boleh crash meski storage tidak tersedia (try-catch di `_bootstrap()`).
-- Background worker me-return `false` jika terjadi error, memicu WorkManager retry sesuai backoff policy (linear, 5 menit).
+- Background worker menangkap error dan mencatatnya via `debugPrint`; sync per repo diisolasi sehingga kegagalan satu repo tidak menghentikan repo lain.
 - Sync per repo diisolasi: kegagalan satu repo tidak menghentikan sync repo lainnya.
 
 ### 12.3 Penggunaan Baterai
-- WorkManager hanya memerlukan `networkType: NetworkType.connected` (tanpa `requiresBatteryNotLow` atau `requiresStorageNotLow` yang terlalu restriktif).
-- `flexInterval` = 25% dari interval (min 5 menit, max 30 menit) untuk memberikan fleksibilitas eksekusi kepada sistem.
+- `AndroidAlarmManager.periodic` dengan `exact: true`, `wakeup: true`, dan `rescheduleOnReboot: true` untuk eksekusi presisi tiap 60 menit.
+- `SyncService` dibungkus timeout 8 menit agar alarm tidak menggantung.
 
 ### 12.4 Penggunaan Data
 - Credentials tidak pernah dikirim kecuali respons API adalah 401/404 (mengurangi overhead header).
@@ -687,7 +686,7 @@ Icon aplikasi tersedia di semua densitas: `mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xx
 | Commit detail gagal dimuat | Widget `_CommitDetailError` dengan tombol retry |
 | URL tidak bisa dibuka | Snackbar "Gagal membuka link" |
 | Storage tidak tersedia saat startup | Di-catch, default settings digunakan |
-| Background worker error | Return `false` → WorkManager retry sesuai backoff |
+| Background worker error | Ditangkap di `alarmCallback`, dicatat via `debugPrint`, alarm tetap terjadwal |
 | `SharedPreferences` data korup | `try-catch` di tiap `fromJson`, fallback ke default |
 | Base64 decode gagal | Return string kosong, credentials dianggap kosong |
 
@@ -724,7 +723,7 @@ AppStrings stringsFor(String languageCode) => AppStrings(languageCode);
 | Commit mode Minimal | Hari terakhir saja | Hemat kuota API dan storage |
 | Commit mode 500 | Maksimal 500 commit | Keseimbangan data vs performa |
 | Commit mode 5000 | Maksimal 5000 commit | Untuk repo dengan history panjang |
-| Interval sync minimum | ~15 menit | Batasan minimum WorkManager Android |
+| Interval sync | 60 menit (exact alarm) | Keseimbangan akurasi vs baterai |
 | Background sync | Bisa tertunda Android Doze | Keterbatasan sistem Android; diatasi dengan foreground checker |
 | Keamanan token | Base64 (bukan enkripsi) | Versi beta; produksi disarankan `flutter_secure_storage` |
 | GitHub API rate limit | 60 req/jam (unauthenticated), 5000 req/jam (authenticated) | Perlu dipertimbangkan pada mode Extended dengan banyak repo |

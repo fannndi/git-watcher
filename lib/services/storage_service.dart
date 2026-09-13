@@ -2,127 +2,72 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/commit.dart';
 import '../models/app_settings.dart';
+import '../models/commit.dart';
 import '../models/github_credentials.dart';
 import '../models/sync_log.dart';
 import '../models/watched_repo.dart';
 import '../utils/constants.dart';
 
 class StorageService {
-  SharedPreferences? _cachedPrefs;
+  SharedPreferences? _prefs;
 
-  Future<SharedPreferences> _getPrefs() async {
-    _cachedPrefs ??= await SharedPreferences.getInstance();
-    await _cachedPrefs!.reload();
-    return _cachedPrefs!;
+  Future<SharedPreferences> _instance() async {
+    return _prefs ??= await SharedPreferences.getInstance();
   }
 
-  /// Helper untuk akses langsung SharedPreferences (internal use)
-  Future<SharedPreferences> getPrefsForInternal() => _getPrefs();
-
   Future<List<WatchedRepo>> getRepos() async {
-    final prefs = await _getPrefs();
-    final raw = prefs.getString(watchedReposKey);
-    if (raw == null || raw.isEmpty) {
-      return [];
-    }
-
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    return decoded
-        .map((item) => WatchedRepo.fromJson(item as Map<String, dynamic>))
-        .toList();
+    final raw = (await _instance()).getString(watchedReposKey);
+    return _decodeList(raw, WatchedRepo.fromJson);
   }
 
   Future<void> saveRepos(List<WatchedRepo> repos) async {
-    final prefs = await _getPrefs();
-    final raw = jsonEncode(repos.map((repo) => repo.toJson()).toList());
-    await prefs.setString(watchedReposKey, raw);
+    final prefs = await _instance();
+    await prefs.setString(
+      watchedReposKey,
+      jsonEncode(repos.map((repo) => repo.toJson()).toList()),
+    );
   }
 
   Future<AppSettings> getAppSettings() async {
-    final prefs = await _getPrefs();
-    final raw = prefs.getString(appSettingsKey);
+    final raw = (await _instance()).getString(appSettingsKey);
     if (raw == null || raw.isEmpty) {
       return const AppSettings.defaults();
     }
 
-    final decoded = jsonDecode(raw) as Map<String, dynamic>;
-    return AppSettings.fromJson(decoded);
+    try {
+      return AppSettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return const AppSettings.defaults();
+    }
   }
 
   Future<void> saveAppSettings(AppSettings settings) async {
-    final prefs = await _getPrefs();
+    final prefs = await _instance();
     await prefs.setString(appSettingsKey, jsonEncode(settings.toJson()));
   }
 
-  Future<void> saveUpdateSummary(Map<String, int> updates) async {
-    final prefs = await _getPrefs();
-    await prefs.setString(updateSummaryKey, jsonEncode(updates));
-  }
-
-  Future<Map<String, int>> getUpdateSummary() async {
-    final prefs = await _getPrefs();
-    final raw = prefs.getString(updateSummaryKey);
-    if (raw == null || raw.isEmpty) {
-      return {};
-    }
-
-    final decoded = jsonDecode(raw) as Map<String, dynamic>;
-    return decoded.map((key, value) => MapEntry(key, (value as num).toInt()));
-  }
-
-  Future<DateTime?> getLastSyncAt() async {
-    final prefs = await _getPrefs();
-    final raw = prefs.getString(lastSyncAtKey);
-    if (raw == null || raw.isEmpty) return null;
-    return DateTime.tryParse(raw);
-  }
-
-  Future<void> setLastSyncAt(DateTime time) async {
-    final prefs = await _getPrefs();
-    await prefs.setString(lastSyncAtKey, time.toIso8601String());
-  }
-
   Future<List<SyncLog>> getSyncHistory() async {
-    final prefs = await _getPrefs();
-    final raw = prefs.getString(syncHistoryKey);
-    if (raw == null || raw.isEmpty) {
-      return [];
-    }
-
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    return decoded
-        .map((item) => SyncLog.fromJson(item as Map<String, dynamic>))
-        .toList();
+    final raw = (await _instance()).getString(syncHistoryKey);
+    return _decodeList(raw, SyncLog.fromJson);
   }
 
   Future<void> addSyncLog(SyncLog log) async {
-    final prefs = await _getPrefs();
     final history = await getSyncHistory();
-    final updated = [log, ...history].take(30).toList();
-    final raw = jsonEncode(updated.map((item) => item.toJson()).toList());
-    await prefs.setString(syncHistoryKey, raw);
+    final updated = [log, ...history].take(maxSyncHistory).toList();
+    final prefs = await _instance();
+    await prefs.setString(
+      syncHistoryKey,
+      jsonEncode(updated.map((item) => item.toJson()).toList()),
+    );
   }
 
   Future<List<Commit>> getCachedCommits(WatchedRepo repo) async {
-    final prefs = await _getPrefs();
-    final raw = prefs.getString(_commitCacheKey(repo));
-    if (raw == null || raw.isEmpty) {
-      return [];
-    }
-
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    return decoded
-        .map((item) => Commit.fromCacheJson(item as Map<String, dynamic>))
-        .toList();
+    final raw = (await _instance()).getString(_commitCacheKey(repo));
+    return _decodeList(raw, Commit.fromCacheJson);
   }
 
-  Future<void> saveCachedCommits(
-    WatchedRepo repo,
-    List<Commit> commits,
-  ) async {
-    final prefs = await _getPrefs();
+  Future<void> saveCachedCommits(WatchedRepo repo, List<Commit> commits) async {
     final unique = <String, Commit>{};
     for (final commit in commits) {
       unique[commit.sha] = commit;
@@ -130,9 +75,13 @@ class StorageService {
 
     final sorted = unique.values.toList()
       ..sort((a, b) => b.date.compareTo(a.date));
-    final capped = sorted.take(1000).toList();
-    final raw = jsonEncode(capped.map((commit) => commit.toJson()).toList());
-    await prefs.setString(_commitCacheKey(repo), raw);
+    final capped = sorted.take(maxCachedCommits).toList();
+
+    final prefs = await _instance();
+    await prefs.setString(
+      _commitCacheKey(repo),
+      jsonEncode(capped.map((commit) => commit.toJson()).toList()),
+    );
   }
 
   Future<void> mergeCachedCommits(
@@ -143,25 +92,23 @@ class StorageService {
     await saveCachedCommits(repo, [...commits, ...existing]);
   }
 
-  // ── Credentials ──────────────────────────────────────────────────────────
-
   Future<GitHubCredentials> getCredentials() async {
-    final prefs = await _getPrefs();
-    final raw = prefs.getString(githubCredentialsKey);
+    final raw = (await _instance()).getString(githubCredentialsKey);
     if (raw == null || raw.isEmpty) {
       return const GitHubCredentials.empty();
     }
 
     try {
-      final decoded = jsonDecode(raw) as Map<String, dynamic>;
-      return GitHubCredentials.fromJson(decoded);
+      return GitHubCredentials.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
     } catch (_) {
       return const GitHubCredentials.empty();
     }
   }
 
   Future<void> saveCredentials(GitHubCredentials credentials) async {
-    final prefs = await _getPrefs();
+    final prefs = await _instance();
     await prefs.setString(
       githubCredentialsKey,
       jsonEncode(credentials.toJson()),
@@ -169,53 +116,48 @@ class StorageService {
   }
 
   Future<void> clearCredentials() async {
-    final prefs = await _getPrefs();
+    final prefs = await _instance();
     await prefs.remove(githubCredentialsKey);
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  String _commitCacheKey(WatchedRepo repo) {
-    return '$commitCachePrefix'
-        '${repo.owner}_${repo.repo}_${repo.branch}_${repo.syncMode}';
+  Future<DateTime?> getLastSyncAt() async {
+    final raw = (await _instance()).getString(lastSyncAtKey);
+    return parseDate(raw);
   }
 
-  // ── Background Sync Diagnostics ──────────────────────────────────────────
-
-  Future<DateTime?> getLastBackgroundSyncAt() async {
-    final prefs = await _getPrefs();
-    final raw = prefs.getString(lastBackgroundSyncAtKey);
-    if (raw == null || raw.isEmpty) return null;
-    return DateTime.tryParse(raw);
+  Future<void> setLastSyncAt(DateTime time) async {
+    final prefs = await _instance();
+    await prefs.setString(lastSyncAtKey, time.toIso8601String());
   }
 
-  Future<void> setLastBackgroundSyncAt(DateTime time) async {
-    final prefs = await _getPrefs();
-    await prefs.setString(lastBackgroundSyncAtKey, time.toIso8601String());
+  Future<bool> isAlarmRegistered() async {
+    final prefs = await _instance();
+    return prefs.getBool(alarmRegisteredKey) ?? false;
   }
 
-  Future<String?> getLastBackgroundSyncStatus() async {
-    final prefs = await _getPrefs();
-    return prefs.getString(lastBackgroundSyncStatusKey);
+  Future<void> setAlarmRegistered(bool value) async {
+    final prefs = await _instance();
+    await prefs.setBool(alarmRegisteredKey, value);
   }
 
-  Future<void> setLastBackgroundSyncStatus(String status) async {
-    final prefs = await _getPrefs();
-    await prefs.setString(lastBackgroundSyncStatusKey, status);
+  Future<bool> hasSeenTour() async {
+    final prefs = await _instance();
+    return prefs.getBool(hasSeenTourKey) ?? false;
   }
 
-  // ── Sync Lock ────────────────────────────────────────────────────────────
+  Future<void> setHasSeenTour(bool value) async {
+    final prefs = await _instance();
+    await prefs.setBool(hasSeenTourKey, value);
+  }
 
   Future<bool> isSyncLocked() async {
-    final prefs = await _getPrefs();
-    final lockTimeStr = prefs.getString(syncLockKey);
-    if (lockTimeStr == null || lockTimeStr.isEmpty) return false;
+    final raw = (await _instance()).getString(syncLockKey);
+    final lockTime = parseDate(raw);
+    if (lockTime == null) {
+      return false;
+    }
 
-    final lockTime = DateTime.tryParse(lockTimeStr);
-    if (lockTime == null) return false;
-
-    // Auto-release lock after 10 minutes (safety against crashes)
-    if (DateTime.now().difference(lockTime).inMinutes > 10) {
+    if (DateTime.now().difference(lockTime) > syncLockTimeout) {
       await releaseSyncLock();
       return false;
     }
@@ -224,12 +166,35 @@ class StorageService {
   }
 
   Future<void> acquireSyncLock() async {
-    final prefs = await _getPrefs();
+    final prefs = await _instance();
     await prefs.setString(syncLockKey, DateTime.now().toIso8601String());
   }
 
   Future<void> releaseSyncLock() async {
-    final prefs = await _getPrefs();
+    final prefs = await _instance();
     await prefs.remove(syncLockKey);
+  }
+
+  String _commitCacheKey(WatchedRepo repo) {
+    return '$commitCachePrefix'
+        '${repo.owner}_${repo.repo}_${repo.branch}_${repo.syncMode}';
+  }
+
+  List<T> _decodeList<T>(
+    String? raw,
+    T Function(Map<String, dynamic>) fromJson,
+  ) {
+    if (raw == null || raw.isEmpty) {
+      return [];
+    }
+
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map((item) => fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 }

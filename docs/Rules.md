@@ -1,44 +1,49 @@
 # Rules — GitHub Watcher
 
-## Naming Conventions
-- **Files:** snake_case (`home_screen.dart`, `github_service.dart`)
-- **Classes:** PascalCase (`HomeScreen`, `GitHubService`)
-- **Variables:** camelCase (`_isLoading`, `lastSyncAt`)
-- **Constants:** camelCase (`maxWatchedRepos`, `githubBaseUrl`)
-- **Private:** underscore prefix (`_controller`, `_repos`)
+## Naming
 
-## State Management
-- Global: `AppSettingsController` (ValueNotifier singleton)
-- Local: `StatefulWidget` + `setState()`
-- Reactive: `ValueListenableBuilder` for settings changes
+- Files: `snake_case.dart`; classes: `PascalCase`; members: `camelCase`
+- Constants: `camelCase` in `lib/utils/constants.dart`, no magic literals elsewhere
+- Private members: `_` prefix
 
-## Error Handling
-- try-catch with user-facing SnackBar messages
-- Non-fatal errors: debugPrint + continue
-- Background errors: return false for retry
-- Storage errors: fallback to defaults
+## State management
 
-## File Organization
-- Models: pure data classes with fromJson/toJson
-- Services: business logic, no UI
-- Screens: full-page widgets with state
-- Widgets: reusable UI components
-- Workers: background isolate entry points
+- Global settings: `appSettingsController` (`ValueNotifier<AppSettings>`)
+- Language/theme reactivity: wrap screen content in
+  `ValueListenableBuilder(valueListenable: appSettingsController, ...)`
+- Local screen state: `StatefulWidget` + `setState`, nothing else
 
-## Platform Pattern
-- Interface: `notification_service.dart` (conditional export)
-- Mobile: `notification_service_mobile.dart`
-- Stub: `notification_service_stub.dart`
+## Layering
+
+- `models/`: pure immutable data classes with `fromJson`/`toJson`, no Flutter imports
+- `services/`: business logic, no widgets; `StorageService` is the only
+  SharedPreferences access point
+- `screens/`: one screen per file, UI + local state only
+- `widgets/`: reusable UI, no business logic
+- `workers/`: background isolate entry points only
+
+## Error handling
+
+- User-facing failures: `SnackBar` with an `AppStrings` message
+- Non-critical failures: `debugPrint` and continue (per-repo sync isolation)
+- Storage corruption: fall back to empty/default values in `StorageService`
+- Network: timeouts via `apiTimeout`, one retry for 5xx, anonymous fallback on 401
 
 ## Localization
-- `AppStrings` class with language code constructor
-- `stringsFor(code)` factory function
-- Indonesian (id) default, English (en) optional
 
-## UI Patterns
-- Material Design 3 with flat cards (elevation: 0)
-- Border radius: 14-16px for cards
-- Consistent colorScheme usage
-- Empty states with icon + title + subtitle
-- Loading states with CircularProgressIndicator
-- Error states with retry button
+- All user-visible text through `AppStrings` (`stringsFor(languageCode)`)
+- `id` is the default; every new string must be added for both languages
+
+## UI
+
+- Material 3, flat cards (elevation 0), radius 8–16 px
+- Empty/loading/error states on every data screen
+- Shared chips and entrance animations via `lib/widgets/chips.dart` and
+  `lib/utils/animations.dart`
+
+## Hygiene
+
+- `flutter analyze` must report zero issues; `flutter test` must stay green
+- No dead code, no commented-out blocks, no duplicate constants/files
+- Android-only: do not reintroduce platform folders, conditional exports, or `.kts`
+  Gradle duplicates

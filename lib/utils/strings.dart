@@ -1,73 +1,62 @@
 import 'constants.dart';
 
 class AppStrings {
-  final String code;
-
   const AppStrings(this.code);
+
+  final String code;
 
   bool get isEnglish => code == languageEnglish;
 
-  String get appTitle => 'GitHub Watcher';
-  String get history => isEnglish ? 'Sync History' : 'Riwayat Sinkron';
+  String get appTitle => appName;
   String get settings => isEnglish ? 'Settings' : 'Pengaturan';
-  String get watchedRepos =>
-      isEnglish ? 'Watched repositories' : 'Repo Dipantau';
-  String repoCount(int count) => isEnglish
-      ? '$count of $maxWatchedRepos slots used'
-      : '$count dari $maxWatchedRepos slot terpakai';
-  String get homeSubtitle => isEnglish
-      ? 'Keep an eye on recent commits across public and private repositories.'
-      : 'Pantau commit terbaru dari repo publik dan privat.';
-  String get language => isEnglish ? 'Language' : 'Bahasa';
-  String get theme => isEnglish ? 'Theme' : 'Tema';
-  String get systemTheme => isEnglish ? 'System' : 'Sistem';
-  String get lightTheme => isEnglish ? 'Light' : 'Terang';
-  String get darkTheme => isEnglish ? 'Dark' : 'Gelap';
-  String get syncSettings => isEnglish ? 'Sync' : 'Sinkronisasi';
-  String get syncInterval =>
-      isEnglish ? 'Background sync interval' : 'Interval sync background';
-  String minutes(int value) => isEnglish ? '$value minutes' : '$value menit';
-  String get oneHour => isEnglish ? '1 hour' : '1 jam';
-  String get twoHours => isEnglish ? '2 hours' : '2 jam';
-  String get syncNow => isEnglish ? 'Sync Now' : 'Sync Sekarang';
-  String get lastSync => isEnglish ? 'Last sync' : 'Sinkron terakhir';
-  String get never => isEnglish ? 'Never' : 'Belum pernah';
-  String get nextSyncAuto => isEnglish
-      ? 'Background sync runs automatically'
-      : 'Sync background berjalan otomatis';
-  String get noRepos =>
-      isEnglish ? 'No watched repos yet' : 'Belum ada repo dipantau';
+  String get history => isEnglish ? 'Sync History' : 'Riwayat Sinkron';
+  String get syncNow => isEnglish ? 'Sync now' : 'Sync sekarang';
+  String get search => isEnglish ? 'Search' : 'Cari';
+  String get closeSearch => isEnglish ? 'Close search' : 'Tutup pencarian';
+  String get searchRepo => isEnglish ? 'Search repo...' : 'Cari repo...';
+  String get offline => isEnglish ? 'Offline' : 'Offline';
+  String get refresh => isEnglish ? 'Refresh' : 'Muat ulang';
+  String get close => isEnglish ? 'Close' : 'Tutup';
+  String get cancel => isEnglish ? 'Cancel' : 'Batal';
+  String get delete => isEnglish ? 'Delete' : 'Hapus';
+  String get tryAgain => isEnglish ? 'Try again' : 'Coba lagi';
+  String get openLinkFailed =>
+      isEnglish ? 'Could not open link' : 'Gagal membuka link';
+
+  String get noReposTitle =>
+      isEnglish ? 'No repositories yet' : 'Belum ada repo';
+  String get noReposSubtitle => isEnglish
+      ? 'Add a repository to start watching commit activity.'
+      : 'Tambahkan repository untuk mulai memantau aktivitas commit.';
+  String get addRepo => isEnglish ? 'Add repo' : 'Tambah repo';
   String repoDeleted(String repo) =>
       isEnglish ? '$repo deleted' : '$repo dihapus';
-  String get deleteRepo => isEnglish ? 'Delete repo' : 'Hapus repo';
   String get confirmDelete => isEnglish ? 'Confirm Delete' : 'Konfirmasi Hapus';
   String confirmDeleteRepo(String repo) => isEnglish
       ? 'Remove $repo from watched list?'
       : 'Hapus $repo dari daftar pantauan?';
-  String get cancel => isEnglish ? 'Cancel' : 'Batal';
-  String get delete => isEnglish ? 'Delete' : 'Hapus';
-  String repoRemoved(String repo) =>
-      isEnglish ? '$repo removed' : '$repo dihapus';
-  String get maxRepos => isEnglish
-      ? 'Maximum $maxWatchedRepos repos can be watched'
-      : 'Maksimal $maxWatchedRepos repo dapat dipantau';
-  String get addRepo => isEnglish ? 'Add repo' : 'Tambah repo';
-  String get openSettings => isEnglish ? 'Open settings' : 'Buka pengaturan';
+  String reposHaveUpdates(int count) => isEnglish
+      ? '$count repo${count == 1 ? '' : 's'} have updates'
+      : '$count repo memiliki update';
+  String get syncFailed => isEnglish
+      ? 'Sync failed. Check your internet connection.'
+      : 'Sinkronisasi gagal. Cek koneksi internet.';
+  String get loadReposFailed =>
+      isEnglish ? 'Failed to load repos' : 'Gagal memuat repo';
+  String updateAvailable(String version) => isEnglish
+      ? 'Update available: v$version'
+      : 'Update tersedia: v$version';
+  String get updateAction => isEnglish ? 'Update' : 'Perbarui';
+
   String get repository => isEnglish ? 'Repository' : 'Repository';
   String get repositoryInputHelper => isEnglish
       ? 'Use owner/repo format, for example: torvalds/linux'
       : 'Masukkan format owner/repo, contoh: torvalds/linux';
-  String get check => isEnglish ? 'Check' : 'Check';
+  String get check => 'Check';
   String get repositoryFound =>
       isEnglish ? 'Repository found' : 'Repository ditemukan';
   String get defaultBranch => isEnglish ? 'Default branch' : 'Branch default';
   String get watchedBranch => isEnglish ? 'Watched branch' : 'Branch Dipantau';
-  String get branch => isEnglish ? 'Branch' : 'Branch';
-  String get publicRepo => isEnglish ? 'Public' : 'Public';
-  String get privateRepo => isEnglish ? 'Private' : 'Private';
-  String get lastUpdate => isEnglish ? 'Last update' : 'Update terakhir';
-  String get today => isEnglish ? 'Today' : 'Today';
-  String get neverSynced => isEnglish ? 'Not synced yet' : 'Belum sinkron';
   String get syncMode => isEnglish ? 'Sync mode' : 'Mode Sync';
   String get add => isEnglish ? 'Add' : 'Tambahkan';
   String get emptyRepositoryInput => isEnglish
@@ -98,19 +87,15 @@ class AppStrings {
   String get largeSyncWarning => isEnglish
       ? 'Large modes can take longer and may hit GitHub rate limits.'
       : 'Mode besar dapat memerlukan waktu lebih lama dan terkena rate limit GitHub.';
-  String get noReposTitle =>
-      isEnglish ? 'No repositories yet' : 'Belum ada repo';
-  String get noReposSubtitle => isEnglish
-      ? 'Add a repository to start watching commit activity.'
-      : 'Tambahkan repository untuk mulai memantau aktivitas commit.';
-  String get noUpdates =>
-      isEnglish ? 'No new updates' : 'Tidak ada update baru';
-  String reposHaveUpdates(int count) => isEnglish
-      ? '$count repo${count == 1 ? '' : 's'} have updates'
-      : '$count repo memiliki update';
-  String get syncFailed => isEnglish
-      ? 'Sync failed. Check your internet connection.'
-      : 'Sinkronisasi gagal. Cek koneksi internet.';
+  String get maxRepos => isEnglish
+      ? 'Maximum $maxWatchedRepos repos can be watched'
+      : 'Maksimal $maxWatchedRepos repo dapat dipantau';
+
+  String get publicRepo => isEnglish ? 'Public' : 'Public';
+  String get privateRepo => isEnglish ? 'Private' : 'Private';
+  String get notSynced => isEnglish ? 'Not synced yet' : 'Belum tersinkron';
+
+  String get shareRepo => isEnglish ? 'Open repository' : 'Buka repository';
   String get fetchCommitsFailed => isEnglish
       ? 'Failed to fetch latest commits'
       : 'Gagal mengambil commit terbaru';
@@ -129,9 +114,15 @@ class AppStrings {
   String get fetchCommitDetailFailed => isEnglish
       ? 'Failed to fetch commit file details.'
       : 'Gagal mengambil detail file commit.';
-  String get tryAgain => isEnglish ? 'Try again' : 'Coba lagi';
+  String get seeDetail => isEnglish ? 'See detail' : 'Lihat detail';
 
-  // Private mode
+  String get appearance => isEnglish ? 'Appearance' : 'Tampilan';
+  String get language => isEnglish ? 'Language' : 'Bahasa';
+  String get systemTheme => isEnglish ? 'System' : 'Sistem';
+  String get lightTheme => isEnglish ? 'Light' : 'Terang';
+  String get darkTheme => isEnglish ? 'Dark' : 'Gelap';
+  String get privateAccess =>
+      isEnglish ? 'Private repository access' : 'Akses repo privat';
   String get privateMode => isEnglish ? 'Private Mode' : 'Mode Privat';
   String get privateModeSubtitle => isEnglish
       ? 'Use credentials to access private repositories.'
@@ -158,48 +149,15 @@ class AppStrings {
       isEnglish ? 'Credentials saved' : 'Kredensial tersimpan';
   String get credentialsEmpty =>
       isEnglish ? 'No credentials saved' : 'Belum ada kredensial';
-  String get appearance => isEnglish ? 'Appearance' : 'Tampilan';
-  String get privateAccess =>
-      isEnglish ? 'Private repository access' : 'Akses repo privat';
-  String get aboutApp => isEnglish ? 'About app' : 'Tentang aplikasi';
-  String get aboutAppSubtitle => isEnglish
-      ? 'Version, release channel, and developer.'
-      : 'Versi, channel rilis, dan developer.';
-  String get appDescription => isEnglish
-      ? 'A lightweight GitHub watcher for tracking recent commits, update notifications, and private repository access from one device.'
-      : 'GitHub Watcher ringan untuk memantau commit terbaru, notifikasi update, dan akses repo privat dari satu perangkat.';
-  String get version => isEnglish ? 'Version' : 'Versi';
-  String get channel => isEnglish ? 'Channel' : 'Channel';
-  String get developer => isEnglish ? 'Developer' : 'Developer';
-  String get seeDetail => isEnglish ? 'See detail' : 'See detail';
-  String get openLinkFailed =>
-      isEnglish ? 'Could not open link' : 'Gagal membuka link';
-  String get close => isEnglish ? 'Close' : 'Tutup';
-  String get rateApp => isEnglish ? 'Rate App' : 'Beri Nilai';
-  String get rateAppDesc => isEnglish
-      ? 'Rate this app on Google Play Store'
-      : 'Beri nilai aplikasi ini di Google Play Store';
-  String get noSyncHistory =>
-      isEnglish ? 'No sync results yet' : 'Belum ada hasil sinkron';
-  String get noNewCommits =>
-      isEnglish ? 'No new commits' : 'Tidak ada commit baru';
-  String get notSynced => isEnglish ? 'Not synced yet' : 'Belum tersinkron';
-
-  // Sync section
+  String get syncSettings => isEnglish ? 'Sync' : 'Sinkronisasi';
   String get syncEveryHour => isEnglish
       ? 'Background Sync: Every 1 hour'
       : 'Sync Latar Belakang: Setiap 1 jam';
-
-  String get syncingNow => isEnglish ? 'Syncing...' : 'Sinkronisasi...';
-
-  // Notifications
   String get enableNotifications =>
       isEnglish ? 'Enable Notifications' : 'Aktifkan Notifikasi';
   String get enableNotificationsDesc => isEnglish
       ? 'Receive push notifications for new commits and updates.'
       : 'Terima notifikasi push untuk commit dan update baru.';
-
-  // Extreme Precision
   String get extremePrecision =>
       isEnglish ? 'Extreme Precision' : 'Presisi Ekstrem';
   String get extremePrecisionDesc => isEnglish
@@ -207,8 +165,23 @@ class AppStrings {
       : 'Memastikan sync berjalan tepat setiap 1 jam, meskipun HP diam lama. Membutuhkan izin baterai.';
   String get allowBatteryExemption =>
       isEnglish ? 'Allow Battery Exemption' : 'Izinkan Pengecualian Baterai';
+  String get aboutApp => isEnglish ? 'About app' : 'Tentang aplikasi';
+  String get appDescription => isEnglish
+      ? 'A lightweight GitHub watcher for tracking recent commits, update notifications, and private repository access from one device.'
+      : 'GitHub Watcher ringan untuk memantau commit terbaru, notifikasi update, dan akses repo privat dari satu perangkat.';
+  String get version => isEnglish ? 'Version' : 'Versi';
+  String get channel => isEnglish ? 'Channel' : 'Channel';
+  String get developer => isEnglish ? 'Developer' : 'Developer';
+  String get rateApp => isEnglish ? 'Rate App' : 'Beri Nilai';
+  String get rateAppDesc => isEnglish
+      ? 'Rate this app on Google Play Store'
+      : 'Beri nilai aplikasi ini di Google Play Store';
 
-  // Tour
+  String get noSyncHistory =>
+      isEnglish ? 'No sync results yet' : 'Belum ada hasil sinkron';
+  String get noNewCommits =>
+      isEnglish ? 'No new commits' : 'Tidak ada commit baru';
+
   String get tourWelcome => isEnglish
       ? 'Track your favorite GitHub repos easily!'
       : 'Pantau repo GitHub favoritmu dengan mudah!';
@@ -220,6 +193,14 @@ class AppStrings {
   String get tourSwipe =>
       isEnglish ? 'Swipe left to delete' : 'Geser kiri untuk menghapus';
   String get tourGotIt => isEnglish ? 'Got it!' : 'Mengerti!';
+
+  String notificationTitle(String repo) =>
+      isEnglish ? 'Update in $repo' : 'Update di $repo';
+  String notificationTitleMultiple(int count) => isEnglish
+      ? '$count repos have updates'
+      : '$count repo ada update baru';
+  String notificationLine(String repo, int count) =>
+      '$repo: +$count commit${count == 1 ? '' : 's'}';
 }
 
 AppStrings stringsFor(String code) => AppStrings(code);

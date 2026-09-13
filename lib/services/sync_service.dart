@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 
-import '../models/commit.dart';
 import '../models/sync_log.dart';
 import '../models/watched_repo.dart';
 import '../utils/constants.dart';
+import '../utils/strings.dart';
 import 'github_service.dart';
 import 'notification_service.dart';
 import 'storage_service.dart';
@@ -16,22 +16,20 @@ class SyncService {
   }) async {
     storage ??= StorageService();
 
-    // Cek sync lock — hindari dua proses sync berjalan bersamaan
     if (await storage.isSyncLocked()) {
-      if (isBackground) {
-        // Background: tunggu sebentar lalu coba sekali lagi
-        await Future.delayed(const Duration(seconds: 5));
-        if (await storage.isSyncLocked()) return {};
-      } else {
+      if (!isBackground) {
+        return {};
+      }
+      await Future.delayed(const Duration(seconds: 5));
+      if (await storage.isSyncLocked()) {
         return {};
       }
     }
 
-    // Debounce foreground: jangan sync jika baru saja dilakukan (< 20 detik)
     if (!isBackground) {
       final lastSyncAt = await storage.getLastSyncAt();
       if (lastSyncAt != null &&
-          DateTime.now().difference(lastSyncAt).inSeconds < 20) {
+          DateTime.now().difference(lastSyncAt) < foregroundSyncDebounce) {
         return {};
       }
     }
@@ -49,20 +47,19 @@ class SyncService {
         return {};
       }
 
+      final settings = await storage.getAppSettings();
+
       for (final repo in repos) {
         try {
-          // Fetch according to sync mode for better precision
-          List<Commit> commits;
-          if (repo.syncMode == syncModeExtended) {
-            commits = await github.fetchCommitsWithLimit(
-                repo.owner, repo.repo, repo.branch, 100);
-          } else if (repo.syncMode == syncModeLatest) {
-            commits = await github.fetchCommitsWithLimit(
-                repo.owner, repo.repo, repo.branch, 50);
-          } else {
-            commits =
-                await github.fetchCommits(repo.owner, repo.repo, repo.branch);
-          }
+          final limit = repo.syncMode == syncModeMinimal
+              ? maxFetchedCommits
+              : backgroundSyncFetchLimit;
+          final commits = await github.fetchCommits(
+            repo.owner,
+            repo.repo,
+            repo.branch,
+            limit: limit,
+          );
 
           if (commits.isEmpty) {
             updatedRepos.add(repo);
@@ -70,25 +67,19 @@ class SyncService {
           }
 
           final latest = commits.first;
-
           if (repo.lastSha.isNotEmpty && latest.sha != repo.lastSha) {
             final count =
-                commits.takeWhile((c) => c.sha != repo.lastSha).length;
+                commits.takeWhile((commit) => commit.sha != repo.lastSha).length;
             if (count > 0) {
               updates['${repo.fullName} (${repo.branch})'] = count;
             }
-          } else if (repo.lastSha.isEmpty) {
-            // Inisialisasi lastSha untuk repo baru
-            repo.lastSha = latest.sha;
-            repo.lastCommitAt = latest.date;
           }
 
           await storage.mergeCachedCommits(repo, commits);
-          repo.lastSha = latest.sha;
-          repo.lastCommitAt = latest.date;
-          updatedRepos.add(repo);
+          updatedRepos.add(
+            repo.copyWith(lastSha: latest.sha, lastCommitAt: latest.date),
+          );
         } catch (e) {
-          // Log error for debugging, continue with other repos
           debugPrint('Sync error for ${repo.fullName}: $e');
           updatedRepos.add(repo);
         }
@@ -102,15 +93,16 @@ class SyncService {
       await storage.setLastSyncAt(now);
 
       if (updates.isNotEmpty) {
-        await storage.saveUpdateSummary(updates);
         await storage.addSyncLog(SyncLog(syncedAt: now, updates: updates));
 
-        // Kirim notifikasi hanya dari background — foreground cukup snackbar
-        if (isBackground) {
+        if (isBackground && settings.notificationsEnabled) {
           try {
-            await NotificationService.showUpdateNotification(updates);
-          } catch (_) {
-            // Non-fatal: jangan gagalkan sync karena notifikasi gagal
+            await NotificationService.showUpdateNotification(
+              updates,
+              stringsFor(settings.languageCode),
+            );
+          } catch (e) {
+            debugPrint('Sync notification failed: $e');
           }
         }
       }

@@ -1,17 +1,32 @@
 class Commit {
+  const Commit({
+    required this.sha,
+    required this.message,
+    required this.date,
+  });
+
   final String sha;
   final String message;
   final DateTime date;
 
-  Commit({required this.sha, required this.message, required this.date});
-
   String get title => message.split('\n').first.trim();
 
   factory Commit.fromJson(Map<String, dynamic> json) {
+    final commit = json['commit'] as Map<String, dynamic>? ?? const {};
+    final author = commit['author'] as Map<String, dynamic>? ?? const {};
+
     return Commit(
-      sha: json['sha'],
-      message: json['commit']['message'] ?? '',
-      date: DateTime.parse(json['commit']['author']['date']),
+      sha: json['sha'] as String? ?? '',
+      message: commit['message'] as String? ?? '',
+      date: parseDate(author['date']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
+
+  factory Commit.fromCacheJson(Map<String, dynamic> json) {
+    return Commit(
+      sha: json['sha'] as String? ?? '',
+      message: json['message'] as String? ?? '',
+      date: parseDate(json['date']) ?? DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 
@@ -20,24 +35,10 @@ class Commit {
         'message': message,
         'date': date.toIso8601String(),
       };
-
-  factory Commit.fromCacheJson(Map<String, dynamic> json) {
-    return Commit(
-      sha: json['sha'],
-      message: json['message'] ?? '',
-      date: DateTime.parse(json['date']),
-    );
-  }
 }
 
 class CommitDetail {
-  final String sha;
-  final int additions;
-  final int deletions;
-  final int totalChanges;
-  final List<CommitFile> files;
-
-  CommitDetail({
+  const CommitDetail({
     required this.sha,
     required this.additions,
     required this.deletions,
@@ -45,16 +46,22 @@ class CommitDetail {
     required this.files,
   });
 
+  final String sha;
+  final int additions;
+  final int deletions;
+  final int totalChanges;
+  final List<CommitFile> files;
+
   factory CommitDetail.fromJson(Map<String, dynamic> json) {
-    final stats = json['stats'] as Map<String, dynamic>? ?? {};
-    final rawFiles = json['files'] as List<dynamic>? ?? [];
+    final stats = json['stats'] as Map<String, dynamic>? ?? const {};
+    final files = json['files'] as List<dynamic>? ?? const [];
 
     return CommitDetail(
-      sha: json['sha'] ?? '',
+      sha: json['sha'] as String? ?? '',
       additions: (stats['additions'] as num?)?.toInt() ?? 0,
       deletions: (stats['deletions'] as num?)?.toInt() ?? 0,
       totalChanges: (stats['total'] as num?)?.toInt() ?? 0,
-      files: rawFiles
+      files: files
           .map((item) => CommitFile.fromJson(item as Map<String, dynamic>))
           .toList(),
     );
@@ -62,13 +69,7 @@ class CommitDetail {
 }
 
 class CommitFile {
-  final String filename;
-  final String status;
-  final int additions;
-  final int deletions;
-  final int changes;
-
-  CommitFile({
+  const CommitFile({
     required this.filename,
     required this.status,
     required this.additions,
@@ -76,13 +77,26 @@ class CommitFile {
     required this.changes,
   });
 
+  final String filename;
+  final String status;
+  final int additions;
+  final int deletions;
+  final int changes;
+
   factory CommitFile.fromJson(Map<String, dynamic> json) {
     return CommitFile(
-      filename: json['filename'] ?? '',
-      status: json['status'] ?? 'modified',
+      filename: json['filename'] as String? ?? '',
+      status: json['status'] as String? ?? 'modified',
       additions: (json['additions'] as num?)?.toInt() ?? 0,
       deletions: (json['deletions'] as num?)?.toInt() ?? 0,
       changes: (json['changes'] as num?)?.toInt() ?? 0,
     );
   }
+}
+
+DateTime? parseDate(Object? value) {
+  if (value is! String || value.isEmpty) {
+    return null;
+  }
+  return DateTime.tryParse(value);
 }

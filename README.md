@@ -1,17 +1,49 @@
-# github_watcher
+# GitHub Watcher
 
-A new Flutter project.
+Flutter Android app to watch GitHub repositories and get local notifications when new
+commits land. Public repos work without login; private repos use a Personal Access Token.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- Watch up to 5 repositories, each with its own branch and sync mode
+- Sync modes: latest day (minimal), latest 500 commits, latest 5000 commits
+- Exact hourly background sync via `android_alarm_manager_plus`
+- Local notifications with deep link to sync history
+- Offline commit cache, grouped by day, search by message/SHA, commit detail sheet
+- Private repo access with base64-obfuscated token
+- Bahasa Indonesia + English, light/dark/system theme
+- Onboarding tour and battery optimization exemption helper
 
-A few resources to get you started if this is your first Flutter project:
+## Requirements
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- Flutter 3.24+ (Dart >= 3.5)
+- Android SDK, minSdk 29, targetSdk 36
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Getting started
+
+```powershell
+flutter pub get
+flutter run
+```
+
+Release APK:
+
+```powershell
+flutter build apk --flavor production
+```
+
+## Quality gates
+
+```powershell
+flutter analyze   # must report zero issues
+flutter test      # 50 tests
+```
+
+## Documentation
+
+- `AGENTS.md` — project map, commands, rules for contributors and agents
+- `docs/Architecture.md` — layers, data flow, storage
+- `docs/Context.md` — business context and decisions
+- `docs/Rules.md` — coding conventions
+- `docs/Tasks.md` — backlog
+- `PRD_GitHubWatcher.md` — original product requirements

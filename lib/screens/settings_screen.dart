@@ -4,10 +4,11 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/app_settings.dart';
 import '../models/github_credentials.dart';
 import '../services/app_settings_controller.dart';
+import '../services/startup_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
-import '../services/startup_service.dart';
+import '../widgets/chips.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -41,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadCredentials() async {
     final credentials = await _storage.getCredentials();
     if (!mounted) return;
+
     setState(() {
       _hasCredentials = credentials.isNotEmpty;
       if (credentials.isNotEmpty) {
@@ -79,6 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _clearCredentials(AppStrings strings) async {
     await _storage.clearCredentials();
     if (!mounted) return;
+
     setState(() {
       _hasCredentials = false;
       _usernameController.clear();
@@ -89,29 +92,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _update(AppSettings settings) {
+    return appSettingsController.update(settings);
+  }
+
+  Future<void> _showAboutApp(AppStrings strings) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(strings.aboutApp),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(strings.appDescription),
+            const SizedBox(height: 16),
+            _AboutRow(label: strings.version, value: appVersionName),
+            _AboutRow(label: strings.channel, value: appReleaseChannel),
+            _AboutLinkRow(
+              label: strings.developer,
+              value: developerName,
+              url: developerUrl,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(strings.close),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<AppSettings>(
       valueListenable: appSettingsController,
       builder: (context, settings, _) {
         final strings = stringsFor(settings.languageCode);
+        final colorScheme = Theme.of(context).colorScheme;
 
         return Scaffold(
           appBar: AppBar(title: Text(strings.settings)),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // ── Appearance ───────────────────────────────────────────────
               _SettingsSection(
                 title: strings.appearance,
                 icon: Icons.palette_outlined,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: settings.languageCode,
-                    decoration: InputDecoration(
-                      labelText: strings.language,
-                      border: const OutlineInputBorder(),
-                    ),
+                    initialValue: settings.languageCode,
+                    decoration: InputDecoration(labelText: strings.language),
                     items: const [
                       DropdownMenuItem(
                         value: languageIndonesian,
@@ -155,8 +189,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-
-              // ── GitHub Credentials ────────────────────────────────────────
               _SettingsSection(
                 title: strings.privateAccess,
                 icon: Icons.lock_outline,
@@ -172,14 +204,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
-                      _CredentialStatusPill(hasCredentials: _hasCredentials),
+                      InfoChip(
+                        label: _hasCredentials
+                            ? strings.credentialsActive
+                            : strings.credentialsEmpty,
+                        accent: _hasCredentials,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
                     strings.privateModeSubtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: colorScheme.onSurfaceVariant,
                         ),
                   ),
                   const SizedBox(height: 16),
@@ -188,7 +225,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     decoration: InputDecoration(
                       labelText: strings.githubUsername,
                       prefixIcon: const Icon(Icons.person_outline),
-                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -209,7 +245,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onPressed: () =>
                             setState(() => _tokenObscured = !_tokenObscured),
                       ),
-                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -219,8 +254,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: FilledButton.icon(
                           onPressed: _isSaving
                               ? null
-                              : () => _saveCredentials(stringsFor(
-                                  appSettingsController.value.languageCode)),
+                              : () => _saveCredentials(strings),
                           icon: _isSaving
                               ? const SizedBox(
                                   width: 18,
@@ -239,11 +273,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           icon: const Icon(Icons.delete_outline),
                           label: Text(strings.clearCredentials),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor:
-                                Theme.of(context).colorScheme.error,
-                            side: BorderSide(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
+                            foregroundColor: colorScheme.error,
+                            side: BorderSide(color: colorScheme.error),
                           ),
                         ),
                       ],
@@ -252,8 +283,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-
-              // ── Background Sync ───────────────────────────────────────────
               _SettingsSection(
                 title: strings.syncSettings,
                 icon: Icons.sync_outlined,
@@ -283,31 +312,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withAlpha(76),
+                      color: colorScheme.primaryContainer.withAlpha(76),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color:
-                            Theme.of(context).colorScheme.primary.withAlpha(51),
-                      ),
+                      border:
+                          Border.all(color: colorScheme.primary.withAlpha(51)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.bolt,
-                                size: 18,
-                                color: Theme.of(context).colorScheme.primary),
+                            Icon(
+                              Icons.bolt,
+                              size: 18,
+                              color: colorScheme.primary,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               strings.extremePrecision,
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
-                                color: Theme.of(context).colorScheme.primary,
+                                color: colorScheme.primary,
                               ),
                             ),
                           ],
@@ -336,8 +362,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-
-              // ── About ─────────────────────────────────────────────────────
               _SettingsSection(
                 title: strings.aboutApp,
                 icon: Icons.info_outline,
@@ -347,11 +371,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     leading: const Icon(Icons.star_outline),
                     title: Text(strings.rateApp),
                     subtitle: Text(strings.rateAppDesc),
-                    onTap: () {
-                      launchUrl(Uri.parse(
-                        'https://play.google.com/store/apps/details?id=$appId',
-                      ));
-                    },
+                    onTap: () => _openUrl(
+                      context,
+                      'https://play.google.com/store/apps/details?id=$appId',
+                    ),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -359,7 +382,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     subtitle: Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        '${strings.version} $appVersionName ($appBuildNumber) - $appReleaseChannel\n${strings.developer}: $developerName',
+                        '${strings.version} $appVersionName ($appBuildNumber) - $appReleaseChannel\n'
+                        '${strings.developer}: $developerName',
                       ),
                     ),
                     trailing: const Icon(Icons.chevron_right),
@@ -374,43 +398,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
     );
   }
-
-  Future<void> _update(AppSettings settings) {
-    return appSettingsController.update(settings);
-  }
-
-  Future<void> _showAboutApp(AppStrings strings) {
-    return showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(strings.aboutApp),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(strings.appDescription),
-            const SizedBox(height: 16),
-            _AboutRow(label: strings.version, value: appVersionName),
-            _AboutRow(label: strings.channel, value: appReleaseChannel),
-            _AboutLinkRow(
-              label: strings.developer,
-              value: developerName,
-              url: developerUrl,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(strings.close),
-          ),
-        ],
-      ),
-    );
-  }
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 Future<void> _openUrl(BuildContext context, String url) async {
   final strings = stringsFor(appSettingsController.value.languageCode);
@@ -426,15 +414,15 @@ Future<void> _openUrl(BuildContext context, String url) async {
 }
 
 class _SettingsSection extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final List<Widget> children;
-
   const _SettingsSection({
     required this.title,
     required this.icon,
     required this.children,
   });
+
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
@@ -474,43 +462,11 @@ class _SettingsSection extends StatelessWidget {
   }
 }
 
-class _CredentialStatusPill extends StatelessWidget {
-  final bool hasCredentials;
-
-  const _CredentialStatusPill({required this.hasCredentials});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final strings = stringsFor(appSettingsController.value.languageCode);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: hasCredentials
-            ? colorScheme.primaryContainer
-            : colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        hasCredentials ? strings.credentialsActive : strings.credentialsEmpty,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: hasCredentials
-              ? colorScheme.onPrimaryContainer
-              : colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-}
-
 class _AboutRow extends StatelessWidget {
+  const _AboutRow({required this.label, required this.value});
+
   final String label;
   final String value;
-
-  const _AboutRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -520,8 +476,10 @@ class _AboutRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 82,
-            child: Text(label,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
           Expanded(child: Text(value)),
         ],
@@ -531,15 +489,15 @@ class _AboutRow extends StatelessWidget {
 }
 
 class _AboutLinkRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final String url;
-
   const _AboutLinkRow({
     required this.label,
     required this.value,
     required this.url,
   });
+
+  final String label;
+  final String value;
+  final String url;
 
   @override
   Widget build(BuildContext context) {
@@ -549,8 +507,10 @@ class _AboutLinkRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 82,
-            child: Text(label,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
           Expanded(
             child: InkWell(

@@ -1,11 +1,6 @@
 import '../utils/constants.dart';
 
 class AppSettings {
-  final int syncIntervalMinutes;
-  final String languageCode;
-  final String themeMode;
-  final bool notificationsEnabled;
-
   const AppSettings({
     required this.syncIntervalMinutes,
     required this.languageCode,
@@ -18,6 +13,11 @@ class AppSettings {
         languageCode = languageIndonesian,
         themeMode = themeModeSystem,
         notificationsEnabled = true;
+
+  final int syncIntervalMinutes;
+  final String languageCode;
+  final String themeMode;
+  final bool notificationsEnabled;
 
   AppSettings copyWith({
     int? syncIntervalMinutes,
@@ -41,10 +41,9 @@ class AppSettings {
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
-    final interval = (json['sync_interval_minutes'] as num?)?.toInt() ??
-        defaultSyncIntervalMinutes;
     return AppSettings(
-      syncIntervalMinutes: interval,
+      syncIntervalMinutes: (json['sync_interval_minutes'] as num?)?.toInt() ??
+          defaultSyncIntervalMinutes,
       languageCode: json['language_code'] == languageEnglish
           ? languageEnglish
           : languageIndonesian,

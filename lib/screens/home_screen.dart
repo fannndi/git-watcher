@@ -2,15 +2,16 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/app_settings.dart';
 import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
+import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../services/sync_service.dart';
+import '../utils/animations.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
 import '../widgets/repo_tile.dart';
@@ -28,48 +29,40 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final StorageService _storage = StorageService();
+
   List<WatchedRepo> _repos = [];
   bool _isLoading = true;
   bool _isSyncing = false;
-  String _languageCode = languageIndonesian;
-  bool _hasUnreadUpdates = false;
-  bool _isSearching = false;
-  String _searchQuery = '';
   bool _isOffline = false;
+  bool _isSearching = false;
+  bool _hasUnreadUpdates = false;
   bool _showTour = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _languageCode = appSettingsController.value.languageCode;
-    appSettingsController.addListener(_onSettingsChanged);
     _loadRepos();
     _checkConnectivity();
-    _setupQuickActions();
-    _checkFirstTime();
-    _checkForUpdates();
+    _checkTour();
+    _checkAppUpdate();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openFromNotification());
   }
 
-  @override
-  void dispose() {
-    appSettingsController.removeListener(_onSettingsChanged);
-    super.dispose();
-  }
-
-  void _onSettingsChanged() {
-    if (mounted) {
-      setState(() {
-        _languageCode = appSettingsController.value.languageCode;
-      });
+  Future<void> _openFromNotification() async {
+    final launched = await NotificationService.launchedFromUpdateNotification();
+    if (launched && mounted) {
+      NotificationService.openUpdateScreen();
     }
   }
 
   Future<void> _checkConnectivity() async {
     try {
-      final result = await InternetAddress.lookup('api.github.com');
+      final result = await InternetAddress.lookup(githubApiHost);
       if (mounted) {
         setState(
-            () => _isOffline = result.isEmpty || result[0].rawAddress.isEmpty);
+          () => _isOffline = result.isEmpty || result.first.rawAddress.isEmpty,
+        );
       }
     } catch (_) {
       if (mounted) {
@@ -78,66 +71,52 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _setupQuickActions() {
-    const channel = MethodChannel('quick_actions');
-    channel.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 'syncNow':
-          _syncNow();
-          break;
-        case 'addRepo':
-          _openAddRepo();
-          break;
-      }
-    });
-  }
-
-  Future<void> _checkFirstTime() async {
-    final prefs = await SharedPreferences.getInstance();
-    final hasSeenTour = prefs.getBool('has_seen_tour') ?? false;
-    if (!hasSeenTour && mounted) {
+  Future<void> _checkTour() async {
+    if (!await _storage.hasSeenTour() && mounted) {
       setState(() => _showTour = true);
     }
   }
 
-  Future<void> _checkForUpdates() async {
-    try {
-      final response = await http.get(
-        Uri.parse(
-            'https://api.github.com/repos/fannndi/git-watcher/releases/latest'),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final latestVersion = data['tag_name']?.toString().replaceAll('v', '');
-
-        if (latestVersion != null && latestVersion != appVersionName) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Update tersedia: v$latestVersion'),
-                action: SnackBarAction(
-                  label: 'Update',
-                  onPressed: () {
-                    launchUrl(Uri.parse(
-                      'https://play.google.com/store/apps/details?id=$appId',
-                    ));
-                  },
-                ),
-              ),
-            );
-          }
-        }
-      }
-    } catch (_) {
-      // Non-fatal: silently ignore
+  Future<void> _dismissTour() async {
+    await _storage.setHasSeenTour(true);
+    if (mounted) {
+      setState(() => _showTour = false);
     }
   }
 
-  void _dismissTour() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('has_seen_tour', true);
-    if (mounted) setState(() => _showTour = false);
+  Future<void> _checkAppUpdate() async {
+    try {
+      final response = await http.get(
+        Uri.https(githubApiHost, '/repos/fannndi/git-watcher/releases/latest'),
+      );
+      if (response.statusCode != 200) {
+        return;
+      }
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final latest = body['tag_name']?.toString().replaceFirst('v', '');
+      if (latest == null || latest == appVersionName || !mounted) {
+        return;
+      }
+
+      final strings = stringsFor(appSettingsController.value.languageCode);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(strings.updateAvailable(latest)),
+          action: SnackBarAction(
+            label: strings.updateAction,
+            onPressed: _openStoreListing,
+          ),
+        ),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _openStoreListing() async {
+    await launchUrl(
+      Uri.parse('https://play.google.com/store/apps/details?id=$appId'),
+      mode: LaunchMode.externalApplication,
+    );
   }
 
   Future<void> _loadRepos() async {
@@ -149,11 +128,16 @@ class _HomeScreenState extends State<HomeScreen> {
         _repos = repos;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load repos: $e')),
+        SnackBar(
+          content: Text(
+            stringsFor(appSettingsController.value.languageCode)
+                .loadReposFailed,
+          ),
+        ),
       );
     }
   }
@@ -164,197 +148,322 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (added == true) {
       await _loadRepos();
-      _syncNow(); // sync langsung setelah repo baru ditambahkan
+      await _syncNow();
     }
   }
 
   Future<void> _deleteRepo(WatchedRepo repo) async {
-    final updated = _repos.where((item) {
-      return item.owner != repo.owner ||
-          item.repo != repo.repo ||
-          item.branch != repo.branch;
-    }).toList();
+    final updated = _repos
+        .where(
+          (item) =>
+              item.owner != repo.owner ||
+              item.repo != repo.repo ||
+              item.branch != repo.branch,
+        )
+        .toList();
+
     await _storage.saveRepos(updated);
     if (!mounted) return;
+
     setState(() => _repos = updated);
-    final strings = stringsFor(_languageCode);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(strings.repoDeleted(repo.fullName))),
+      SnackBar(
+        content: Text(
+          stringsFor(appSettingsController.value.languageCode)
+              .repoDeleted(repo.fullName),
+        ),
+      ),
     );
   }
 
   Future<void> _syncNow() async {
     if (_isSyncing) return;
+
     setState(() => _isSyncing = true);
-    final strings = stringsFor(_languageCode);
+    final strings = stringsFor(appSettingsController.value.languageCode);
     final messenger = ScaffoldMessenger.of(context);
+
     try {
       final updates = await SyncService.checkUpdates();
-
-      // Reload repos
       final repos = await _storage.getRepos();
       if (!mounted) return;
+
       setState(() {
         _repos = repos;
+        if (updates.isNotEmpty) {
+          _hasUnreadUpdates = true;
+        }
       });
 
       if (updates.isNotEmpty) {
-        setState(() => _hasUnreadUpdates = true);
         messenger.showSnackBar(
           SnackBar(content: Text(strings.reposHaveUpdates(updates.length))),
         );
       }
     } catch (_) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(strings.syncFailed)),
-        );
+        messenger.showSnackBar(SnackBar(content: Text(strings.syncFailed)));
       }
     } finally {
-      if (mounted) setState(() => _isSyncing = false);
+      if (mounted) {
+        setState(() => _isSyncing = false);
+      }
     }
   }
 
-  List<WatchedRepo> get _filteredRepos => _searchQuery.isEmpty
-      ? _repos
-      : _repos
-          .where((r) =>
-              r.fullName.toLowerCase().contains(_searchQuery.toLowerCase()))
-          .toList();
+  List<WatchedRepo> get _filteredRepos {
+    if (_searchQuery.isEmpty) {
+      return _repos;
+    }
+
+    final query = _searchQuery.toLowerCase();
+    return _repos
+        .where((repo) => repo.fullName.toLowerCase().contains(query))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final strings = stringsFor(_languageCode);
+    return ValueListenableBuilder<AppSettings>(
+      valueListenable: appSettingsController,
+      builder: (context, settings, _) {
+        final strings = stringsFor(settings.languageCode);
 
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(strings.appTitle),
-                Text(
-                  'v$appVersionName',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        return Stack(
+          children: [
+            Scaffold(
+              appBar: AppBar(
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(strings.appTitle),
+                    Text(
+                      'v$appVersionName',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  if (_isOffline)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
                       ),
-                ),
-              ],
-            ),
-            centerTitle: false,
-            actions: [
-              if (_isOffline)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.error,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Offline',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ),
-              IconButton(
-                tooltip: _isSearching ? 'Close search' : 'Search',
-                icon: Icon(_isSearching ? Icons.close : Icons.search),
-                onPressed: () {
-                  setState(() {
-                    _isSearching = !_isSearching;
-                    if (!_isSearching) _searchQuery = '';
-                  });
-                },
-              ),
-              IconButton(
-                tooltip: strings.syncNow,
-                icon: _isSyncing
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.sync),
-                onPressed: _isSyncing ? null : _syncNow,
-              ),
-              IconButton(
-                tooltip: strings.history,
-                icon: Badge(
-                  isLabelVisible: _hasUnreadUpdates,
-                  child: const Icon(Icons.notifications_outlined),
-                ),
-                onPressed: () {
-                  setState(() => _hasUnreadUpdates = false);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const UpdateScreen()),
-                  );
-                },
-              ),
-              IconButton(
-                tooltip: strings.settings,
-                icon: const Icon(Icons.settings_outlined),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                ),
-              ),
-            ],
-          ),
-          body: Column(
-            children: [
-              if (_isSearching)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: TextField(
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: 'Cari repo...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.error,
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      child: Text(
+                        strings.offline,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                    onChanged: (value) {
-                      setState(() => _searchQuery = value);
+                  IconButton(
+                    tooltip: _isSearching ? strings.closeSearch : strings.search,
+                    icon: Icon(_isSearching ? Icons.close : Icons.search),
+                    onPressed: () {
+                      setState(() {
+                        _isSearching = !_isSearching;
+                        if (!_isSearching) {
+                          _searchQuery = '';
+                        }
+                      });
                     },
                   ),
-                ),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    await _loadRepos();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Repos refreshed'),
-                          duration: Duration(seconds: 1),
+                  IconButton(
+                    tooltip: strings.syncNow,
+                    icon: _isSyncing
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.sync),
+                    onPressed: _isSyncing ? null : _syncNow,
+                  ),
+                  IconButton(
+                    tooltip: strings.history,
+                    icon: Badge(
+                      isLabelVisible: _hasUnreadUpdates,
+                      child: const Icon(Icons.notifications_outlined),
+                    ),
+                    onPressed: () {
+                      setState(() => _hasUnreadUpdates = false);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const UpdateScreen(),
                         ),
                       );
-                    }
-                  },
-                  child: _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _filteredRepos.isEmpty
-                          ? _buildEmptyState(strings)
-                          : _buildRepoList(),
-                ),
+                    },
+                  ),
+                  IconButton(
+                    tooltip: strings.settings,
+                    icon: const Icon(Icons.settings_outlined),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const SettingsScreen(),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          floatingActionButton: _repos.length >= maxWatchedRepos
-              ? null
-              : FloatingActionButton(
-                  onPressed: _openAddRepo,
-                  child: const Icon(Icons.add),
-                ),
-        ),
-        if (_showTour) _buildTourOverlay(context, strings),
-      ],
+              body: Column(
+                children: [
+                  if (_isSearching)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: TextField(
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: strings.searchRepo,
+                          prefixIcon: const Icon(Icons.search),
+                        ),
+                        onChanged: (value) =>
+                            setState(() => _searchQuery = value),
+                      ),
+                    ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: _syncNow,
+                      child: _isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : _filteredRepos.isEmpty
+                              ? _buildEmptyState(strings)
+                              : _buildRepoList(strings),
+                    ),
+                  ),
+                ],
+              ),
+              floatingActionButton: _repos.length >= maxWatchedRepos
+                  ? null
+                  : FloatingActionButton(
+                      onPressed: _openAddRepo,
+                      child: const Icon(Icons.add),
+                    ),
+            ),
+            if (_showTour) _buildTourOverlay(strings),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildTourOverlay(BuildContext context, AppStrings strings) {
+  Widget _buildEmptyState(AppStrings strings) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 120),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(
+                Icons.folder_open_outlined,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              strings.noReposTitle,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              strings.noReposSubtitle,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: _openAddRepo,
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(strings.addRepo),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRepoList(AppStrings strings) {
+    final repos = _filteredRepos;
+
+    return ListView.separated(
+      padding: EdgeInsets.only(bottom: repos.length >= maxWatchedRepos ? 24 : 96),
+      itemCount: repos.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final repo = repos[index];
+
+        return FadeInSlideUp(
+          index: index,
+          child: Dismissible(
+            key: ValueKey('${repo.fullName}-${repo.branch}'),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 18),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.delete_outline),
+            ),
+            confirmDismiss: (_) => showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text(strings.confirmDelete),
+                content: Text(strings.confirmDeleteRepo(repo.fullName)),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(strings.cancel),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: Text(strings.delete),
+                  ),
+                ],
+              ),
+            ),
+            onDismissed: (_) => _deleteRepo(repo),
+            child: RepoTile(
+              repo: repo,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => DetailScreen(repo: repo)),
+              ),
+              onDelete: () => _deleteRepo(repo),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTourOverlay(AppStrings strings) {
     return Container(
       color: Colors.black54,
       child: SafeArea(
@@ -363,8 +472,11 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.explore,
-                  size: 64, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                Icons.explore,
+                size: 64,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: 24),
               Text(
                 strings.appTitle,
@@ -406,130 +518,6 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(text, style: const TextStyle(color: Colors.white70)),
         ],
       ),
-    );
-  }
-
-  Widget _buildEmptyState(AppStrings strings) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 120),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Icon(
-                Icons.folder_open_outlined,
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              strings.noReposTitle,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              strings.noReposSubtitle,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: _openAddRepo,
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(strings.addRepo),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRepoList() {
-    final repos = _filteredRepos;
-    return ListView.separated(
-      padding:
-          EdgeInsets.only(bottom: repos.length >= maxWatchedRepos ? 24 : 96),
-      itemCount: repos.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final repo = repos[index];
-        return TweenAnimationBuilder<double>(
-          duration: Duration(milliseconds: 400 + (index * 100).clamp(0, 400)),
-          tween: Tween(begin: 0.0, end: 1.0),
-          builder: (context, value, child) {
-            return Opacity(
-              opacity: value,
-              child: Transform.translate(
-                offset: Offset(0, 30 * (1 - value)),
-                child: child,
-              ),
-            );
-          },
-          child: Dismissible(
-            key: ValueKey('${repo.fullName}-${repo.branch}'),
-            direction: DismissDirection.endToStart,
-            background: Container(
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 18),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(Icons.delete_outline),
-            ),
-            confirmDismiss: (_) async {
-              return await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text(strings.confirmDelete),
-                  content: Text(strings.confirmDeleteRepo(repo.fullName)),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: Text(strings.cancel),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: Text(strings.delete),
-                    ),
-                  ],
-                ),
-              );
-            },
-            onDismissed: (_) async {
-              await _deleteRepo(repo);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(strings.repoRemoved(repo.fullName))),
-                );
-              }
-            },
-            child: RepoTile(
-              repo: repo,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => DetailScreen(repo: repo),
-                ),
-              ),
-              onDelete: () => _deleteRepo(repo),
-            ),
-          ),
-        );
-      },
     );
   }
 }

@@ -2,18 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/app_settings.dart';
 import '../models/commit.dart';
 import '../models/watched_repo.dart';
+import '../services/app_settings_controller.dart';
 import '../services/github_service.dart';
 import '../services/storage_service.dart';
-import '../services/app_settings_controller.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
+import '../widgets/chips.dart';
 
 class DetailScreen extends StatefulWidget {
-  final WatchedRepo repo;
-
   const DetailScreen({super.key, required this.repo});
+
+  final WatchedRepo repo;
 
   @override
   State<DetailScreen> createState() => _DetailScreenState();
@@ -29,7 +31,7 @@ class _DetailScreenState extends State<DetailScreen> {
   List<Commit> _commits = [];
   String _query = '';
   bool _isLoading = true;
-  String? _error;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -46,12 +48,13 @@ class _DetailScreenState extends State<DetailScreen> {
   Future<void> _loadCommits() async {
     setState(() {
       _isLoading = true;
-      _error = null;
+      _hasError = false;
     });
+
     try {
       var commits = await _storage.getCachedCommits(widget.repo);
       if (commits.isEmpty) {
-        commits = await _fetchCommitsByMode();
+        commits = await _fetchByMode();
         await _storage.saveCachedCommits(widget.repo, commits);
       }
 
@@ -60,261 +63,310 @@ class _DetailScreenState extends State<DetailScreen> {
         _commits = commits;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = e.toString();
+        _hasError = true;
       });
     }
   }
 
   Future<void> _refreshCommits() async {
-    final commits = await _fetchCommitsByMode();
-    await _storage.saveCachedCommits(widget.repo, commits);
-    if (!mounted) return;
-    setState(() => _commits = commits);
+    try {
+      final commits = await _fetchByMode();
+      await _storage.saveCachedCommits(widget.repo, commits);
+      if (!mounted) return;
+      setState(() {
+        _commits = commits;
+        _hasError = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      final strings = stringsFor(appSettingsController.value.languageCode);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.fetchCommitsFailed)),
+      );
+    }
+  }
+
+  Future<List<Commit>> _fetchByMode() {
+    return _github.fetchCommitsForMode(
+      widget.repo.owner,
+      widget.repo.repo,
+      widget.repo.branch,
+      widget.repo.syncMode,
+    );
+  }
+
+  Future<void> _openUrl(Uri uri) async {
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      final strings = stringsFor(appSettingsController.value.languageCode);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.openLinkFailed)),
+      );
+    }
+  }
+
+  List<Commit> get _filteredCommits {
+    if (_query.isEmpty) {
+      return _commits;
+    }
+
+    final query = _query.toLowerCase();
+    return _commits
+        .where(
+          (commit) =>
+              commit.message.toLowerCase().contains(query) ||
+              commit.sha.toLowerCase().contains(query),
+        )
+        .toList();
+  }
+
+  Map<String, List<Commit>> _groupCommitsByDate(List<Commit> commits) {
+    final grouped = <String, List<Commit>>{};
+    for (final commit in commits) {
+      final key = _dayFormat.format(commit.date.toLocal());
+      grouped.putIfAbsent(key, () => []).add(commit);
+    }
+    return grouped;
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredCommits = _filteredCommits();
-    final groupedCommits = _groupCommitsByDate(filteredCommits);
-    final strings = stringsFor(appSettingsController.value.languageCode);
+    return ValueListenableBuilder<AppSettings>(
+      valueListenable: appSettingsController,
+      builder: (context, settings, _) {
+        final strings = stringsFor(settings.languageCode);
+        final groupedCommits = _groupCommitsByDate(_filteredCommits);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        return Scaffold(
+          appBar: AppBar(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.repo.fullName),
+                Text(
+                  widget.repo.branch,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                tooltip: strings.shareRepo,
+                icon: const Icon(Icons.open_in_new),
+                onPressed: () => _openUrl(
+                  Uri.https(
+                    githubWebHost,
+                    '/${widget.repo.fullName}/tree/${widget.repo.branch}',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          body: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            child: _isLoading
+                ? const Center(
+                    key: ValueKey('loading'),
+                    child: CircularProgressIndicator(),
+                  )
+                : _hasError
+                    ? _buildErrorState(strings)
+                    : _buildContent(strings, groupedCommits),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorState(AppStrings strings) {
+    return Center(
+      key: const ValueKey('error'),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.repo.fullName),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 16),
             Text(
-              widget.repo.branch,
-              style: Theme.of(context).textTheme.labelMedium,
+              strings.fetchCommitsFailed,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _loadCommits,
+              icon: const Icon(Icons.refresh),
+              label: Text(strings.tryAgain),
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-              final url =
-                  'https://github.com/${widget.repo.fullName}/tree/${widget.repo.branch}';
-              launchUrl(Uri.parse(url));
-            },
-          ),
-        ],
-      ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
-        child: _isLoading
-            ? const Center(
-                key: ValueKey('loading'), child: CircularProgressIndicator())
-            : _error != null
-                ? Center(
-                    key: const ValueKey('error'),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.error_outline,
-                              size: 48, color: Colors.red),
-                          const SizedBox(height: 16),
-                          Text(
-                            strings.fetchCommitsFailed,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _error!,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: _loadCommits,
-                            icon: const Icon(Icons.refresh),
-                            label: Text(strings.tryAgain),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : Padding(
-                    key: const ValueKey('content'),
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.search),
-                            suffixIcon: _query.isEmpty
-                                ? null
-                                : IconButton(
-                                    tooltip: strings.clearSearch,
-                                    icon: const Icon(Icons.close),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() => _query = '');
-                                    },
-                                  ),
-                            labelText: strings.searchCommit,
-                            helperText: strings.searchCommitHelper,
-                            border: const OutlineInputBorder(),
-                          ),
-                          onChanged: (value) =>
-                              setState(() => _query = value.trim()),
-                        ),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          child: RefreshIndicator(
-                            onRefresh: _refreshCommits,
-                            child: filteredCommits.isEmpty
-                                ? ListView(
-                                    children: [
-                                      const SizedBox(height: 220),
-                                      Center(
-                                          child: Text(strings.commitNotFound)),
-                                    ],
-                                  )
-                                : ListView.separated(
-                                    padding: const EdgeInsets.only(bottom: 24),
-                                    itemCount: groupedCommits.length,
-                                    separatorBuilder: (_, __) =>
-                                        const SizedBox(height: 4),
-                                    itemBuilder: (context, index) {
-                                      final group = groupedCommits.entries
-                                          .elementAt(index);
-
-                                      return Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                                4, 16, 4, 8),
-                                            child: Text(
-                                              group.key,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .titleMedium
-                                                  ?.copyWith(
-                                                    fontWeight: FontWeight.w800,
-                                                  ),
-                                            ),
-                                          ),
-                                          ...group.value
-                                              .asMap()
-                                              .entries
-                                              .map((entry) {
-                                            final commitIndex = entry.key;
-                                            final commit = entry.value;
-                                            return TweenAnimationBuilder<
-                                                double>(
-                                              duration: Duration(
-                                                  milliseconds: 400 +
-                                                      (commitIndex * 80)
-                                                          .clamp(0, 400)),
-                                              tween:
-                                                  Tween(begin: 0.0, end: 1.0),
-                                              builder: (context, value, child) {
-                                                return Opacity(
-                                                  opacity: value,
-                                                  child: Transform.translate(
-                                                    offset: Offset(
-                                                        0, 20 * (1 - value)),
-                                                    child: child,
-                                                  ),
-                                                );
-                                              },
-                                              child: _buildCommitCard(commit),
-                                            );
-                                          }),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
       ),
     );
   }
 
-  Widget _buildCommitCard(Commit commit) {
-    final shortSha =
-        commit.sha.length >= 7 ? commit.sha.substring(0, 7) : commit.sha;
+  Widget _buildContent(
+    AppStrings strings,
+    Map<String, List<Commit>> groupedCommits,
+  ) {
+    return Padding(
+      key: const ValueKey('content'),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Column(
+        children: [
+          TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: strings.clearSearch,
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _query = '');
+                      },
+                    ),
+              labelText: strings.searchCommit,
+              helperText: strings.searchCommitHelper,
+            ),
+            onChanged: (value) => setState(() => _query = value.trim()),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _refreshCommits,
+              child: groupedCommits.isEmpty
+                  ? ListView(
+                      children: [
+                        const SizedBox(height: 220),
+                        Center(child: Text(strings.commitNotFound)),
+                      ],
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      itemCount: groupedCommits.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 4),
+                      itemBuilder: (context, index) {
+                        final group =
+                            groupedCommits.entries.elementAt(index);
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(4, 16, 4, 8),
+                              child: Text(
+                                group.key,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                            for (var i = 0; i < group.value.length; i++)
+                              _buildCommitCard(group.value[i], i),
+                          ],
+                        );
+                      },
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommitCard(Commit commit, int index) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Card(
-      color: colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: colorScheme.outlineVariant),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => _showCommitDetail(commit),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(10),
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 400 + (index * 80).clamp(0, 400)),
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: Card(
+        color: colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: colorScheme.outlineVariant),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => _showCommitDetail(commit),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.commit_outlined,
+                    color: colorScheme.onPrimaryContainer,
+                    size: 20,
+                  ),
                 ),
-                child: Icon(
-                  Icons.commit_outlined,
-                  color: colorScheme.onPrimaryContainer,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      commit.title.isEmpty ? commit.message : commit.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            height: 1.25,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        commit.title.isEmpty ? commit.message : commit.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              height: 1.25,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          InfoChip(
+                            icon: Icons.tag_outlined,
+                            label: _shortSha(commit.sha),
                           ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        _MetaChip(
-                          icon: Icons.tag_outlined,
-                          label: shortSha,
-                        ),
-                        _MetaChip(
-                          icon: Icons.schedule_outlined,
-                          label: _timeFormat.format(commit.date.toLocal()),
-                        ),
-                      ],
-                    ),
-                  ],
+                          InfoChip(
+                            icon: Icons.schedule_outlined,
+                            label: _timeFormat.format(commit.date.toLocal()),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right,
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ],
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+              ],
+            ),
           ),
         ),
       ),
@@ -322,86 +374,56 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   void _showCommitDetail(Commit commit) {
-    final shortSha =
-        commit.sha.length >= 7 ? commit.sha.substring(0, 7) : commit.sha;
-    final strings = stringsFor(appSettingsController.value.languageCode);
-
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.76,
-        minChildSize: 0.4,
-        maxChildSize: 0.94,
-        builder: (context, scrollController) {
-          return FutureBuilder<CommitDetail>(
-            future: _github.fetchCommitDetail(
-              widget.repo.owner,
-              widget.repo.repo,
-              commit.sha,
-            ),
-            builder: (context, snapshot) {
-              return ListView(
-                controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          shortSha,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: strings.close,
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SelectableText.rich(
-                    _formatCommitMessage(commit.message, context),
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 14),
-                  FilledButton.icon(
-                    onPressed: () => _openCommitUrl(commit),
-                    icon: const Icon(Icons.open_in_browser_outlined),
-                    label: Text(strings.seeDetail),
-                  ),
-                  const SizedBox(height: 18),
-                  if (snapshot.connectionState != ConnectionState.done)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  else if (snapshot.hasError)
-                    _CommitDetailError(onRetry: () => setState(() {}))
-                  else
-                    _CommitFileSummary(detail: snapshot.requireData),
-                ],
-              );
-            },
-          );
-        },
+      builder: (_) => _CommitDetailSheet(
+        repo: widget.repo,
+        commit: commit,
+        github: _github,
       ),
     );
   }
 
-  Future<void> _openCommitUrl(Commit commit) async {
+  String _shortSha(String sha) => sha.length >= 7 ? sha.substring(0, 7) : sha;
+}
+
+class _CommitDetailSheet extends StatefulWidget {
+  const _CommitDetailSheet({
+    required this.repo,
+    required this.commit,
+    required this.github,
+  });
+
+  final WatchedRepo repo;
+  final Commit commit;
+  final GitHubService github;
+
+  @override
+  State<_CommitDetailSheet> createState() => _CommitDetailSheetState();
+}
+
+class _CommitDetailSheetState extends State<_CommitDetailSheet> {
+  late Future<CommitDetail> _future = _load();
+
+  Future<CommitDetail> _load() {
+    return widget.github.fetchCommitDetail(
+      widget.repo.owner,
+      widget.repo.repo,
+      widget.commit.sha,
+    );
+  }
+
+  void _retry() {
+    setState(() => _future = _load());
+  }
+
+  Future<void> _openCommitInBrowser() async {
     final strings = stringsFor(appSettingsController.value.languageCode);
     final uri = Uri.https(
-      'github.com',
-      '/${widget.repo.owner}/${widget.repo.repo}/commit/${commit.sha}',
+      githubWebHost,
+      '/${widget.repo.owner}/${widget.repo.repo}/commit/${widget.commit.sha}',
     );
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
 
@@ -412,122 +434,106 @@ class _DetailScreenState extends State<DetailScreen> {
     }
   }
 
-  List<Commit> _filteredCommits() {
-    if (_query.isEmpty) {
-      return _commits;
-    }
-
-    final query = _query.toLowerCase();
-    return _commits.where((commit) {
-      return commit.message.toLowerCase().contains(query) ||
-          commit.sha.toLowerCase().contains(query);
-    }).toList();
-  }
-
-  Map<String, List<Commit>> _groupCommitsByDate(List<Commit> commits) {
-    final grouped = <String, List<Commit>>{};
-
-    for (final commit in commits) {
-      final key = _dayFormat.format(commit.date.toLocal());
-      grouped.putIfAbsent(key, () => []).add(commit);
-    }
-
-    return grouped;
-  }
-
-  TextSpan _formatCommitMessage(String message, BuildContext context) {
-    final spans = <TextSpan>[];
+  TextSpan _formatMessage(String message, BuildContext context) {
     final lines = message.split('\n');
-
-    // First line (title)
-    if (lines.isNotEmpty) {
-      spans.add(TextSpan(
-        text: lines[0],
+    final spans = <TextSpan>[
+      TextSpan(
+        text: lines.first,
         style: TextStyle(
           fontWeight: FontWeight.bold,
           color: Theme.of(context).colorScheme.onSurface,
         ),
-      ));
-    }
+      ),
+    ];
 
-    // Rest of message (body)
     if (lines.length > 1) {
-      spans.add(TextSpan(
-        text: '\n${lines.sublist(1).join('\n')}',
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+      spans.add(
+        TextSpan(
+          text: '\n${lines.sublist(1).join('\n')}',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
-      ));
+      );
     }
 
     return TextSpan(children: spans);
   }
 
-  Future<List<Commit>> _fetchCommitsByMode() {
-    if (widget.repo.syncMode == syncModeLatest) {
-      return _github.fetchCommitsWithLimit(
-        widget.repo.owner,
-        widget.repo.repo,
-        widget.repo.branch,
-        latestSyncCommitLimit,
-      );
-    }
-
-    if (widget.repo.syncMode == syncModeExtended) {
-      return _github.fetchCommitsWithLimit(
-        widget.repo.owner,
-        widget.repo.repo,
-        widget.repo.branch,
-        extendedSyncCommitLimit,
-      );
-    }
-
-    return _github.fetchLatestDayCommits(
-      widget.repo.owner,
-      widget.repo.repo,
-      widget.repo.branch,
-    );
-  }
-}
-
-class _MetaChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _MetaChip({required this.icon, required this.label});
-
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final strings = stringsFor(appSettingsController.value.languageCode);
+    final shortSha = widget.commit.sha.length >= 7
+        ? widget.commit.sha.substring(0, 7)
+        : widget.commit.sha;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: colorScheme.onSurfaceVariant),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.76,
+      minChildSize: 0.4,
+      maxChildSize: 0.94,
+      builder: (context, scrollController) {
+        return FutureBuilder<CommitDetail>(
+          future: _future,
+          builder: (context, snapshot) {
+            return ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        shortSha,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: strings.close,
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
                 ),
-          ),
-        ],
-      ),
+                const SizedBox(height: 8),
+                SelectableText.rich(
+                  _formatMessage(widget.commit.message, context),
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: _openCommitInBrowser,
+                  icon: const Icon(Icons.open_in_browser_outlined),
+                  label: Text(strings.seeDetail),
+                ),
+                const SizedBox(height: 18),
+                if (snapshot.connectionState != ConnectionState.done)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (snapshot.hasError)
+                  _CommitDetailError(onRetry: _retry)
+                else
+                  _CommitFileSummary(detail: snapshot.requireData),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
 
 class _CommitFileSummary extends StatelessWidget {
-  final CommitDetail detail;
-
   const _CommitFileSummary({required this.detail});
+
+  final CommitDetail detail;
 
   @override
   Widget build(BuildContext context) {
@@ -542,41 +548,36 @@ class _CommitFileSummary extends StatelessWidget {
             Expanded(
               child: Text(
                 strings.changedFiles(detail.files.length),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w800),
               ),
             ),
-            _ChangePill(
-              label: '+${detail.additions}',
-              color: Colors.green,
-            ),
+            InfoChip(label: '+${detail.additions}', color: Colors.green),
             const SizedBox(width: 8),
-            _ChangePill(
-              label: '-${detail.deletions}',
-              color: colorScheme.error,
-            ),
+            InfoChip(label: '-${detail.deletions}', color: colorScheme.error),
           ],
         ),
         const SizedBox(height: 12),
         Row(
           children: [
-            _StatChip(
+            InfoChip(
               icon: Icons.add,
               label: '+${detail.additions}',
               color: Colors.green,
             ),
             const SizedBox(width: 8),
-            _StatChip(
+            InfoChip(
               icon: Icons.remove,
               label: '-${detail.deletions}',
-              color: Colors.red,
+              color: colorScheme.error,
             ),
             const SizedBox(width: 8),
-            _StatChip(
+            InfoChip(
               icon: Icons.folder,
               label: '${detail.files.length} files',
-              color: Theme.of(context).colorScheme.primary,
+              color: colorScheme.primary,
             ),
           ],
         ),
@@ -586,76 +587,17 @@ class _CommitFileSummary extends StatelessWidget {
             strings.noFileDetail,
             style: TextStyle(color: colorScheme.onSurfaceVariant),
           )
-        else ...[
-          ExpansionTile(
-            title: Text('${detail.files.length} files changed'),
-            children: detail.files.map((file) {
-              return ListTile(
-                leading: Icon(
-                  _statusIcon(file.status),
-                  color: _statusColor(file.status, colorScheme),
-                  size: 20,
-                ),
-                title: Text(
-                  file.filename,
-                  style: const TextStyle(fontSize: 13),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '+${file.additions}',
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '-${file.deletions}',
-                      style: const TextStyle(
-                        color: Colors.red,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
+        else
           ...detail.files.map((file) => _CommitFileTile(file: file)),
-        ],
       ],
     );
   }
 }
 
-IconData _statusIcon(String status) {
-  return switch (status) {
-    'added' => Icons.add_circle_outline,
-    'removed' => Icons.remove_circle_outline,
-    'renamed' => Icons.drive_file_rename_outline,
-    _ => Icons.edit_outlined,
-  };
-}
-
-Color _statusColor(String status, ColorScheme colorScheme) {
-  return switch (status) {
-    'added' => Colors.green,
-    'removed' => colorScheme.error,
-    'renamed' => colorScheme.tertiary,
-    _ => colorScheme.primary,
-  };
-}
-
 class _CommitFileTile extends StatelessWidget {
-  final CommitFile file;
-
   const _CommitFileTile({required this.file});
+
+  final CommitFile file;
 
   @override
   Widget build(BuildContext context) {
@@ -696,9 +638,9 @@ class _CommitFileTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            _ChangePill(label: '+${file.additions}', color: Colors.green),
+            InfoChip(label: '+${file.additions}', color: Colors.green),
             const SizedBox(width: 6),
-            _ChangePill(label: '-${file.deletions}', color: colorScheme.error),
+            InfoChip(label: '-${file.deletions}', color: colorScheme.error),
           ],
         ),
       ),
@@ -706,73 +648,10 @@ class _CommitFileTile extends StatelessWidget {
   }
 }
 
-class _ChangePill extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _ChangePill({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _StatChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withAlpha(26),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _CommitDetailError extends StatelessWidget {
-  final VoidCallback onRetry;
-
   const _CommitDetailError({required this.onRetry});
+
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -795,4 +674,22 @@ class _CommitDetailError extends StatelessWidget {
       ),
     );
   }
+}
+
+IconData _statusIcon(String status) {
+  return switch (status) {
+    'added' => Icons.add_circle_outline,
+    'removed' => Icons.remove_circle_outline,
+    'renamed' => Icons.drive_file_rename_outline,
+    _ => Icons.edit_outlined,
+  };
+}
+
+Color _statusColor(String status, ColorScheme colorScheme) {
+  return switch (status) {
+    'added' => Colors.green,
+    'removed' => colorScheme.error,
+    'renamed' => colorScheme.tertiary,
+    _ => colorScheme.primary,
+  };
 }

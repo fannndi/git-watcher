@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:github_watcher/app.dart';
 import 'package:github_watcher/screens/settings_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({'has_seen_tour': true});
+  });
+
   group('HomeScreen', () {
     testWidgets('renders empty state when no repos', (tester) async {
-      SharedPreferences.setMockInitialValues({});
-
       await tester.pumpWidget(const GitHubWatcherApp());
       await tester.pumpAndSettle();
 
@@ -16,38 +18,17 @@ void main() {
       expect(find.byIcon(Icons.folder_open_outlined), findsOneWidget);
     });
 
-    testWidgets('shows FAB when repo count < max', (tester) async {
-      SharedPreferences.setMockInitialValues({});
-
+    testWidgets('shows FAB and app bar actions', (tester) async {
       await tester.pumpWidget(const GitHubWatcherApp());
       await tester.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
-    });
-
-    testWidgets('shows sync card section', (tester) async {
-      SharedPreferences.setMockInitialValues({});
-
-      await tester.pumpWidget(const GitHubWatcherApp());
-      await tester.pumpAndSettle();
-
-      // Should show watched repos section
-      expect(find.text('Repo Dipantau'), findsOneWidget);
-    });
-
-    testWidgets('shows notification and settings icons', (tester) async {
-      SharedPreferences.setMockInitialValues({});
-
-      await tester.pumpWidget(const GitHubWatcherApp());
-      await tester.pumpAndSettle();
-
+      expect(find.byIcon(Icons.sync), findsOneWidget);
       expect(find.byIcon(Icons.notifications_outlined), findsOneWidget);
       expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
     });
 
-    testWidgets('navigates to settings on tap', (tester) async {
-      SharedPreferences.setMockInitialValues({});
-
+    testWidgets('navigates to settings', (tester) async {
       await tester.pumpWidget(const GitHubWatcherApp());
       await tester.pumpAndSettle();
 
@@ -56,97 +37,60 @@ void main() {
 
       expect(find.byType(SettingsScreen), findsOneWidget);
     });
+
+    testWidgets('toggles search field', (tester) async {
+      await tester.pumpWidget(const GitHubWatcherApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.search));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cari repo...'), findsOneWidget);
+    });
   });
 
   group('SettingsScreen', () {
-    testWidgets('renders all sections', (tester) async {
-      SharedPreferences.setMockInitialValues({});
+    Future<void> pumpSettings(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 3200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(const MaterialApp(
-        home: SettingsScreen(),
-      ));
+      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await tester.pumpAndSettle();
+    }
 
-      // Appearance section
+    testWidgets('renders all sections', (tester) async {
+      await pumpSettings(tester);
+
       expect(find.text('Tampilan'), findsOneWidget);
-      // Private access section
       expect(find.text('Akses repo privat'), findsOneWidget);
-      // Sync section
       expect(find.text('Sinkronisasi'), findsOneWidget);
-      // About section
       expect(find.text('Tentang aplikasi'), findsOneWidget);
     });
 
-    testWidgets('shows language dropdown', (tester) async {
-      SharedPreferences.setMockInitialValues({});
-
-      await tester.pumpWidget(const MaterialApp(
-        home: SettingsScreen(),
-      ));
-      await tester.pumpAndSettle();
+    testWidgets('shows language, theme and credential controls', (tester) async {
+      await pumpSettings(tester);
 
       expect(find.text('Bahasa'), findsOneWidget);
-    });
-
-    testWidgets('shows theme segmented button', (tester) async {
-      SharedPreferences.setMockInitialValues({});
-
-      await tester.pumpWidget(const MaterialApp(
-        home: SettingsScreen(),
-      ));
-      await tester.pumpAndSettle();
-
       expect(find.text('Sistem'), findsOneWidget);
       expect(find.text('Terang'), findsOneWidget);
       expect(find.text('Gelap'), findsOneWidget);
-    });
-
-    testWidgets('shows credential fields', (tester) async {
-      SharedPreferences.setMockInitialValues({});
-
-      await tester.pumpWidget(const MaterialApp(
-        home: SettingsScreen(),
-      ));
-      await tester.pumpAndSettle();
-
       expect(find.text('Username GitHub'), findsOneWidget);
       expect(find.text('Personal Access Token'), findsOneWidget);
-    });
-
-    testWidgets('shows extreme precision section', (tester) async {
-      SharedPreferences.setMockInitialValues({});
-
-      await tester.pumpWidget(const MaterialApp(
-        home: SettingsScreen(),
-      ));
-      await tester.pumpAndSettle();
-
       expect(find.text('Presisi Ekstrem'), findsOneWidget);
     });
   });
 
-  group('App Theme', () {
-    testWidgets('uses Material 3', (tester) async {
-      SharedPreferences.setMockInitialValues({});
-
+  group('App theme', () {
+    testWidgets('uses Material 3 with light and dark themes', (tester) async {
       await tester.pumpWidget(const GitHubWatcherApp());
       await tester.pumpAndSettle();
 
       final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
       expect(materialApp.theme?.useMaterial3, true);
       expect(materialApp.darkTheme?.useMaterial3, true);
-    });
-
-    testWidgets('has blue color scheme', (tester) async {
-      SharedPreferences.setMockInitialValues({});
-
-      await tester.pumpWidget(const GitHubWatcherApp());
-      await tester.pumpAndSettle();
-
-      final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
-      // ThemeData doesn't expose colorSchemeSeed getter, verify Material 3 + blue seed
-      expect(materialApp.theme?.useMaterial3, true);
       expect(materialApp.theme?.brightness, Brightness.light);
+      expect(materialApp.darkTheme?.brightness, Brightness.dark);
     });
   });
 }

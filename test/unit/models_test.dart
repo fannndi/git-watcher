@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:github_watcher/models/commit.dart';
 import 'package:github_watcher/models/app_settings.dart';
+import 'package:github_watcher/models/commit.dart';
 import 'package:github_watcher/models/github_credentials.dart';
 import 'package:github_watcher/models/sync_log.dart';
 import 'package:github_watcher/models/watched_repo.dart';
@@ -9,44 +9,50 @@ import 'package:github_watcher/utils/constants.dart';
 void main() {
   group('Commit', () {
     test('fromJson parses GitHub API response', () {
-      final json = {
+      final commit = Commit.fromJson({
         'sha': 'abc123def456',
         'commit': {
           'message': 'Fix bug\n\nDetailed description',
           'author': {'date': '2024-01-15T10:30:00Z'},
         },
-      };
+      });
 
-      final commit = Commit.fromJson(json);
       expect(commit.sha, 'abc123def456');
       expect(commit.message, 'Fix bug\n\nDetailed description');
       expect(commit.title, 'Fix bug');
       expect(commit.date, DateTime.parse('2024-01-15T10:30:00Z'));
     });
 
+    test('fromJson tolerates missing fields', () {
+      final commit = Commit.fromJson(const {});
+
+      expect(commit.sha, '');
+      expect(commit.message, '');
+      expect(commit.title, '');
+    });
+
     test('fromCacheJson parses cached JSON', () {
-      final json = {
+      final commit = Commit.fromCacheJson({
         'sha': 'abc123',
         'message': 'Test commit',
         'date': '2024-01-15T10:30:00Z',
-      };
+      });
 
-      final commit = Commit.fromCacheJson(json);
       expect(commit.sha, 'abc123');
       expect(commit.message, 'Test commit');
     });
 
-    test('toJson serializes correctly', () {
+    test('toJson round-trips through fromCacheJson', () {
       final commit = Commit(
         sha: 'abc123',
         message: 'Test',
         date: DateTime.utc(2024, 1, 15),
       );
 
-      final json = commit.toJson();
-      expect(json['sha'], 'abc123');
-      expect(json['message'], 'Test');
-      expect(json['date'], isA<String>());
+      final restored = Commit.fromCacheJson(commit.toJson());
+      expect(restored.sha, 'abc123');
+      expect(restored.message, 'Test');
+      expect(restored.date, commit.date);
     });
 
     test('title returns first line of message', () {
@@ -55,18 +61,14 @@ void main() {
         message: 'First line\nSecond line\nThird',
         date: DateTime.now(),
       );
-      expect(commit.title, 'First line');
-    });
 
-    test('title handles empty message', () {
-      final commit = Commit(sha: 'abc', message: '', date: DateTime.now());
-      expect(commit.title, '');
+      expect(commit.title, 'First line');
     });
   });
 
   group('CommitDetail', () {
-    test('fromJson parses with files', () {
-      final json = {
+    test('fromJson parses stats and files', () {
+      final detail = CommitDetail.fromJson({
         'sha': 'abc123',
         'stats': {'additions': 10, 'deletions': 5, 'total': 15},
         'files': [
@@ -78,21 +80,18 @@ void main() {
             'changes': 11,
           },
         ],
-      };
+      });
 
-      final detail = CommitDetail.fromJson(json);
       expect(detail.sha, 'abc123');
       expect(detail.additions, 10);
       expect(detail.deletions, 5);
       expect(detail.totalChanges, 15);
-      expect(detail.files.length, 1);
-      expect(detail.files.first.filename, 'lib/main.dart');
+      expect(detail.files.single.filename, 'lib/main.dart');
     });
 
     test('fromJson handles missing stats', () {
-      final json = {'sha': 'abc123'};
+      final detail = CommitDetail.fromJson(const {'sha': 'abc123'});
 
-      final detail = CommitDetail.fromJson(json);
       expect(detail.additions, 0);
       expect(detail.deletions, 0);
       expect(detail.files, isEmpty);
@@ -100,25 +99,23 @@ void main() {
   });
 
   group('CommitFile', () {
-    test('fromJson parses correctly', () {
-      final json = {
+    test('fromJson parses all fields', () {
+      final file = CommitFile.fromJson(const {
         'filename': 'lib/test.dart',
         'status': 'added',
         'additions': 5,
         'deletions': 0,
         'changes': 5,
-      };
+      });
 
-      final file = CommitFile.fromJson(json);
       expect(file.filename, 'lib/test.dart');
       expect(file.status, 'added');
       expect(file.additions, 5);
     });
 
-    test('fromJson handles missing fields', () {
-      final json = <String, dynamic>{};
+    test('fromJson falls back to modified', () {
+      final file = CommitFile.fromJson(const {});
 
-      final file = CommitFile.fromJson(json);
       expect(file.filename, '');
       expect(file.status, 'modified');
       expect(file.additions, 0);
@@ -128,215 +125,229 @@ void main() {
   group('AppSettings', () {
     test('defaults constructor', () {
       const settings = AppSettings.defaults();
+
       expect(settings.syncIntervalMinutes, defaultSyncIntervalMinutes);
       expect(settings.languageCode, languageIndonesian);
       expect(settings.themeMode, themeModeSystem);
+      expect(settings.notificationsEnabled, true);
     });
 
     test('fromJson parses valid data', () {
-      final json = {
+      final settings = AppSettings.fromJson(const {
         'sync_interval_minutes': 30,
         'language_code': 'en',
         'theme_mode': 'dark',
-      };
+        'notifications_enabled': false,
+      });
 
-      final settings = AppSettings.fromJson(json);
       expect(settings.syncIntervalMinutes, 30);
       expect(settings.languageCode, 'en');
       expect(settings.themeMode, 'dark');
+      expect(settings.notificationsEnabled, false);
     });
 
-    test('fromJson handles invalid theme', () {
-      final json = {'theme_mode': 'invalid'};
+    test('fromJson rejects invalid language and theme', () {
+      final settings = AppSettings.fromJson(const {
+        'language_code': 'fr',
+        'theme_mode': 'invalid',
+      });
 
-      final settings = AppSettings.fromJson(json);
+      expect(settings.languageCode, languageIndonesian);
       expect(settings.themeMode, themeModeSystem);
     });
 
-    test('fromJson handles invalid language', () {
-      final json = {'language_code': 'fr'};
-
-      final settings = AppSettings.fromJson(json);
-      expect(settings.languageCode, languageIndonesian);
-    });
-
-    test('copyWith works', () {
+    test('copyWith only changes given fields', () {
       const original = AppSettings.defaults();
-      final modified = original.copyWith(languageCode: 'en');
+      final modified = original.copyWith(
+        languageCode: 'en',
+        notificationsEnabled: false,
+      );
 
       expect(modified.languageCode, 'en');
+      expect(modified.notificationsEnabled, false);
       expect(modified.syncIntervalMinutes, original.syncIntervalMinutes);
       expect(modified.themeMode, original.themeMode);
     });
 
-    test('toJson serializes correctly', () {
+    test('toJson round-trips through fromJson', () {
       const settings = AppSettings(
         syncIntervalMinutes: 45,
         languageCode: 'en',
         themeMode: 'dark',
+        notificationsEnabled: false,
       );
 
-      final json = settings.toJson();
-      expect(json['sync_interval_minutes'], 45);
-      expect(json['language_code'], 'en');
-      expect(json['theme_mode'], 'dark');
+      final restored = AppSettings.fromJson(settings.toJson());
+      expect(restored.syncIntervalMinutes, 45);
+      expect(restored.languageCode, 'en');
+      expect(restored.themeMode, 'dark');
+      expect(restored.notificationsEnabled, false);
     });
   });
 
   group('GitHubCredentials', () {
-    test('empty constructor', () {
-      const creds = GitHubCredentials.empty();
-      expect(creds.isEmpty, true);
-      expect(creds.isNotEmpty, false);
+    test('empty constructor is empty', () {
+      const credentials = GitHubCredentials.empty();
+
+      expect(credentials.isEmpty, true);
+      expect(credentials.isNotEmpty, false);
     });
 
-    test('toJson encodes to base64', () {
-      const creds = GitHubCredentials(
+    test('toJson encodes values to base64', () {
+      const credentials = GitHubCredentials(
         username: 'testuser',
         token: 'ghp_abc123',
       );
 
-      final json = creds.toJson();
-      // Should be base64 encoded, not plain text
+      final json = credentials.toJson();
       expect(json['username'], isNot('testuser'));
       expect(json['token'], isNot('ghp_abc123'));
     });
 
-    test('fromJson decodes from base64', () {
+    test('fromJson decodes base64 values', () {
       const original = GitHubCredentials(
         username: 'testuser',
         token: 'ghp_abc123',
       );
-      final json = original.toJson();
 
-      final decoded = GitHubCredentials.fromJson(json);
+      final decoded = GitHubCredentials.fromJson(original.toJson());
       expect(decoded.username, 'testuser');
       expect(decoded.token, 'ghp_abc123');
     });
 
     test('fromJson handles invalid base64', () {
-      final json = {'username': '!!!invalid!!!', 'token': '!!!invalid!!!'};
+      final credentials = GitHubCredentials.fromJson(const {
+        'username': '!!!invalid!!!',
+        'token': '!!!invalid!!!',
+      });
 
-      final creds = GitHubCredentials.fromJson(json);
-      expect(creds.username, '');
-      expect(creds.token, '');
+      expect(credentials.username, '');
+      expect(credentials.token, '');
     });
 
-    test('basicAuth generates correct header', () {
-      const creds = GitHubCredentials(username: 'user', token: 'token');
-      final auth = creds.basicAuth;
+    test('basicAuth builds Basic header', () {
+      const credentials = GitHubCredentials(username: 'user', token: 'token');
 
-      expect(auth, startsWith('Basic '));
-      // Decode and verify
-      expect(auth, 'Basic dXNlcjp0b2tlbg==');
+      expect(credentials.basicAuth, 'Basic dXNlcjp0b2tlbg==');
     });
   });
 
   group('SyncLog', () {
-    test('fromJson parses correctly', () {
-      final json = {
+    test('fromJson parses updates', () {
+      final log = SyncLog.fromJson(const {
         'synced_at': '2024-01-15T10:30:00Z',
         'updates': {'owner/repo (main)': 5},
-      };
+      });
 
-      final log = SyncLog.fromJson(json);
-      expect(log.updates.length, 1);
       expect(log.updates['owner/repo (main)'], 5);
+      expect(log.syncedAt, DateTime.parse('2024-01-15T10:30:00Z'));
     });
 
-    test('hasUpdates returns true when updates exist', () {
-      final log = SyncLog(syncedAt: DateTime.now(), updates: {'repo': 1});
-      expect(log.hasUpdates, true);
-    });
-
-    test('hasUpdates returns false when empty', () {
-      final log = SyncLog(syncedAt: DateTime.now(), updates: {});
-      expect(log.hasUpdates, false);
-    });
-
-    test('totalCommits sums correctly', () {
-      final log = SyncLog(
+    test('hasUpdates and totalCommits', () {
+      final empty = SyncLog(syncedAt: DateTime.now(), updates: const {});
+      final filled = SyncLog(
         syncedAt: DateTime.now(),
-        updates: {'repo1': 3, 'repo2': 7, 'repo3': 2},
+        updates: const {'repo1': 3, 'repo2': 7},
       );
-      expect(log.totalCommits, 12);
+
+      expect(empty.hasUpdates, false);
+      expect(empty.totalCommits, 0);
+      expect(filled.hasUpdates, true);
+      expect(filled.totalCommits, 10);
     });
 
-    test('totalCommits returns 0 for empty', () {
-      final log = SyncLog(syncedAt: DateTime.now(), updates: {});
-      expect(log.totalCommits, 0);
+    test('toJson round-trips through fromJson', () {
+      final log = SyncLog(
+        syncedAt: DateTime.utc(2024, 1, 15),
+        updates: const {'owner/repo (main)': 2},
+      );
+
+      final restored = SyncLog.fromJson(log.toJson());
+      expect(restored.syncedAt, log.syncedAt);
+      expect(restored.totalCommits, 2);
     });
   });
 
   group('WatchedRepo', () {
-    test('fromJson parses correctly', () {
-      final json = {
+    test('fromJson parses all fields', () {
+      final repo = WatchedRepo.fromJson(const {
         'owner': 'torvalds',
         'repo': 'linux',
         'branch': 'master',
         'sync_mode': 'minimal',
         'avatar_url': 'https://example.com/avatar.png',
-        'is_private': false,
+        'is_private': true,
         'last_commit_at': '2024-01-15T10:30:00Z',
         'last_sha': 'abc123',
-      };
+      });
 
-      final repo = WatchedRepo.fromJson(json);
       expect(repo.owner, 'torvalds');
       expect(repo.repo, 'linux');
       expect(repo.branch, 'master');
       expect(repo.syncMode, 'minimal');
-      expect(repo.isPrivate, false);
+      expect(repo.avatarUrl, 'https://example.com/avatar.png');
+      expect(repo.isPrivate, true);
+      expect(repo.lastSha, 'abc123');
       expect(repo.fullName, 'torvalds/linux');
     });
 
-    test('fromJson handles legacy full sync mode', () {
-      final json = {
+    test('fromJson migrates legacy full sync mode', () {
+      final repo = WatchedRepo.fromJson(const {
         'owner': 'test',
         'repo': 'test',
         'sync_mode': 'full',
-        'last_sha': '',
-      };
+      });
 
-      final repo = WatchedRepo.fromJson(json);
-      expect(repo.syncMode, 'extended_5000');
+      expect(repo.syncMode, syncModeExtended);
     });
 
     test('fromJson handles missing fields', () {
-      final json = {'owner': 'test', 'repo': 'test', 'last_sha': ''};
+      final repo = WatchedRepo.fromJson(const {
+        'owner': 'test',
+        'repo': 'test',
+      });
 
-      final repo = WatchedRepo.fromJson(json);
       expect(repo.branch, 'main');
-      expect(repo.syncMode, 'minimal');
+      expect(repo.syncMode, syncModeMinimal);
       expect(repo.avatarUrl, '');
       expect(repo.isPrivate, false);
+      expect(repo.lastSha, '');
+      expect(repo.lastCommitAt, isNull);
     });
 
-    test('fullName returns owner/repo', () {
+    test('copyWith only changes given fields', () {
       final repo = WatchedRepo(
         owner: 'flutter',
         repo: 'flutter',
         branch: 'master',
-        syncMode: 'minimal',
-        lastSha: 'abc',
+        syncMode: syncModeMinimal,
+        lastSha: 'abc123',
+        lastCommitAt: DateTime.utc(2024, 1, 15),
       );
-      expect(repo.fullName, 'flutter/flutter');
+
+      final modified = repo.copyWith(lastSha: 'def456', isPrivate: true);
+      expect(modified.owner, 'flutter');
+      expect(modified.branch, 'master');
+      expect(modified.lastSha, 'def456');
+      expect(modified.isPrivate, true);
+      expect(modified.lastCommitAt, repo.lastCommitAt);
     });
 
-    test('toJson serializes correctly', () {
-      final repo = WatchedRepo(
+    test('toJson round-trips through fromJson', () {
+      const repo = WatchedRepo(
         owner: 'test',
         repo: 'test',
         branch: 'main',
-        syncMode: 'minimal',
+        syncMode: syncModeExtended,
         lastSha: 'abc123',
         isPrivate: true,
       );
 
-      final json = repo.toJson();
-      expect(json['owner'], 'test');
-      expect(json['is_private'], true);
-      expect(json['last_sha'], 'abc123');
+      final restored = WatchedRepo.fromJson(repo.toJson());
+      expect(restored.fullName, 'test/test');
+      expect(restored.syncMode, syncModeExtended);
+      expect(restored.isPrivate, true);
+      expect(restored.lastSha, 'abc123');
     });
   });
 }

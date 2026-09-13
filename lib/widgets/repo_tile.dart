@@ -5,12 +5,9 @@ import '../models/watched_repo.dart';
 import '../services/app_settings_controller.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
+import 'chips.dart';
 
 class RepoTile extends StatefulWidget {
-  final WatchedRepo repo;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-
   const RepoTile({
     super.key,
     required this.repo,
@@ -18,26 +15,22 @@ class RepoTile extends StatefulWidget {
     required this.onDelete,
   });
 
+  final WatchedRepo repo;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
   @override
   State<RepoTile> createState() => _RepoTileState();
 }
 
 class _RepoTileState extends State<RepoTile>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.97).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 100),
+  );
+  late final Animation<double> _scale = Tween<double>(begin: 1.0, end: 0.97)
+      .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
   @override
   void dispose() {
@@ -49,30 +42,29 @@ class _RepoTileState extends State<RepoTile>
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final strings = stringsFor(appSettingsController.value.languageCode);
 
     return ScaleTransition(
-      scale: _scaleAnimation,
+      scale: _scale,
       child: Card(
-        margin: EdgeInsets.zero,
-        elevation: 0,
+        clipBehavior: Clip.hardEdge,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
         ),
-        clipBehavior: Clip.hardEdge,
         child: InkWell(
           onTapDown: (_) => _controller.forward(),
           onTapUp: (_) => _controller.reverse(),
           onTapCancel: () => _controller.reverse(),
           onTap: () {
             HapticFeedback.lightImpact();
-            widget.onTap.call();
+            widget.onTap();
           },
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _RepoAvatar(repo: widget.repo, colorScheme: colorScheme),
                 const SizedBox(width: 16),
@@ -119,12 +111,15 @@ class _RepoTileState extends State<RepoTile>
                               onTap: widget.onDelete,
                               child: Padding(
                                 padding: const EdgeInsets.all(4),
+                                child: Tooltip(
+                                message: strings.delete,
                                 child: Icon(
                                   Icons.delete_outline,
                                   size: 18,
                                   color:
                                       colorScheme.error.withValues(alpha: 0.7),
                                 ),
+                              ),
                               ),
                             ),
                           ),
@@ -134,27 +129,29 @@ class _RepoTileState extends State<RepoTile>
                       Row(
                         children: [
                           Flexible(
-                            child: _Chip(
+                            child: InfoChip(
                               icon: Icons.call_split,
                               label: widget.repo.branch,
-                              colorScheme: colorScheme,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          _Chip(
+                          InfoChip(
                             icon: widget.repo.isPrivate
                                 ? Icons.lock_outline
                                 : Icons.public,
-                            label: widget.repo.isPrivate ? 'Private' : 'Public',
-                            colorScheme: colorScheme,
-                            isAccent: !widget.repo.isPrivate,
+                            label: widget.repo.isPrivate
+                                ? strings.privateRepo
+                                : strings.publicRepo,
+                            accent: !widget.repo.isPrivate,
                           ),
                         ],
                       ),
                       const SizedBox(height: 14),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: colorScheme.surfaceContainerHighest
                               .withValues(alpha: 0.4),
@@ -162,16 +159,17 @@ class _RepoTileState extends State<RepoTile>
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.history,
-                                size: 14, color: colorScheme.primary),
+                            Icon(
+                              Icons.history,
+                              size: 14,
+                              color: colorScheme.primary,
+                            ),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                widget.repo.lastCommitAt != null
-                                    ? '${_formatDate(widget.repo.lastCommitAt!)} • ${widget.repo.lastSha.length >= 7 ? widget.repo.lastSha.substring(0, 7) : widget.repo.lastSha}'
-                                    : stringsFor(appSettingsController
-                                            .value.languageCode)
-                                        .notSynced,
+                                widget.repo.lastCommitAt == null
+                                    ? strings.notSynced
+                                    : '${_formatDate(widget.repo.lastCommitAt!)} • ${_shortSha(widget.repo.lastSha)}',
                                 style: textTheme.labelSmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,
@@ -187,34 +185,20 @@ class _RepoTileState extends State<RepoTile>
                   ),
                 ),
                 const SizedBox(width: 8),
-                Row(
+                Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (widget.repo.syncMode != syncModeMinimal)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          widget.repo.syncMode == syncModeExtended
-                              ? '5000'
-                              : '500',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer,
-                          ),
-                        ),
+                      InfoChip(
+                        label: widget.repo.syncMode == syncModeExtended
+                            ? '5000'
+                            : '500',
+                        color: colorScheme.primary,
                       ),
-                    const SizedBox(width: 4),
+                    const SizedBox(height: 4),
                     Icon(
                       Icons.chevron_right,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ],
                 ),
@@ -225,6 +209,8 @@ class _RepoTileState extends State<RepoTile>
       ),
     );
   }
+
+  String _shortSha(String sha) => sha.length >= 7 ? sha.substring(0, 7) : sha;
 
   String _formatDate(DateTime date) {
     final local = date.toLocal();
@@ -237,16 +223,16 @@ class _RepoTileState extends State<RepoTile>
 }
 
 class _RepoAvatar extends StatelessWidget {
+  const _RepoAvatar({required this.repo, required this.colorScheme});
+
   final WatchedRepo repo;
   final ColorScheme colorScheme;
-
-  const _RepoAvatar({required this.repo, required this.colorScheme});
 
   @override
   Widget build(BuildContext context) {
     final url = repo.avatarUrl.isNotEmpty
         ? repo.avatarUrl
-        : 'https://github.com/${repo.owner}.png?size=88';
+        : 'https://$githubWebHost/${repo.owner}.png?size=88';
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
@@ -255,74 +241,19 @@ class _RepoAvatar extends StatelessWidget {
         width: 38,
         height: 38,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _fallback(),
-      ),
-    );
-  }
-
-  Widget _fallback() {
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Icon(
-        Icons.code,
-        size: 22,
-        color: colorScheme.onPrimaryContainer,
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final ColorScheme colorScheme;
-  final bool isAccent;
-
-  const _Chip({
-    required this.icon,
-    required this.label,
-    required this.colorScheme,
-    this.isAccent = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = isAccent
-        ? colorScheme.secondaryContainer.withValues(alpha: 0.5)
-        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.6);
-    final fg = isAccent
-        ? colorScheme.onSecondaryContainer
-        : colorScheme.onSurfaceVariant;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: fg),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: fg,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+        errorBuilder: (_, __, ___) => Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(8),
           ),
-        ],
+          child: Icon(
+            Icons.code,
+            size: 22,
+            color: colorScheme.onPrimaryContainer,
+          ),
+        ),
       ),
     );
   }
