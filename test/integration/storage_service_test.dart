@@ -133,6 +133,18 @@ void main() {
 
       expect((await storage.getSyncHistory()).length, maxSyncHistory);
     });
+
+    test('clear removes all entries', () async {
+      await storage.addSyncLog(
+        SyncLog(
+          syncedAt: DateTime.utc(2024, 1, 15),
+          updates: const {'repo': 1},
+        ),
+      );
+
+      await storage.clearSyncHistory();
+      expect(await storage.getSyncHistory(), isEmpty);
+    });
   });
 
   group('commit cache', () {

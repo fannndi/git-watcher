@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/app_settings.dart';
@@ -15,6 +15,7 @@ import '../services/sync_service.dart';
 import '../utils/animations.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
+import '../widgets/home_states.dart';
 import '../widgets/repo_tile.dart';
 import 'add_repo_screen.dart';
 import 'detail_screen.dart';
@@ -30,7 +31,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final StorageService _storage = StorageService();
-  final DateFormat _syncDateFormat = DateFormat('yyyy-MM-dd HH:mm');
 
   List<WatchedRepo> _repos = [];
   DateTime? _lastSyncAt;
@@ -205,6 +205,66 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _repos = restored);
   }
 
+  Future<void> _showRepoActions(WatchedRepo repo) async {
+    final strings = stringsFor(appSettingsController.value.languageCode);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.open_in_new),
+              title: Text(strings.openInBrowser),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _openRepoInBrowser(repo);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.link),
+              title: Text(strings.copyLink),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _copyRepoLink(repo, strings);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: colorScheme.error),
+              title: Text(strings.delete),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _deleteRepo(repo, _repos.indexOf(repo));
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openRepoInBrowser(WatchedRepo repo) async {
+    await launchUrl(
+      Uri.https(githubWebHost, '/${repo.fullName}/tree/${repo.branch}'),
+      mode: LaunchMode.externalApplication,
+    );
+  }
+
+  Future<void> _copyRepoLink(WatchedRepo repo, AppStrings strings) async {
+    await Clipboard.setData(
+      ClipboardData(
+        text: 'https://$githubWebHost/${repo.fullName}/tree/${repo.branch}',
+      ),
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.linkCopied)),
+    );
+  }
+
   Future<void> _syncNow() async {
     if (_isSyncing) return;
 
@@ -277,6 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
       valueListenable: appSettingsController,
       builder: (context, settings, _) {
         final strings = stringsFor(settings.languageCode);
+        final repos = _filteredRepos;
 
         return Stack(
           children: [
@@ -382,19 +443,32 @@ class _HomeScreenState extends State<HomeScreen> {
                             setState(() => _searchQuery = value),
                       ),
                     ),
-                  if (_lastSyncAt != null) _buildSyncStatusBar(strings),
+                  if (_lastSyncAt != null || _isSyncing)
+                    HomeSyncBar(
+                      strings: strings,
+                      lastSyncAt: _lastSyncAt,
+                      isSyncing: _isSyncing,
+                      completed: _syncCompleted,
+                      total: _syncTotal,
+                    ),
                   Expanded(
                     child: RefreshIndicator(
                       onRefresh: _syncNow,
                       child: _isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : _loadFailed && _repos.isEmpty
-                              ? _buildErrorState(strings)
-                              : _filteredRepos.isEmpty
+                              ? HomeErrorState(
+                                  strings: strings,
+                                  onRetry: _loadRepos,
+                                )
+                              : repos.isEmpty
                                   ? (_repos.isEmpty
-                                      ? _buildEmptyState(strings)
-                                      : _buildNoResultsState(strings))
-                                  : _buildRepoList(strings),
+                                      ? HomeEmptyState(
+                                          strings: strings,
+                                          onAddRepo: _openAddRepo,
+                                        )
+                                      : HomeNoResultsState(strings: strings))
+                                  : _buildRepoList(repos, strings),
                     ),
                   ),
                 ],
@@ -406,147 +480,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: const Icon(Icons.add),
                     ),
             ),
-            if (_showTour) _buildTourOverlay(strings),
+            if (_showTour)
+              HomeTourOverlay(strings: strings, onDismiss: _dismissTour),
           ],
         );
       },
     );
   }
 
-  Widget _buildSyncStatusBar(AppStrings strings) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final lastSyncAt = _lastSyncAt;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      child: Row(
-        children: [
-          if (_isSyncing)
-            const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            Icon(
-              Icons.cloud_done_outlined,
-              size: 16,
-              color: colorScheme.onSurfaceVariant,
-            ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _isSyncing && _syncTotal > 0
-                  ? '${strings.syncing} $_syncCompleted/$_syncTotal'
-                  : '${strings.lastSync}: ${lastSyncAt == null ? strings.never : _syncDateFormat.format(lastSyncAt.toLocal())}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState(AppStrings strings) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return ListView(
-      children: [
-        const SizedBox(height: 160),
-        Center(
-          child: Icon(Icons.error_outline, size: 56, color: colorScheme.error),
-        ),
-        const SizedBox(height: 16),
-        Center(child: Text(strings.loadReposFailed)),
-        const SizedBox(height: 16),
-        Center(
-          child: FilledButton.icon(
-            onPressed: _loadRepos,
-            icon: const Icon(Icons.refresh),
-            label: Text(strings.tryAgain),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNoResultsState(AppStrings strings) {
-    return ListView(
-      children: [
-        const SizedBox(height: 160),
-        Center(
-          child: Icon(
-            Icons.search_off,
-            size: 56,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Center(child: Text(strings.noSearchResults)),
-      ],
-    );
-  }
-
-  Widget _buildEmptyState(AppStrings strings) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 120),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Icon(
-                Icons.folder_open_outlined,
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              strings.noReposTitle,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              strings.noReposSubtitle,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: _openAddRepo,
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(strings.addRepo),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRepoList(AppStrings strings) {
-    final repos = _filteredRepos;
-
+  Widget _buildRepoList(List<WatchedRepo> repos, AppStrings strings) {
     return ListView.separated(
-      padding:
-          EdgeInsets.only(bottom: repos.length >= maxWatchedRepos ? 24 : 96),
+      padding: EdgeInsets.only(
+        bottom: repos.length >= maxWatchedRepos ? 24 : 96,
+      ),
       itemCount: repos.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
@@ -590,68 +536,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 MaterialPageRoute(builder: (_) => DetailScreen(repo: repo)),
               ),
               onDelete: () => _deleteRepo(repo, index),
+              onLongPress: () => _showRepoActions(repo),
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildTourOverlay(AppStrings strings) {
-    return Container(
-      color: Colors.black54,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.explore,
-                size: 64,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 24),
-              Text(
-                strings.appTitle,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                strings.tourWelcome,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              _tourStep(Icons.add, strings.tourAddRepo),
-              _tourStep(Icons.sync, strings.tourSync),
-              _tourStep(Icons.swipe, strings.tourSwipe),
-              const SizedBox(height: 32),
-              FilledButton(
-                onPressed: _dismissTour,
-                child: Text(strings.tourGotIt),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _tourStep(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white70, size: 20),
-          const SizedBox(width: 10),
-          Text(text, style: const TextStyle(color: Colors.white70)),
-        ],
-      ),
     );
   }
 }

@@ -7,14 +7,16 @@ Package: `com.fannndi.gitwatcher` (Dart package `git_watcher`).
 
 ## Features
 
-- Watch up to 5 repositories, each with its own branch and sync mode
+- Watch up to 10 repositories, each with its own branch and sync mode
 - Sync modes: latest day (minimal), latest 500 commits, latest 5000 commits
-- Configurable exact background sync (15/30/60/120 minutes, default 60)
+- Battery-friendly exact background sync (30/60/120 minutes, default 60) with
+  automatic fallback to inexact alarms when the OS denies exact-alarm permission
+- Every scheduled sync fetches at most 25 commits per repo (one request per repo)
 - Local notifications with deep link to sync history and a test-notification button
 - Offline commit cache, grouped by day, search by message/SHA, commit detail sheet
 - Parallel repo fetch with live "Syncing 2/5" progress; cache writes skipped when
   nothing changed, detail refresh merges only the newest commits
-- Swipe to delete with Undo; tap a commit SHA to copy it
+- Swipe to delete with Undo; long-press a repo to open/copy/delete; tap a SHA to copy
 - Repo preview when adding: description, visibility, language, stars
 - Relative "last commit" time on repo tiles
 - Last-sync status bar and retry state on Home

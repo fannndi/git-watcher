@@ -54,7 +54,7 @@ class GitHubService {
     String owner,
     String repo,
     String branch, {
-    int limit = maxFetchedCommits,
+    int limit = syncFetchLimit,
   }) async {
     final commits = <Commit>[];
     var page = 1;

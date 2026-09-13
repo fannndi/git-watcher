@@ -62,6 +62,11 @@ class StorageService {
     );
   }
 
+  Future<void> clearSyncHistory() async {
+    final prefs = await _instance();
+    await prefs.remove(syncHistoryKey);
+  }
+
   Future<List<Commit>> getCachedCommits(WatchedRepo repo) async {
     final raw = (await _instance()).getString(_commitCacheKey(repo));
     return _decodeList(raw, Commit.fromCacheJson);

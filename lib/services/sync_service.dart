@@ -48,6 +48,7 @@ class SyncService {
     github ??= GitHubService();
     final updates = <String, int>{};
     final updatedRepos = <WatchedRepo>[];
+    var reposChanged = false;
 
     try {
       final repos = await storage.getRepos();
@@ -85,12 +86,13 @@ class SyncService {
           updatedRepos.add(
             repo.copyWith(lastSha: latest.sha, lastCommitAt: latest.date),
           );
+          reposChanged = true;
         } else {
           updatedRepos.add(repo);
         }
       }
 
-      if (updatedRepos.isNotEmpty) {
+      if (reposChanged) {
         await storage.saveRepos(updatedRepos);
       }
 
@@ -130,16 +132,12 @@ class SyncService {
       repos.map((repo) async {
         _RepoFetch result;
         try {
-          final limit = repo.syncMode == syncModeMinimal
-              ? maxFetchedCommits
-              : backgroundSyncFetchLimit;
           result = _RepoFetch(
             repo,
             await github.fetchCommits(
               repo.owner,
               repo.repo,
               repo.branch,
-              limit: limit,
             ),
           );
         } catch (e) {

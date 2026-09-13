@@ -163,9 +163,9 @@ void main() {
         defaultSyncIntervalMinutes,
       );
       expect(
-        AppSettings.fromJson(const {'sync_interval_minutes': 15})
+        AppSettings.fromJson(const {'sync_interval_minutes': 30})
             .syncIntervalMinutes,
-        15,
+        30,
       );
     });
 

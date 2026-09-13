@@ -4,7 +4,9 @@
 > **Catatan rebrand:** dokumen ini adalah spesifikasi awal saat proyek masih bernama
 > *GitHub Watcher* dengan package `github_watcher`. Sejak pengembangan lanjutan,
 > aplikasi bernama **Git Watcher** dengan app id `com.fannndi.gitwatcher` dan
-> Dart package `git_watcher`. Bagian lain dokumen ini dipertahankan sebagai sejarah.
+> Dart package `git_watcher`. Perubahan perilaku terkini: batas repo menjadi 10,
+> fetch rutin maksimal 25 commit per repo (1 request/repo), dan interval sync
+> dapat diatur 30/60/120 menit (default 60). Bagian lain dipertahankan sebagai sejarah.
 
 ---
 
@@ -464,7 +466,7 @@ Method `update(AppSettings settings)` menyimpan settings ke `StorageService` dan
 
 **Trigger:** Pengguna menekan FAB (+) di halaman utama.
 
-**Pre-condition:** Jumlah repo yang dipantau < 5 (konstanta `maxWatchedRepos`).
+**Pre-condition:** Jumlah repo yang dipantau < 10 (konstanta `maxWatchedRepos`).
 
 **Alur:**
 1. Pengguna memasukkan nama repo dalam format `owner/repo`.
@@ -482,7 +484,7 @@ Method `update(AppSettings settings)` menyimpan settings ke `StorageService` dan
 - Input tidak boleh kosong.
 - Format wajib `owner/repo` (tepat satu `/`, kedua bagian tidak boleh kosong).
 - Tidak boleh duplikat (`owner + repo + branch` yang sama).
-- Jumlah repo tidak melebihi `maxWatchedRepos` = 5.
+- Jumlah repo tidak melebihi `maxWatchedRepos` = 10.
 
 ---
 
@@ -685,7 +687,7 @@ Icon aplikasi tersedia di semua densitas: `mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xx
 | Repo tidak ditemukan | Snackbar error: "Repository tidak ditemukan" |
 | Koneksi gagal | Snackbar error: "Koneksi gagal. Cek internet lalu coba lagi." |
 | Duplikat repo+branch | Snackbar error: "Repository dan branch sudah dipantau" |
-| Maksimum 5 repo | Tombol FAB disembunyikan; snackbar jika dicoba |
+| Maksimum 10 repo | Tombol FAB disembunyikan; snackbar jika dicoba |
 | Gagal menambah repo | Snackbar error generik |
 | Sync gagal (foreground) | Snackbar error: "Sync gagal" |
 | Sync gagal per-repo (background) | Dilewati, repo tetap masuk daftar `updatedRepos` |
@@ -723,8 +725,8 @@ AppStrings stringsFor(String languageCode) => AppStrings(languageCode);
 
 | Batasan | Nilai | Alasan |
 |---------|-------|--------|
-| Maksimal repositori dipantau | 5 | Menghindari terlalu banyak API request per sync |
-| Commit ditampilkan saat sync cek update | 20 | Cukup untuk mendeteksi commit baru sejak sync terakhir |
+| Maksimal repositori dipantau | 10 | Menghindari terlalu banyak API request per sync |
+| Commit ditampilkan saat sync cek update | 25 | Satu request per repo per interval |
 | Riwayat sync disimpan | 30 entri | Membatasi penggunaan storage lokal |
 | Commit mode Minimal | Hari terakhir saja | Hemat kuota API dan storage |
 | Commit mode 500 | Maksimal 500 commit | Keseimbangan data vs performa |

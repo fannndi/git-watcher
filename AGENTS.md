@@ -29,14 +29,19 @@ lib/
     sync_service.dart           change detection + cache + notification trigger
     app_settings_controller.dart global ValueNotifier<AppSettings>
     notification_service.dart   local notifications, navigatorKey, deep link
-    startup_service.dart        init notifications + exact periodic alarm
+    startup_service.dart        init notifications + sync alarm
   screens/                      5 screens, StatefulWidget + setState
-  widgets/                      RepoTile + shared InfoChip
-  workers/alarm_worker.dart     background isolate entry point
+  widgets/
+    repo_tile.dart              repo card with long-press actions
+    chips.dart                  shared InfoChip
+    home_states.dart            Home sync bar, empty/error/no-result, tour
+    commit_card.dart            commit list item
+    commit_detail_sheet.dart    commit detail bottom sheet + file summary
+  workers/alarm_worker.dart     background isolate entry point + alarm scheduling
   utils/constants.dart          ALL constants (single source of truth)
   utils/strings.dart            AppStrings i18n (id + en)
 test/
-  unit/models_test.dart
+  unit/models_test.dart, unit/strings_test.dart
   integration/storage_service_test.dart
   widget/screens_test.dart
 ```
@@ -49,16 +54,22 @@ test/
 - Persist through `StorageService`; screens and other services never call SharedPreferences directly.
 - Every user-visible string goes through `AppStrings`, in both `id` and `en`.
 - Screens get the language via `ValueListenableBuilder` on `appSettingsController`.
+- Keep it simple: prefer small stateless widgets and plain functions over abstractions.
 - Delete dead code instead of commenting it out. Keep the analyzer at zero issues and tests green.
 
 ## Behavior contracts
 
-- Background sync: exact periodic alarm (`AndroidAlarmManager.periodic`), interval
-  from `AppSettings.syncIntervalMinutes` (15/30/60/120, default 60), re-registered
-  by `registerExactAlarm()` when the interval changes.
+- Up to `maxWatchedRepos` (10) repos.
+- Background sync: exact periodic alarm via `AndroidAlarmManager`, interval from
+  `AppSettings.syncIntervalMinutes` (30/60/120, default 60), re-registered by
+  `registerSyncAlarm()` when the interval changes. Exact alarms fall back to
+  inexact+`allowWhileIdle` when the OS denies `SCHEDULE_EXACT_ALARM`, so the app
+  stays battery friendly on Android 13+.
+- Every scheduled sync fetches at most `syncFetchLimit` (25) commits per repo: one
+  HTTP request per repo per interval.
 - Foreground sync: 20 s debounce, 10 min stale-lock auto-release, single-flight lock.
   Repos are fetched concurrently, `onProgress(completed, total)` drives the Home bar,
-  and the cache is only rewritten when a repo actually has new commits.
+  and repo/cache data is only rewritten when a repo actually has new commits.
 - Commit cache: deduped by SHA, sorted newest-first, capped at `maxCachedCommits`.
   Detail pull-to-refresh merges the newest `backgroundSyncFetchLimit` commits.
 - Notifications are sent only by background sync and only when

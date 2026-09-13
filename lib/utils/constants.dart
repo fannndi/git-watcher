@@ -6,14 +6,13 @@ const String developerName = 'alisa';
 const String developerUrl = 'https://github.com/fannndi';
 const String appId = 'com.fannndi.gitwatcher';
 
-const int maxWatchedRepos = 5;
-const int maxFetchedCommits = 20;
+const int maxWatchedRepos = 10;
 const int maxCachedCommits = 1000;
 const int maxSyncHistory = 30;
 const int githubPageSize = 100;
-const int backgroundSyncFetchLimit = 100;
+const int syncFetchLimit = 25;
 const int defaultSyncIntervalMinutes = 60;
-const List<int> syncIntervalOptions = [15, 30, 60, 120];
+const List<int> syncIntervalOptions = [30, 60, 120];
 
 const String syncModeMinimal = 'minimal';
 const String syncModeLatest = 'latest_500';
@@ -34,7 +33,7 @@ const String githubAcceptHeader = 'application/vnd.github+json';
 const Duration apiTimeout = Duration(seconds: 30);
 const Duration foregroundSyncDebounce = Duration(seconds: 20);
 const Duration syncLockTimeout = Duration(minutes: 10);
-const Duration backgroundSyncTimeout = Duration(minutes: 8);
+const Duration backgroundSyncTimeout = Duration(minutes: 5);
 
 const String watchedReposKey = 'watched_repos';
 const String appSettingsKey = 'app_settings';

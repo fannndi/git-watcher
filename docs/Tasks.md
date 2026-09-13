@@ -2,6 +2,16 @@
 
 ## Done
 
+### 2026-09 — development round 4
+- [x] Modular widgets: `home_states.dart`, `commit_card.dart`,
+      `commit_detail_sheet.dart`; screens now only hold state + composition
+- [x] Repo limit raised to 10; scheduled sync capped at 25 commits per repo
+      (one request per repo per interval)
+- [x] Battery: `allowWhileIdle` alarms, exact-alarm fallback to inexact when the OS
+      denies `SCHEDULE_EXACT_ALARM`, 5-minute background timeout, interval options
+      trimmed to 30/60/120, repo prefs written only when something changed
+- [x] Interval settings copy no longer hardcodes "1 hour"
+
 ### 2026-09 — development round 3
 - [x] Repo cleanup: removed `sub-project.md`, moved the product spec to `docs/PRD.md`
 - [x] Fetch optimization: concurrent per-repo sync, cache writes skipped when a repo

@@ -22,7 +22,7 @@ Future<void> alarmCallback() async {
   }
 }
 
-Future<void> registerExactAlarm() async {
+Future<void> registerSyncAlarm() async {
   final storage = StorageService();
   final settings = await storage.getAppSettings();
   final intervalMinutes = settings.syncIntervalMinutes;
@@ -38,17 +38,39 @@ Future<void> registerExactAlarm() async {
   }
 
   final interval = Duration(minutes: intervalMinutes);
+  final startAt = DateTime.now().add(interval);
 
-  await AndroidAlarmManager.periodic(
-    interval,
-    alarmId,
-    alarmCallback,
-    startAt: DateTime.now().add(interval),
-    exact: true,
-    wakeup: true,
-    rescheduleOnReboot: true,
-  );
+  var scheduled = false;
+  try {
+    scheduled = await AndroidAlarmManager.periodic(
+      interval,
+      alarmId,
+      alarmCallback,
+      startAt: startAt,
+      exact: true,
+      wakeup: true,
+      allowWhileIdle: true,
+      rescheduleOnReboot: true,
+    );
+  } catch (e) {
+    debugPrint('registerSyncAlarm: exact alarm unavailable: $e');
+  }
 
-  await storage.setAlarmIntervalMinutes(intervalMinutes);
-  await storage.setAlarmRegistered(true);
+  if (!scheduled) {
+    scheduled = await AndroidAlarmManager.periodic(
+      interval,
+      alarmId,
+      alarmCallback,
+      startAt: startAt,
+      exact: false,
+      wakeup: true,
+      allowWhileIdle: true,
+      rescheduleOnReboot: true,
+    );
+  }
+
+  if (scheduled) {
+    await storage.setAlarmIntervalMinutes(intervalMinutes);
+    await storage.setAlarmRegistered(true);
+  }
 }

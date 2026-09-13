@@ -17,7 +17,7 @@ class StartupService {
 
     try {
       await AndroidAlarmManager.initialize();
-      await registerExactAlarm();
+      await registerSyncAlarm();
     } catch (e) {
       debugPrint('StartupService: alarm init failed: $e');
     }
@@ -25,7 +25,7 @@ class StartupService {
 
   static Future<void> applySyncInterval() async {
     try {
-      await registerExactAlarm();
+      await registerSyncAlarm();
     } catch (e) {
       debugPrint('StartupService: alarm reschedule failed: $e');
     }

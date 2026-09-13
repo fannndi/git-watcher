@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:git_watcher/app.dart';
+import 'package:git_watcher/models/sync_log.dart';
 import 'package:git_watcher/models/watched_repo.dart';
 import 'package:git_watcher/screens/settings_screen.dart';
+import 'package:git_watcher/screens/update_screen.dart';
 import 'package:git_watcher/utils/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -117,6 +119,31 @@ void main() {
       expect(find.text('Interval sync background'), findsOneWidget);
       expect(find.text('Kirim notifikasi uji'), findsOneWidget);
       expect(find.text('Presisi Ekstrem'), findsOneWidget);
+    });
+  });
+
+  group('UpdateScreen', () {
+    testWidgets('clears sync history after confirmation', (tester) async {
+      final log = SyncLog(
+        syncedAt: DateTime.now(),
+        updates: const {'flutter/flutter (master)': 2},
+      );
+      SharedPreferences.setMockInitialValues({
+        'has_seen_tour': true,
+        syncHistoryKey: jsonEncode([log.toJson()]),
+      });
+
+      await tester.pumpWidget(const MaterialApp(home: UpdateScreen()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Riwayat Sinkron'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.delete_sweep_outlined));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hapus'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Belum ada hasil sinkron'), findsOneWidget);
     });
   });
 

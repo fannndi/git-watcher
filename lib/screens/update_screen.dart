@@ -37,6 +37,35 @@ class _UpdateScreenState extends State<UpdateScreen> {
     });
   }
 
+  Future<void> _confirmClearHistory(AppStrings strings) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(strings.clearHistory),
+        content: Text(strings.clearHistoryConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(strings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(strings.delete),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await _storage.clearSyncHistory();
+    if (!mounted) return;
+    setState(() => _history = []);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.historyCleared)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<AppSettings>(
@@ -53,6 +82,12 @@ class _UpdateScreenState extends State<UpdateScreen> {
                 tooltip: strings.refresh,
                 onPressed: _loadUpdates,
               ),
+              if (_history.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.delete_sweep_outlined),
+                  tooltip: strings.clearHistory,
+                  onPressed: () => _confirmClearHistory(strings),
+                ),
             ],
           ),
           body: _isLoading

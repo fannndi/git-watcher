@@ -13,11 +13,13 @@ class RepoTile extends StatefulWidget {
     required this.repo,
     required this.onTap,
     required this.onDelete,
+    this.onLongPress,
   });
 
   final WatchedRepo repo;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback? onLongPress;
 
   @override
   State<RepoTile> createState() => _RepoTileState();
@@ -62,6 +64,7 @@ class _RepoTileState extends State<RepoTile>
             HapticFeedback.lightImpact();
             widget.onTap();
           },
+          onLongPress: widget.onLongPress,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(

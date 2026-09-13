@@ -19,6 +19,9 @@ class AppStrings {
   String get syncing => isEnglish ? 'Syncing' : 'Menyinkronkan';
   String get undo => isEnglish ? 'Undo' : 'Urungkan';
   String get shaCopied => isEnglish ? 'SHA copied' : 'SHA disalin';
+  String get openInBrowser => isEnglish ? 'Open in browser' : 'Buka di browser';
+  String get copyLink => isEnglish ? 'Copy link' : 'Salin tautan';
+  String get linkCopied => isEnglish ? 'Link copied' : 'Tautan disalin';
   String get search => isEnglish ? 'Search' : 'Cari';
   String get closeSearch => isEnglish ? 'Close search' : 'Tutup pencarian';
   String get searchRepo => isEnglish ? 'Search repo...' : 'Cari repo...';
@@ -187,8 +190,8 @@ class AppStrings {
   String get extremePrecision =>
       isEnglish ? 'Extreme Precision' : 'Presisi Ekstrem';
   String get extremePrecisionDesc => isEnglish
-      ? 'Ensures sync runs exactly every 1 hour, even when the phone is idle for a long time. Requires battery exemption.'
-      : 'Memastikan sync berjalan tepat setiap 1 jam, meskipun HP diam lama. Membutuhkan izin baterai.';
+      ? 'Keeps sync alarms precise at your chosen interval, even when the phone is idle. Requires battery exemption.'
+      : 'Memastikan alarm sync berjalan presisi sesuai interval pilihan, meskipun HP diam lama. Membutuhkan izin baterai.';
   String get allowBatteryExemption =>
       isEnglish ? 'Allow Battery Exemption' : 'Izinkan Pengecualian Baterai';
   String get aboutApp => isEnglish ? 'About app' : 'Tentang aplikasi';
@@ -205,6 +208,13 @@ class AppStrings {
 
   String get noSyncHistory =>
       isEnglish ? 'No sync results yet' : 'Belum ada hasil sinkron';
+  String get clearHistory =>
+      isEnglish ? 'Clear sync history' : 'Hapus riwayat sinkron';
+  String get historyCleared =>
+      isEnglish ? 'Sync history cleared' : 'Riwayat sinkron dihapus';
+  String get clearHistoryConfirm => isEnglish
+      ? 'Remove all sync history entries?'
+      : 'Hapus semua entri riwayat sinkron?';
   String get noNewCommits =>
       isEnglish ? 'No new commits' : 'Tidak ada commit baru';
 

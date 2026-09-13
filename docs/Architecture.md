@@ -8,7 +8,9 @@ local (SharedPreferences) and remote data comes from the public GitHub REST API 
 ```
 UI (screens/)
   HomeScreen, AddRepoScreen, DetailScreen, SettingsScreen, UpdateScreen
-  Widgets: RepoTile, InfoChip, FadeInSlideUp
+  Widgets: RepoTile, InfoChip, HomeSyncBar/HomeEmptyState/HomeErrorState,
+           HomeNoResultsState, HomeTourOverlay, CommitCard, CommitDetailSheet,
+           FadeInSlideUp
 State (services/app_settings_controller.dart)
   AppSettingsController : ValueNotifier<AppSettings>  (global singleton)
 Services (services/)
@@ -16,9 +18,10 @@ Services (services/)
   GitHubService       HTTP client for api.github.com
   SyncService         change detection, caching, notification trigger
   NotificationService flutter_local_notifications + navigatorKey deep link
-  StartupService      init notifications, register exact alarm
+  StartupService      init notifications, register sync alarm
 Background (workers/alarm_worker.dart)
   alarmCallback       runs in a separate isolate, top-level @pragma entry point
+  registerSyncAlarm   exact periodic alarm (interval-based) with inexact fallback
 Models (models/)
   WatchedRepo, Commit, CommitDetail, CommitFile, AppSettings,
   GitHubCredentials, SyncLog
@@ -28,8 +31,10 @@ Models (models/)
 
 1. `main()` loads `AppSettings` from storage, then `StartupService.init()`:
    initialize notifications (and request POST_NOTIFICATIONS permission once),
-   initialize `AndroidAlarmManager`, register the exact periodic alarm if it is
-   missing or the configured interval changed.
+   initialize `AndroidAlarmManager`, and register the sync alarm if it is missing or
+   the configured interval changed. `registerSyncAlarm()` tries an exact alarm first
+   (`exact`, `wakeup`, `allowWhileIdle`, reboot-resilient) and falls back to an
+   inexact `allowWhileIdle` alarm when the OS denies `SCHEDULE_EXACT_ALARM`.
 2. `GitHubWatcherApp` rebuilds on settings changes (theme + language) and hosts
    `HomeScreen`.
 3. Foreground sync: pull-to-refresh or the app-bar button calls
@@ -37,18 +42,16 @@ Models (models/)
    (auto-released after 10 minutes) prevent overlapping runs. `onProgress` reports
    per-repo completion to the Home status bar.
 4. Background sync: the alarm isolate calls the same `SyncService.checkUpdates()`
-   with `isBackground: true` and an 8-minute timeout.
-5. Watched repos are fetched concurrently. Per repo, sync fetches the newest commits
-   (20 for `minimal`, 100 for the larger modes) and counts commits newer than
-   `lastSha`. The cache is merged only when there are new commits, and
-   `lastSha`/`lastCommitAt` are updated from a single `saveRepos` write.
+   with `isBackground: true` and a 5-minute timeout.
+5. Watched repos are fetched concurrently, capped at `syncFetchLimit` (25) commits
+   each: one HTTP request per repo per interval. The cache is merged only when there
+   are new commits, and `lastSha`/`lastCommitAt` are persisted once per changed repo.
 6. New commits produce a `SyncLog` entry. Background runs also post one local
    notification when notifications are enabled.
 7. Tapping the notification opens `UpdateScreen` through the global
    `navigatorKey`; cold starts are redirected after the first frame.
-8. Pull-to-refresh in `DetailScreen` fetches only the newest
-   `backgroundSyncFetchLimit` commits and merges them into the cache instead of
-   re-downloading the whole sync mode.
+8. Pull-to-refresh in `DetailScreen` fetches only the newest 25 commits and merges
+   them into the cache instead of re-downloading the whole sync mode.
 
 ## Storage keys (SharedPreferences)
 

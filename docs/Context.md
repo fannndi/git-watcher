@@ -14,9 +14,13 @@ lightweight alternative to the GitHub app.
 
 ## Business rules
 
-- Max 5 watched repositories per device (API rate limit consideration)
+- Max 10 watched repositories per device (API rate limit consideration)
 - Max 30 sync history entries, max 1000 cached commits per repo
-- Background sync interval is user-configurable: 15/30/60/120 minutes, default 60
+- Background sync interval is user-configurable: 30/60/120 minutes, default 60
+- Each scheduled sync fetches at most 25 commits per repo (one request per repo),
+  which keeps the radio wake-up short and the battery cost low
+- Exact alarms fall back to inexact `allowWhileIdle` alarms when Android denies
+  `SCHEDULE_EXACT_ALARM`, so sync still runs without a battery-draining workaround
 - Notifications only fire for background sync and can be disabled in settings
 - Public repos: 60 requests/hour; authenticated: 5000 requests/hour
 - Token is base64-obfuscated, not encrypted (production upgrade: flutter_secure_storage)
@@ -25,7 +29,7 @@ lightweight alternative to the GitHub app.
 
 - ValueNotifier over Provider/Riverpod: one global setting, no extra dependency
 - SharedPreferences over SQLite: small key-value payloads only
-- AndroidAlarmManager over WorkManager: exact hourly cadence instead of eventual
+- AndroidAlarmManager over WorkManager: precise user-configured cadence instead of eventual
 - Single platform (Android) and no conditional-export stubs: less code to maintain
 - Custom AppStrings i18n over flutter_localizations: two languages, no codegen
 
