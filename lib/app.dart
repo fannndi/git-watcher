@@ -2,9 +2,12 @@ import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
+import 'screens/setup_screen.dart';
 import 'services/app_settings_controller.dart';
 import 'services/notification_service.dart';
 import 'utils/constants.dart';
+
+final ValueNotifier<bool> setupCompletedNotifier = ValueNotifier(false);
 
 class GitHubWatcherApp extends StatelessWidget {
   const GitHubWatcherApp({super.key});
@@ -14,14 +17,19 @@ class GitHubWatcherApp extends StatelessWidget {
     return ValueListenableBuilder(
       valueListenable: appSettingsController,
       builder: (context, settings, _) {
-        return MaterialApp(
-          title: appName,
-          navigatorKey: navigatorKey,
-          debugShowCheckedModeBanner: false,
-          themeMode: _themeMode(settings.themeMode),
-          theme: _theme(Brightness.light),
-          darkTheme: _theme(Brightness.dark),
-          home: const HomeScreen(),
+        return ValueListenableBuilder<bool>(
+          valueListenable: setupCompletedNotifier,
+          builder: (context, setupCompleted, _) {
+            return MaterialApp(
+              title: appName,
+              navigatorKey: navigatorKey,
+              debugShowCheckedModeBanner: false,
+              themeMode: _themeMode(settings.themeMode),
+              theme: _theme(Brightness.light),
+              darkTheme: _theme(Brightness.dark),
+              home: setupCompleted ? const HomeScreen() : const SetupScreen(),
+            );
+          },
         );
       },
     );

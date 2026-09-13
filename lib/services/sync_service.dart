@@ -28,6 +28,7 @@ class SyncService {
   static Future<Map<String, int>> checkUpdates({
     bool isBackground = false,
     bool morningDigest = false,
+    bool alertUnread = false,
     StorageService? storage,
     GitHubService? github,
     void Function(int completed, int total)? onProgress,
@@ -159,6 +160,7 @@ class SyncService {
               newCommits,
               stringsFor(settings.languageCode),
               morningDigest: morningDigest,
+              alert: alertUnread,
             );
           } catch (e) {
             debugPrint('Sync notification failed: $e');

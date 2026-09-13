@@ -27,12 +27,15 @@ lightweight alternative to the GitHub app.
 ## Battery strategy
 
 - Inexact alarms by default; exact alarms only behind the "Extreme Precision" opt-in
-- Quiet hours skip syncs entirely instead of waking the radio
-- Adaptive backoff: while the last notification is still unread, the effective
-  interval doubles (up to 4x); any engagement (app resume or notification tap) resets it
+- Sleep schedule (default 23:00-07:00, local device time): no syncs while asleep;
+  the first sync after wake-up sends a once-a-day morning digest
+- Unread pause: after 3 consecutive notifications the user has not cleared, syncing
+  stops until the user engages (app resume or notification tap); the counter resets
+  during the sleep window
 - Stale repos (no commit for a week) are checked at most every other hour
 - Optional Wi-Fi-only sync avoids mobile radio use
-- One GraphQL request per sync for all repos when a token is configured
+- One GraphQL request per sync for all repos when a token is configured (ETag-aware
+  REST fallback)
 - Cache and repo prefs are written only when commits actually changed
 
 ## Key decisions

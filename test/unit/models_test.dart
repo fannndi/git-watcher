@@ -195,43 +195,45 @@ void main() {
       final settings = AppSettings.fromJson(const {
         'precise_sync': true,
         'wifi_only': true,
-        'quiet_hours_enabled': false,
-        'quiet_start_hour': 22,
-        'quiet_end_hour': 6,
+        'alert_on_unread': true,
+        'quiet_hours_enabled': true,
+        'wake_minutes': 390,
+        'sleep_minutes': 1350,
       });
 
       expect(settings.preciseSync, true);
       expect(settings.wifiOnly, true);
-      expect(settings.quietHoursEnabled, false);
-      expect(settings.quietStartHour, 22);
-      expect(settings.quietEndHour, 6);
+      expect(settings.alertOnUnread, true);
+      expect(settings.wakeMinutes, 390);
+      expect(settings.sleepMinutes, 1350);
     });
 
-    test('isQuietHour handles overnight and daytime windows', () {
+    test('fromJson migrates legacy quiet hour keys', () {
+      final settings = AppSettings.fromJson(const {
+        'quiet_start_hour': 22,
+        'quiet_end_hour': 6,
+      });
+
+      expect(settings.sleepMinutes, 22 * 60);
+      expect(settings.wakeMinutes, 6 * 60);
+    });
+
+    test('isSleepTime handles overnight windows', () {
       const overnight = AppSettings(
         syncIntervalMinutes: 60,
         languageCode: languageIndonesian,
         themeMode: themeModeSystem,
-        quietStartHour: 23,
-        quietEndHour: 7,
-      );
-      const daytime = AppSettings(
-        syncIntervalMinutes: 60,
-        languageCode: languageIndonesian,
-        themeMode: themeModeSystem,
-        quietStartHour: 9,
-        quietEndHour: 17,
+        wakeMinutes: 7 * 60,
+        sleepMinutes: 23 * 60,
       );
 
-      expect(overnight.isQuietHour(DateTime(2026, 1, 1, 23)), true);
-      expect(overnight.isQuietHour(DateTime(2026, 1, 1, 3)), true);
-      expect(overnight.isQuietHour(DateTime(2026, 1, 1, 7)), false);
-      expect(overnight.isQuietHour(DateTime(2026, 1, 1, 12)), false);
-      expect(daytime.isQuietHour(DateTime(2026, 1, 1, 10)), true);
-      expect(daytime.isQuietHour(DateTime(2026, 1, 1, 18)), false);
+      expect(overnight.isSleepTime(DateTime(2026, 1, 1, 23)), true);
+      expect(overnight.isSleepTime(DateTime(2026, 1, 1, 3)), true);
+      expect(overnight.isSleepTime(DateTime(2026, 1, 1, 7)), false);
+      expect(overnight.isSleepTime(DateTime(2026, 1, 1, 12)), false);
     });
 
-    test('isQuietHour respects the toggle', () {
+    test('isSleepTime respects the toggle', () {
       const disabled = AppSettings(
         syncIntervalMinutes: 60,
         languageCode: languageIndonesian,
@@ -239,16 +241,21 @@ void main() {
         quietHoursEnabled: false,
       );
 
-      expect(disabled.isQuietHour(DateTime(2026, 1, 1, 2)), false);
+      expect(disabled.isSleepTime(DateTime(2026, 1, 1, 2)), false);
     });
 
-    test('effectiveSyncIntervalMinutes doubles up to the cap', () {
-      const settings = AppSettings.defaults();
+    test('isMorningWindow covers wake-up plus three hours', () {
+      const settings = AppSettings(
+        syncIntervalMinutes: 60,
+        languageCode: languageIndonesian,
+        themeMode: themeModeSystem,
+        wakeMinutes: 7 * 60,
+        sleepMinutes: 23 * 60,
+      );
 
-      expect(settings.effectiveSyncIntervalMinutes(0), 60);
-      expect(settings.effectiveSyncIntervalMinutes(1), 120);
-      expect(settings.effectiveSyncIntervalMinutes(2), 240);
-      expect(settings.effectiveSyncIntervalMinutes(9), 240);
+      expect(settings.isMorningWindow(DateTime(2026, 1, 1, 7)), true);
+      expect(settings.isMorningWindow(DateTime(2026, 1, 1, 9, 59)), true);
+      expect(settings.isMorningWindow(DateTime(2026, 1, 1, 10)), false);
     });
 
     test('copyWith only changes given fields', () {

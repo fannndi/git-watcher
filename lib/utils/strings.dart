@@ -192,16 +192,57 @@ class AppStrings {
   String get wifiOnlyDesc => isEnglish
       ? 'Skip scheduled syncs on mobile data.'
       : 'Lewati sync terjadwal saat memakai data seluler.';
-  String get quietHours => isEnglish ? 'Quiet hours' : 'Jam tenang';
+  String get quietHours => isEnglish ? 'Sleep schedule' : 'Jadwal tidur';
   String get quietHoursDesc => isEnglish
-      ? 'No syncs during these hours; the first sync after wakes up with a morning digest.'
-      : 'Tidak ada sync di jam ini; sync pertama setelahnya dikirim sebagai digest pagi.';
-  String get quietStart => isEnglish ? 'Start' : 'Mulai';
-  String get quietEnd => isEnglish ? 'End' : 'Selesai';
-  String hourLabel(int hour) => '${hour.toString().padLeft(2, '0')}:00';
+      ? 'Sync pauses between sleep and wake-up time; the first sync after waking is a morning digest.'
+      : 'Sync berhenti antara jam tidur dan jam bangun; sync pertama setelah bangun dikirim sebagai digest pagi.';
+  String get wakeUpTime => isEnglish ? 'Wake-up time' : 'Jam bangun';
+  String get sleepTime => isEnglish ? 'Sleep time' : 'Jam tidur';
+  String get alertOnUnread =>
+      isEnglish ? 'Sound when unread' : 'Suara jika belum dibaca';
+  String get alertOnUnreadDesc => isEnglish
+      ? 'Second and later notifications play a sound until you check them.'
+      : 'Notifikasi kedua dan setelahnya berbunyi sampai kamu cek.';
+  String get openNotificationSettings => isEnglish
+      ? 'Android notification settings'
+      : 'Pengaturan notifikasi Android';
+  String timeLabel(int minutes) {
+    final hour = (minutes ~/ 60).toString().padLeft(2, '0');
+    final minute = (minutes % 60).toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
   String morningDigestTitle(int count) => isEnglish
       ? 'Good morning — $count repo${count == 1 ? '' : 's'} updated'
       : 'Selamat pagi — $count repo update';
+
+  String get setupWelcomeTitle =>
+      isEnglish ? 'Welcome to Git Watcher' : 'Selamat datang di Git Watcher';
+  String get setupWelcomeDesc => isEnglish
+      ? 'Watch GitHub repositories and get notified when someone pushes something new.'
+      : 'Pantau repo GitHub dan dapatkan notifikasi saat ada yang push hal baru.';
+  String get setupScheduleTitle => isEnglish ? 'Sync schedule' : 'Jadwal sync';
+  String get setupScheduleDesc => isEnglish
+      ? 'Pick an interval, wake-up time, and sleep time. Sync stops while you sleep.'
+      : 'Pilih interval, jam bangun, dan jam tidur. Sync berhenti saat kamu tidur.';
+  String get setupPermissionsTitle =>
+      isEnglish ? 'Notification permission' : 'Izin notifikasi';
+  String get setupPermissionsDesc => isEnglish
+      ? 'Git Watcher needs notification permission so repo updates reach you. You can also exempt it from battery optimization.'
+      : 'Git Watcher butuh izin notifikasi supaya update repo sampai ke kamu. Kamu juga bisa mengecualikannya dari optimasi baterai.';
+  String get setupAccountTitle =>
+      isEnglish ? 'Private repos (optional)' : 'Repo privat (opsional)';
+  String get setupAccountDesc => isEnglish
+      ? 'Add a GitHub username and token to watch private repositories. You can skip this and fill it later in Settings.'
+      : 'Tambahkan username dan token GitHub untuk memantau repo privat. Boleh dilewati dan diisi nanti di Pengaturan.';
+  String get setupNext => isEnglish ? 'Next' : 'Lanjut';
+  String get setupBack => isEnglish ? 'Back' : 'Kembali';
+  String get setupStart => isEnglish ? 'Start watching' : 'Mulai pantau';
+  String get grantPermission =>
+      isEnglish ? 'Allow notifications' : 'Izinkan notifikasi';
+  String get permissionGranted =>
+      isEnglish ? 'Notification permission granted' : 'Izin notifikasi aktif';
+  String get setupOptional => isEnglish ? 'Optional' : 'Opsional';
   String get testNotificationTitle =>
       isEnglish ? 'Test notification' : 'Notifikasi uji';
   String get testNotificationBody => isEnglish

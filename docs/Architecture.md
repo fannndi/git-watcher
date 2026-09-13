@@ -29,21 +29,22 @@ Models (models/)
 
 ## Runtime flow
 
-1. `main()` loads `AppSettings` from storage, then `StartupService.init()`:
-   initialize notifications (and request POST_NOTIFICATIONS permission once),
-   initialize `AndroidAlarmManager`, and register the sync alarm if it is missing or
-   the interval/precision changed. Exact alarms are opt-in via `preciseSync`;
-   otherwise an inexact `allowWhileIdle` alarm is used.
-2. `GitHubWatcherApp` rebuilds on settings changes (theme + language) and hosts
-   `HomeScreen`.
+1. `main()` loads `AppSettings` and the `setup_completed` flag, then
+   `StartupService.init()`: initialize notifications (and request POST_NOTIFICATIONS
+   permission once), initialize `AndroidAlarmManager`, and register the sync alarm if
+   it is missing or the interval/precision changed. Exact alarms are opt-in via
+   `preciseSync`; otherwise an inexact `allowWhileIdle` alarm is used.
+2. `GitHubWatcherApp` rebuilds on settings changes (theme + language) and shows
+   `SetupScreen` on first launch, otherwise `HomeScreen`.
 3. Foreground sync: pull-to-refresh or the app-bar button calls
    `SyncService.checkUpdates()`. A 20-second debounce and a single-flight lock
    (auto-released after 10 minutes) prevent overlapping runs. `onProgress` reports
    per-repo completion to the Home status bar.
 4. Background sync (`alarmCallback`) applies battery guards before touching the
-   network: quiet hours skip, then adaptive backoff skip (previous notification
-   still unread), then the Wi-Fi-only check inside `SyncService`. The background
-   timeout is 5 minutes.
+   network: sleep-window skip (also resets the unread counter), unread pause after
+   `maxUnreadCycles`, then the Wi-Fi-only check inside `SyncService`. The background
+   timeout is 5 minutes. Times use the device's local clock, so the schedule follows
+   the user's region automatically.
 5. Stale repos (no commit for `staleRepoDays`) are only fetched on even hours; the
    rest are due every run. Fetching uses one GraphQL request for all repos when
    credentials exist, otherwise parallel REST requests with `If-None-Match`
@@ -53,12 +54,13 @@ Models (models/)
    are persisted once per changed repo.
 7. New commits produce a `SyncLog` entry. Background runs also post one local
    notification listing the newest commit titles + authors (max 3 per repo); muted
-   repos are excluded. A sync after quiet hours sends it as a "morning digest"
-   (once per day). The payload opens the repo's `DetailScreen` when a single repo
-   changed, otherwise `UpdateScreen`.
+   repos are excluded. The first sync in the wake-up window sends it as a "morning
+   digest" (once per day), and consecutive unread deliveries switch to the sounding
+   `updates_alert` channel when `alertOnUnread` is enabled. The payload opens the
+   repo's `DetailScreen` when a single repo changed, otherwise `UpdateScreen`.
 8. Tapping the notification opens that destination through the global
-   `navigatorKey` and resets the backoff level; cold starts are redirected after the
-   first frame. Resuming the app also resets the backoff level.
+   `navigatorKey` and resets the unread counter; cold starts are redirected after
+   the first frame. Resuming the app also resets the counter.
 9. Pull-to-refresh in `DetailScreen` fetches only the newest 25 commits and merges
    them into the cache instead of re-downloading the whole sync mode.
 
@@ -76,9 +78,10 @@ Models (models/)
 | `alarm_registered` | bool | sync alarm already scheduled |
 | `alarm_interval_minutes` | int | interval the current alarm was registered with |
 | `alarm_precise` | bool | whether the current alarm is exact |
-| `sync_backoff_level` | int | adaptive backoff level (0-2), reset on engagement |
+| `unread_cycles` | int | consecutive uncleared notification count (0-3) |
 | `last_seen_at` | ISO 8601 | last time sync history was opened (unread badge) |
 | `morning_digest_date` | date string | last day a morning digest was sent |
+| `setup_completed` | bool | first-run wizard finished |
 | `has_seen_tour` | bool | onboarding overlay dismissed |
 
 ## External APIs

@@ -165,14 +165,24 @@ class StorageService {
     await prefs.setBool(alarmPreciseKey, value);
   }
 
-  Future<int> getSyncBackoffLevel() async {
+  Future<int> getUnreadCycles() async {
     final prefs = await _instance();
-    return (prefs.getInt(syncBackoffKey) ?? 0).clamp(0, maxSyncBackoffLevel);
+    return (prefs.getInt(unreadCyclesKey) ?? 0).clamp(0, maxUnreadCycles);
   }
 
-  Future<void> setSyncBackoffLevel(int level) async {
+  Future<void> setUnreadCycles(int cycles) async {
     final prefs = await _instance();
-    await prefs.setInt(syncBackoffKey, level.clamp(0, maxSyncBackoffLevel));
+    await prefs.setInt(unreadCyclesKey, cycles.clamp(0, maxUnreadCycles));
+  }
+
+  Future<bool> hasCompletedSetup() async {
+    final prefs = await _instance();
+    return prefs.getBool(setupCompletedKey) ?? false;
+  }
+
+  Future<void> setCompletedSetup(bool value) async {
+    final prefs = await _instance();
+    await prefs.setBool(setupCompletedKey, value);
   }
 
   Future<DateTime?> getLastSeenAt() async {

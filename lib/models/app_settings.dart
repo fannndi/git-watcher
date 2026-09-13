@@ -8,9 +8,10 @@ class AppSettings {
     this.notificationsEnabled = true,
     this.preciseSync = false,
     this.wifiOnly = false,
+    this.alertOnUnread = false,
     this.quietHoursEnabled = true,
-    this.quietStartHour = 23,
-    this.quietEndHour = 7,
+    this.wakeMinutes = defaultWakeMinutes,
+    this.sleepMinutes = defaultSleepMinutes,
   });
 
   const AppSettings.defaults()
@@ -20,9 +21,10 @@ class AppSettings {
         notificationsEnabled = true,
         preciseSync = false,
         wifiOnly = false,
+        alertOnUnread = false,
         quietHoursEnabled = true,
-        quietStartHour = 23,
-        quietEndHour = 7;
+        wakeMinutes = defaultWakeMinutes,
+        sleepMinutes = defaultSleepMinutes;
 
   final int syncIntervalMinutes;
   final String languageCode;
@@ -30,9 +32,10 @@ class AppSettings {
   final bool notificationsEnabled;
   final bool preciseSync;
   final bool wifiOnly;
+  final bool alertOnUnread;
   final bool quietHoursEnabled;
-  final int quietStartHour;
-  final int quietEndHour;
+  final int wakeMinutes;
+  final int sleepMinutes;
 
   AppSettings copyWith({
     int? syncIntervalMinutes,
@@ -41,9 +44,10 @@ class AppSettings {
     bool? notificationsEnabled,
     bool? preciseSync,
     bool? wifiOnly,
+    bool? alertOnUnread,
     bool? quietHoursEnabled,
-    int? quietStartHour,
-    int? quietEndHour,
+    int? wakeMinutes,
+    int? sleepMinutes,
   }) {
     return AppSettings(
       syncIntervalMinutes: syncIntervalMinutes ?? this.syncIntervalMinutes,
@@ -52,9 +56,10 @@ class AppSettings {
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       preciseSync: preciseSync ?? this.preciseSync,
       wifiOnly: wifiOnly ?? this.wifiOnly,
+      alertOnUnread: alertOnUnread ?? this.alertOnUnread,
       quietHoursEnabled: quietHoursEnabled ?? this.quietHoursEnabled,
-      quietStartHour: quietStartHour ?? this.quietStartHour,
-      quietEndHour: quietEndHour ?? this.quietEndHour,
+      wakeMinutes: wakeMinutes ?? this.wakeMinutes,
+      sleepMinutes: sleepMinutes ?? this.sleepMinutes,
     );
   }
 
@@ -65,9 +70,10 @@ class AppSettings {
         'notifications_enabled': notificationsEnabled,
         'precise_sync': preciseSync,
         'wifi_only': wifiOnly,
+        'alert_on_unread': alertOnUnread,
         'quiet_hours_enabled': quietHoursEnabled,
-        'quiet_start_hour': quietStartHour,
-        'quiet_end_hour': quietEndHour,
+        'wake_minutes': wakeMinutes,
+        'sleep_minutes': sleepMinutes,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -82,14 +88,15 @@ class AppSettings {
       notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
       preciseSync: json['precise_sync'] as bool? ?? false,
       wifiOnly: json['wifi_only'] as bool? ?? false,
+      alertOnUnread: json['alert_on_unread'] as bool? ?? false,
       quietHoursEnabled: json['quiet_hours_enabled'] as bool? ?? true,
-      quietStartHour: normalizeHour(
-        (json['quiet_start_hour'] as num?)?.toInt(),
-        23,
+      wakeMinutes: normalizeTime(
+        (json['wake_minutes'] as num?)?.toInt(),
+        legacyHourOf(json['quiet_end_hour'], defaultWakeMinutes ~/ 60) * 60,
       ),
-      quietEndHour: normalizeHour(
-        (json['quiet_end_hour'] as num?)?.toInt(),
-        7,
+      sleepMinutes: normalizeTime(
+        (json['sleep_minutes'] as num?)?.toInt(),
+        legacyHourOf(json['quiet_start_hour'], defaultSleepMinutes ~/ 60) * 60,
       ),
     );
   }
@@ -101,31 +108,41 @@ class AppSettings {
     return defaultSyncIntervalMinutes;
   }
 
-  static int normalizeHour(int? value, int fallback) {
-    if (value != null && value >= 0 && value <= 23) {
+  static int normalizeTime(int? value, int fallback) {
+    if (value != null && value >= 0 && value < 1440) {
       return value;
     }
     return fallback;
   }
 
-  bool isQuietHour(DateTime time) {
+  static int legacyHourOf(Object? value, int fallback) {
+    if (value is num && value >= 0 && value <= 23) {
+      return value.toInt();
+    }
+    return fallback;
+  }
+
+  bool isSleepTime(DateTime time) {
+    if (!quietHoursEnabled || sleepMinutes == wakeMinutes) {
+      return false;
+    }
+
+    final minutes = time.hour * 60 + time.minute;
+    if (sleepMinutes < wakeMinutes) {
+      return minutes >= sleepMinutes && minutes < wakeMinutes;
+    }
+    return minutes >= sleepMinutes || minutes < wakeMinutes;
+  }
+
+  bool isMorningWindow(DateTime time) {
     if (!quietHoursEnabled) {
       return false;
     }
-    if (quietStartHour == quietEndHour) {
-      return false;
-    }
 
-    final hour = time.hour;
-    if (quietStartHour < quietEndHour) {
-      return hour >= quietStartHour && hour < quietEndHour;
-    }
-    return hour >= quietStartHour || hour < quietEndHour;
-  }
-
-  int effectiveSyncIntervalMinutes(int backoffLevel) {
-    final multiplier = 1 << backoffLevel.clamp(0, maxSyncBackoffLevel);
-    return syncIntervalMinutes * multiplier;
+    final minutes = time.hour * 60 + time.minute;
+    final windowEnd = wakeMinutes + 180;
+    return minutes >= wakeMinutes &&
+        minutes < (windowEnd > 1440 ? 1440 : windowEnd);
   }
 
   static String _parseThemeMode(String? value) {

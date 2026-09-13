@@ -12,7 +12,25 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({'has_seen_tour': true});
+    SharedPreferences.setMockInitialValues({
+      'has_seen_tour': true,
+      'setup_completed': true,
+    });
+    setupCompletedNotifier.value = true;
+  });
+
+  group('First launch', () {
+    testWidgets('shows the setup wizard when not completed', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      setupCompletedNotifier.value = false;
+      addTearDown(() => setupCompletedNotifier.value = true);
+
+      await tester.pumpWidget(const GitHubWatcherApp());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Selamat datang di Git Watcher'), findsOneWidget);
+      expect(find.text('Lanjut'), findsOneWidget);
+    });
   });
 
   group('HomeScreen', () {
@@ -120,9 +138,11 @@ void main() {
       expect(find.text('Kirim notifikasi uji'), findsOneWidget);
       expect(find.text('Presisi Ekstrem'), findsOneWidget);
       expect(find.text('Sync hanya via Wi-Fi'), findsOneWidget);
-      expect(find.text('Jam tenang'), findsOneWidget);
-      expect(find.text('Mulai'), findsOneWidget);
-      expect(find.text('Selesai'), findsOneWidget);
+      expect(find.text('Jadwal tidur'), findsOneWidget);
+      expect(find.text('Jam bangun'), findsOneWidget);
+      expect(find.text('Jam tidur'), findsOneWidget);
+      expect(find.text('Suara jika belum dibaca'), findsOneWidget);
+      expect(find.text('Pengaturan notifikasi Android'), findsOneWidget);
     });
   });
 

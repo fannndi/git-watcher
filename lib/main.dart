@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'app.dart';
 import 'services/app_settings_controller.dart';
 import 'services/startup_service.dart';
+import 'services/storage_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +22,7 @@ Future<void> main() async {
 
   try {
     await appSettingsController.load();
+    setupCompletedNotifier.value = await StorageService().hasCompletedSetup();
   } catch (e) {
     debugPrint('Settings load failed, using defaults: $e');
   }

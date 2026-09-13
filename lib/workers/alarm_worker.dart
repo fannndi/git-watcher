@@ -18,34 +18,31 @@ Future<void> alarmCallback() async {
     final settings = await storage.getAppSettings();
     final now = DateTime.now();
 
-    if (settings.isQuietHour(now)) {
+    if (settings.isSleepTime(now)) {
+      await storage.setUnreadCycles(0);
       return;
     }
 
-    final level = await storage.getSyncBackoffLevel();
-    final effectiveInterval = Duration(
-      minutes: settings.effectiveSyncIntervalMinutes(level),
-    );
-    final lastSyncAt = await storage.getLastSyncAt();
-    if (lastSyncAt != null && now.difference(lastSyncAt) < effectiveInterval) {
-      return;
-    }
-
+    final unreadCycles = await storage.getUnreadCycles();
     final notificationActive =
         await NotificationService.hasActiveUpdateNotification();
-    final morningDigest = settings.quietHoursEnabled &&
-        now.hour >= settings.quietEndHour &&
-        now.hour < settings.quietEndHour + 3 &&
-        await storage.getMorningDigestDate() != _dateKey(now);
+    final cycles = notificationActive ? unreadCycles + 1 : 0;
+    await storage.setUnreadCycles(cycles);
+
+    if (cycles >= maxUnreadCycles) {
+      return;
+    }
+
+    final digestDate = await storage.getMorningDigestDate();
+    final morningDigest =
+        settings.isMorningWindow(now) && digestDate != _dateKey(now);
 
     await NotificationService.init(isBackground: true);
     await SyncService.checkUpdates(
       isBackground: true,
       morningDigest: morningDigest,
+      alertUnread: settings.alertOnUnread && cycles >= 1,
     ).timeout(backgroundSyncTimeout);
-
-    final nextLevel = notificationActive ? level + 1 : 0;
-    await storage.setSyncBackoffLevel(nextLevel);
   } catch (e) {
     debugPrint('alarmCallback failed: $e');
   }

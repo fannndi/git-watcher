@@ -60,17 +60,22 @@ test/
 ## Behavior contracts
 
 - Up to `maxWatchedRepos` (10) repos.
+- First launch shows `SetupScreen` until `setup_completed` is set (wizard: language/
+  theme, schedule, notification permission, optional GitHub token).
 - Background sync: periodic alarm via `AndroidAlarmManager`, interval from
   `AppSettings.syncIntervalMinutes` (30/60/120, default 60). Exact alarms are used
   only when `AppSettings.preciseSync` is on; otherwise inexact + `allowWhileIdle`.
   `registerSyncAlarm()` re-registers when interval or precision changes.
-- Battery guards in `alarmCallback`, in order: quiet hours skip -> adaptive backoff
-  skip -> Wi-Fi-only skip (inside `SyncService`) -> fetch.
-  - Quiet hours (`quietHoursEnabled`, default 23-07) skip syncing entirely; the
-    first sync after the window is sent as a morning digest (once per day).
-  - Adaptive backoff: if the previous update notification is still active (user has
-    not seen it), the effective interval doubles up to `maxSyncBackoffLevel` (2 ->
-    4x). Level resets when the app is resumed or the notification is tapped.
+- Battery guards in `alarmCallback`, in order: sleep window skip -> unread pause ->
+  Wi-Fi-only skip (inside `SyncService`) -> fetch.
+  - Sleep window (`quietHoursEnabled`, default 23:00-07:00, times in local time):
+    no sync runs inside it and the unread counter resets; the first sync after
+    wake-up (up to 3 h window) is sent as a once-a-day morning digest.
+  - Unread pause: each run checks whether the previous update notification is still
+    active. If so the counter grows; at `maxUnreadCycles` (3) syncing stops until
+    the user engages (opens the app or taps the notification, which resets it).
+  - When `alertOnUnread` is on, the second and later consecutive notifications use
+    the sounding `updates_alert` channel.
 - Every scheduled sync: stale repos (`lastCommitAt` older than `staleRepoDays`) are
   only fetched on even hours; active repos every run. Each repo is capped at
   `syncFetchLimit` (25) commits.

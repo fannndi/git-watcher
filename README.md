@@ -9,17 +9,23 @@ Package: `com.fannndi.gitwatcher` (Dart package `git_watcher`).
 
 - Watch up to 10 repositories, each with its own branch and sync mode
 - Sync modes: latest day (minimal), latest 500 commits, latest 5000 commits
+- First-launch setup wizard: language, theme, schedule, notification permission,
+  optional GitHub token
 - Battery-first scheduling: inexact alarms by default (exact only with Extreme
-  Precision), quiet hours, adaptive backoff while a notification stays unread,
-  Wi-Fi-only option, and per-repo throttling for stale repositories
-- One batched GraphQL request for all repos when a token is configured (REST fallback)
+  Precision), sleep schedule with wake-up/sleep times in local time, Wi-Fi-only
+  option, and per-repo throttling for stale repositories
+- Unread-aware pausing: after 3 consecutive notifications you have not cleared,
+  syncing stops until you open the app or tap the notification; the counter resets
+  during your sleep window
+- One batched GraphQL request for all repos when a token is configured (REST fallback
+  with ETag conditional requests)
 - Local notifications that name the new commits and their authors, deep-linking
   straight to the updated repo (or sync history when several repos changed), plus
-  a once-a-day morning digest after quiet hours
+  a once-a-day morning digest after wake-up
+- Optional sound alerts for unread updates (second channel) with a shortcut to
+  Android notification settings for Do Not Disturb override
 - Per-repo mute (long-press), persisted unread badge, offline commit cache grouped
   by day, search by message/SHA, and a commit detail sheet with copy-SHA
-- Parallel repo fetch with live "Syncing n/m" progress; cache writes skipped when
-  nothing changed, detail refresh merges only the newest commits
 - Swipe to delete with Undo; long-press a repo to open/copy/delete; tap a SHA to copy
 - Repo preview when adding: description, visibility, language, stars
 - Relative "last commit" time on repo tiles

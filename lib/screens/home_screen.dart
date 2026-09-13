@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _storage.setSyncBackoffLevel(0);
+      _storage.setUnreadCycles(0);
     }
   }
 

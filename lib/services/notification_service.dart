@@ -64,10 +64,21 @@ class NotificationService {
       showBadge: true,
     );
 
+    const alertChannel = AndroidNotificationChannel(
+      notificationAlertChannelId,
+      notificationAlertChannelName,
+      description: 'Sound alert for updates that are still unread.',
+      importance: Importance.high,
+      enableVibration: true,
+      playSound: true,
+      showBadge: true,
+    );
+
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
 
     await android?.createNotificationChannel(channel);
+    await android?.createNotificationChannel(alertChannel);
 
     if (!isBackground) {
       await android?.requestNotificationsPermission();
@@ -123,6 +134,7 @@ class NotificationService {
     Map<String, List<Commit>> newCommits,
     AppStrings strings, {
     bool morningDigest = false,
+    bool alert = false,
   }) async {
     final title = morningDigest
         ? strings.morningDigestTitle(updates.length)
@@ -136,10 +148,11 @@ class NotificationService {
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        notificationChannelId,
-        notificationChannelName,
-        channelDescription:
-            'Notifications for watched GitHub repository updates.',
+        alert ? notificationAlertChannelId : notificationChannelId,
+        alert ? notificationAlertChannelName : notificationChannelName,
+        channelDescription: alert
+            ? 'Sound alert for updates that are still unread.'
+            : 'Notifications for watched GitHub repository updates.',
         importance: Importance.high,
         priority: Priority.high,
         enableVibration: true,
@@ -173,7 +186,7 @@ class NotificationService {
       return;
     }
 
-    await StorageService().setSyncBackoffLevel(0);
+    await StorageService().setUnreadCycles(0);
 
     if (payload == updatePayload) {
       openUpdateScreen();

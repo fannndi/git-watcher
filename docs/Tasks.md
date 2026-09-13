@@ -2,10 +2,20 @@
 
 ## Done
 
+### 2026-09 — development round 7 (wake-up schedule + first-run setup)
+- [x] Replaced adaptive interval backoff with an explicit sleep schedule: wake-up
+      and sleep time pickers (local device time follows the region automatically)
+- [x] Unread pause: after `maxUnreadCycles` (3) uncleared notifications, syncing
+      stops until the user opens the app or taps the notification; the counter resets
+      inside the sleep window and the first wake-up sync is a morning digest
+- [x] Optional sounding alert channel for unread deliveries plus a shortcut to
+      Android channel settings (manual Do Not Disturb override)
+- [x] First-run setup wizard (`SetupScreen`): welcome + language/theme, schedule,
+      notification permission + battery exemption, optional GitHub credentials
+
 ### 2026-09 — development round 6 (battery & sync intelligence)
-- [x] Adaptive backoff: when the last update notification is still unread the
-      effective interval doubles (cap `maxSyncBackoffLevel`); resets on app resume
-      and notification tap
+- [x] Adaptive interval backoff (superseded in round 7 by the explicit sleep
+      schedule + unread pause, which the user preferred)
 - [x] Exact alarms are now opt-in via the Extreme Precision switch; default is
       inexact + `allowWhileIdle`
 - [x] Quiet hours (default 23-07, configurable): no syncs during the window; first

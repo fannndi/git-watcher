@@ -238,14 +238,21 @@ void main() {
       expect(await storage.isAlarmPrecise(), true);
     });
 
-    test('sync backoff level is clamped', () async {
-      expect(await storage.getSyncBackoffLevel(), 0);
+    test('unread cycles are clamped', () async {
+      expect(await storage.getUnreadCycles(), 0);
 
-      await storage.setSyncBackoffLevel(5);
-      expect(await storage.getSyncBackoffLevel(), maxSyncBackoffLevel);
+      await storage.setUnreadCycles(5);
+      expect(await storage.getUnreadCycles(), maxUnreadCycles);
 
-      await storage.setSyncBackoffLevel(-1);
-      expect(await storage.getSyncBackoffLevel(), 0);
+      await storage.setUnreadCycles(-1);
+      expect(await storage.getUnreadCycles(), 0);
+    });
+
+    test('setup completed flag', () async {
+      expect(await storage.hasCompletedSetup(), false);
+
+      await storage.setCompletedSetup(true);
+      expect(await storage.hasCompletedSetup(), true);
     });
 
     test('last seen timestamp', () async {

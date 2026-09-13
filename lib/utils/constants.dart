@@ -13,8 +13,10 @@ const int githubPageSize = 100;
 const int syncFetchLimit = 25;
 const int defaultSyncIntervalMinutes = 60;
 const List<int> syncIntervalOptions = [30, 60, 120];
-const int maxSyncBackoffLevel = 2;
 const int staleRepoDays = 7;
+const int maxUnreadCycles = 3;
+const int defaultWakeMinutes = 7 * 60;
+const int defaultSleepMinutes = 23 * 60;
 
 const String syncModeMinimal = 'minimal';
 const String syncModeLatest = 'latest_500';
@@ -47,13 +49,16 @@ const String commitCachePrefix = 'commit_cache_';
 const String alarmRegisteredKey = 'alarm_registered';
 const String alarmIntervalKey = 'alarm_interval_minutes';
 const String alarmPreciseKey = 'alarm_precise';
-const String syncBackoffKey = 'sync_backoff_level';
+const String unreadCyclesKey = 'unread_cycles';
 const String lastSeenAtKey = 'last_seen_at';
 const String morningDigestKey = 'morning_digest_date';
+const String setupCompletedKey = 'setup_completed';
 const String hasSeenTourKey = 'has_seen_tour';
 
 const String notificationChannelId = 'updates';
 const String notificationChannelName = 'Git Watcher Updates';
+const String notificationAlertChannelId = 'updates_alert';
+const String notificationAlertChannelName = 'Git Watcher Alerts';
 const int updateNotificationId = 1;
 const int testNotificationId = 99;
 

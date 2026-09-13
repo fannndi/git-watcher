@@ -4,6 +4,7 @@ import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/foundation.dart';
 
+import '../utils/constants.dart';
 import '../workers/alarm_worker.dart';
 import 'notification_service.dart';
 
@@ -43,6 +44,25 @@ class StartupService {
       await intent.launch();
     } catch (e) {
       debugPrint('StartupService: could not open battery settings: $e');
+    }
+  }
+
+  static Future<void> openNotificationSettings() async {
+    if (!Platform.isAndroid) {
+      return;
+    }
+
+    const intent = AndroidIntent(
+      action: 'android.settings.CHANNEL_NOTIFICATION_SETTINGS',
+      arguments: {
+        'android.provider.extra.APP_PACKAGE': appId,
+        'android.provider.extra.CHANNEL_ID': notificationChannelId,
+      },
+    );
+    try {
+      await intent.launch();
+    } catch (e) {
+      debugPrint('StartupService: could not open notification settings: $e');
     }
   }
 }

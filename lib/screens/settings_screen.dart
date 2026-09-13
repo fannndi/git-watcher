@@ -107,6 +107,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await StartupService.applySyncInterval();
   }
 
+  Future<void> _pickTime(AppSettings settings, {required bool wake}) async {
+    final current = wake ? settings.wakeMinutes : settings.sleepMinutes;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: current ~/ 60, minute: current % 60),
+    );
+    if (picked == null) return;
+
+    final minutes = picked.hour * 60 + picked.minute;
+    await _update(
+      wake
+          ? settings.copyWith(wakeMinutes: minutes)
+          : settings.copyWith(sleepMinutes: minutes),
+    );
+  }
+
   Future<void> _sendTestNotification(AppStrings strings) async {
     setState(() => _isTestingNotification = true);
     try {
@@ -409,51 +425,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: settings.quietStartHour,
-                            decoration: InputDecoration(
-                              labelText: strings.quietStart,
-                            ),
-                            items: [
-                              for (var hour = 0; hour < 24; hour++)
-                                DropdownMenuItem(
-                                  value: hour,
-                                  child: Text(strings.hourLabel(hour)),
-                                ),
-                            ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                _update(
-                                  settings.copyWith(quietStartHour: value),
-                                );
-                              }
-                            },
+                          child: _TimeField(
+                            label: strings.wakeUpTime,
+                            value: settings.wakeMinutes,
+                            icon: Icons.wb_twilight_outlined,
+                            onPick: () => _pickTime(settings, wake: true),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: settings.quietEndHour,
-                            decoration: InputDecoration(
-                              labelText: strings.quietEnd,
-                            ),
-                            items: [
-                              for (var hour = 0; hour < 24; hour++)
-                                DropdownMenuItem(
-                                  value: hour,
-                                  child: Text(strings.hourLabel(hour)),
-                                ),
-                            ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                _update(settings.copyWith(quietEndHour: value));
-                              }
-                            },
+                          child: _TimeField(
+                            label: strings.sleepTime,
+                            value: settings.sleepMinutes,
+                            icon: Icons.bedtime_outlined,
+                            onPick: () => _pickTime(settings, wake: false),
                           ),
                         ),
                       ],
                     ),
                   ],
+                  const SizedBox(height: 4),
+                  SwitchListTile(
+                    title: Text(strings.alertOnUnread),
+                    subtitle: Text(strings.alertOnUnreadDesc),
+                    value: settings.alertOnUnread,
+                    onChanged: (value) {
+                      _update(settings.copyWith(alertOnUnread: value));
+                    },
+                  ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: StartupService.openNotificationSettings,
+                      icon: const Icon(Icons.tune_outlined),
+                      label: Text(strings.openNotificationSettings),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -552,6 +559,38 @@ class _SettingsSection extends StatelessWidget {
             ...children,
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _TimeField extends StatelessWidget {
+  const _TimeField({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.onPick,
+  });
+
+  final String label;
+  final int value;
+  final IconData icon;
+  final VoidCallback onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = stringsFor(appSettingsController.value.languageCode);
+
+    return InkWell(
+      onTap: onPick,
+      borderRadius: BorderRadius.circular(12),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          border: const OutlineInputBorder(),
+        ),
+        child: Text(strings.timeLabel(value)),
       ),
     );
   }
