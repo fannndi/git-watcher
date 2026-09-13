@@ -122,4 +122,39 @@ void main() {
 
     expect(result, isNull);
   });
+
+  test('fetchCommitsPage sends If-None-Match and handles 304', () async {
+    late http.Request captured;
+    final client = MockClient((request) async {
+      captured = request;
+      return http.Response('', 304);
+    });
+
+    final page = await GitHubService(
+      client: client,
+      storage: buildStorage(),
+    ).fetchCommitsPage('flutter', 'flutter', 'main', etag: 'W/"abc"');
+
+    expect(page.notModified, true);
+    expect(page.commits, isEmpty);
+    expect(captured.headers['If-None-Match'], 'W/"abc"');
+  });
+
+  test('fetchCommitsPage returns the response etag', () async {
+    final client = MockClient((request) async {
+      return http.Response(
+        '[]',
+        200,
+        headers: {'etag': 'W/"new"', 'content-type': 'application/json'},
+      );
+    });
+
+    final page = await GitHubService(
+      client: client,
+      storage: buildStorage(),
+    ).fetchCommitsPage('flutter', 'flutter', 'main');
+
+    expect(page.notModified, false);
+    expect(page.etag, 'W/"new"');
+  });
 }

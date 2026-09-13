@@ -7,6 +7,18 @@ import '../models/watched_repo.dart';
 import '../utils/constants.dart';
 import 'storage_service.dart';
 
+class CommitPage {
+  const CommitPage({
+    required this.commits,
+    this.etag = '',
+    this.notModified = false,
+  });
+
+  final List<Commit> commits;
+  final String etag;
+  final bool notModified;
+}
+
 class GitHubService {
   GitHubService({http.Client? client, StorageService? storage})
       : _client = client ?? http.Client(),
@@ -57,19 +69,43 @@ class GitHubService {
     String branch, {
     int limit = syncFetchLimit,
   }) async {
+    final page = await fetchCommitsPage(owner, repo, branch, limit: limit);
+    return page.commits;
+  }
+
+  Future<CommitPage> fetchCommitsPage(
+    String owner,
+    String repo,
+    String branch, {
+    int limit = syncFetchLimit,
+    String etag = '',
+  }) async {
     final commits = <Commit>[];
+    var responseEtag = etag;
     var page = 1;
 
     while (commits.length < limit) {
       final remaining = limit - commits.length;
       final perPage = remaining < githubPageSize ? remaining : githubPageSize;
-      final response = await _get(_uri('/repos/$owner/$repo/commits', {
-        'sha': branch,
-        'per_page': '$perPage',
-        'page': '$page',
-      }));
+      final response = await _get(
+        _uri('/repos/$owner/$repo/commits', {
+          'sha': branch,
+          'per_page': '$perPage',
+          'page': '$page',
+        }),
+        etag: page == 1 ? etag : null,
+      );
+
+      if (page == 1 && response.statusCode == 304) {
+        return CommitPage(commits: const [], etag: etag, notModified: true);
+      }
+
       if (response.statusCode != 200) {
         throw Exception('Failed to fetch commits ($owner/$repo@$branch)');
+      }
+
+      if (page == 1) {
+        responseEtag = response.headers['etag'] ?? '';
       }
 
       final decoded = jsonDecode(response.body) as List<dynamic>;
@@ -83,7 +119,8 @@ class GitHubService {
       page++;
     }
 
-    return commits.take(limit).toList();
+    return CommitPage(
+        commits: commits.take(limit).toList(), etag: responseEtag);
   }
 
   Future<List<Commit>> fetchLatestDayCommits(
@@ -269,17 +306,19 @@ class GitHubService {
     return Uri.https(githubApiHost, path, query);
   }
 
-  Future<http.Response> _get(Uri uri) async {
+  Future<http.Response> _get(Uri uri, {String? etag}) async {
     final credentials = await _storage.getCredentials();
     final authHeaders = _headers(
       credentials.isNotEmpty ? credentials.basicAuth : null,
+      etag: etag,
     );
 
     var response =
         await _client.get(uri, headers: authHeaders).timeout(apiTimeout);
     if (response.statusCode == 401 && credentials.isNotEmpty) {
-      response =
-          await _client.get(uri, headers: _headers(null)).timeout(apiTimeout);
+      response = await _client
+          .get(uri, headers: _headers(null, etag: etag))
+          .timeout(apiTimeout);
     }
 
     if (response.statusCode >= 500) {
@@ -291,9 +330,10 @@ class GitHubService {
     return response;
   }
 
-  Map<String, String> _headers(String? authorization) => {
+  Map<String, String> _headers(String? authorization, {String? etag}) => {
         'Accept': githubAcceptHeader,
         'X-GitHub-Api-Version': githubApiVersion,
         if (authorization != null) 'Authorization': authorization,
+        if (etag != null && etag.isNotEmpty) 'If-None-Match': etag,
       };
 }

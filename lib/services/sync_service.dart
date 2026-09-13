@@ -11,10 +11,17 @@ import 'notification_service.dart';
 import 'storage_service.dart';
 
 class _RepoFetch {
-  const _RepoFetch(this.repo, this.commits);
+  const _RepoFetch(
+    this.repo,
+    this.commits, {
+    this.etag = '',
+    this.notModified = false,
+  });
 
   final WatchedRepo repo;
   final List<Commit> commits;
+  final String etag;
+  final bool notModified;
 }
 
 class SyncService {
@@ -81,8 +88,13 @@ class SyncService {
 
       for (final result in results) {
         final repo = result.repo;
-        final commits = result.commits;
 
+        if (result.notModified) {
+          updatedRepos.add(repo);
+          continue;
+        }
+
+        final commits = result.commits;
         if (commits.isEmpty) {
           updatedRepos.add(repo);
           continue;
@@ -109,8 +121,15 @@ class SyncService {
         if (hasNewCommits || isNewRepo) {
           await storage.mergeCachedCommits(repo, commits);
           updatedRepos.add(
-            repo.copyWith(lastSha: latest.sha, lastCommitAt: latest.date),
+            repo.copyWith(
+              lastSha: latest.sha,
+              lastCommitAt: latest.date,
+              etag: result.etag,
+            ),
           );
+          reposChanged = true;
+        } else if (result.etag.isNotEmpty && result.etag != repo.etag) {
+          updatedRepos.add(repo.copyWith(etag: result.etag));
           reposChanged = true;
         } else {
           updatedRepos.add(repo);
@@ -205,9 +224,17 @@ class SyncService {
       repos.map((repo) async {
         _RepoFetch result;
         try {
+          final page = await github.fetchCommitsPage(
+            repo.owner,
+            repo.repo,
+            repo.branch,
+            etag: repo.etag,
+          );
           result = _RepoFetch(
             repo,
-            await github.fetchCommits(repo.owner, repo.repo, repo.branch),
+            page.commits,
+            etag: page.etag,
+            notModified: page.notModified,
           );
         } catch (e) {
           debugPrint('Sync error for ${repo.fullName}: $e');

@@ -46,8 +46,9 @@ Models (models/)
    timeout is 5 minutes.
 5. Stale repos (no commit for `staleRepoDays`) are only fetched on even hours; the
    rest are due every run. Fetching uses one GraphQL request for all repos when
-   credentials exist, otherwise parallel REST requests; each repo is capped at
-   `syncFetchLimit` (25) commits.
+   credentials exist, otherwise parallel REST requests with `If-None-Match`
+   (304 responses are no-ops; the ETag is stored on the repo). Each repo is capped
+   at `syncFetchLimit` (25) commits.
 6. The cache is merged only when there are new commits, and `lastSha`/`lastCommitAt`
    are persisted once per changed repo.
 7. New commits produce a `SyncLog` entry. Background runs also post one local

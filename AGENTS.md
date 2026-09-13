@@ -75,7 +75,9 @@ test/
   only fetched on even hours; active repos every run. Each repo is capped at
   `syncFetchLimit` (25) commits.
 - Fetches use one GraphQL request for all repos when GitHub credentials exist
-  (`fetchCommitsBatch`), falling back to parallel REST requests otherwise.
+  (`fetchCommitsBatch`), falling back to parallel REST requests otherwise. The REST
+  path sends `If-None-Match` per repo; a 304 skips parsing and cache writes, and the
+  response ETag is persisted on `WatchedRepo.etag`.
 - Foreground sync: 20 s debounce, 10 min stale-lock auto-release, single-flight lock.
   Repos are fetched concurrently, `onProgress(completed, total)` drives the Home bar,
   and repo/cache data is only rewritten when a repo actually has new commits.

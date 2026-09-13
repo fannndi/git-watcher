@@ -9,6 +9,7 @@ class WatchedRepo {
     this.avatarUrl = '',
     this.isPrivate = false,
     this.muted = false,
+    this.etag = '',
     this.lastCommitAt,
     this.lastSha = '',
   });
@@ -20,6 +21,7 @@ class WatchedRepo {
   final String avatarUrl;
   final bool isPrivate;
   final bool muted;
+  final String etag;
   final DateTime? lastCommitAt;
   final String lastSha;
 
@@ -30,6 +32,7 @@ class WatchedRepo {
     String? avatarUrl,
     bool? isPrivate,
     bool? muted,
+    String? etag,
     DateTime? lastCommitAt,
     String? lastSha,
   }) {
@@ -41,6 +44,7 @@ class WatchedRepo {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       isPrivate: isPrivate ?? this.isPrivate,
       muted: muted ?? this.muted,
+      etag: etag ?? this.etag,
       lastCommitAt: lastCommitAt ?? this.lastCommitAt,
       lastSha: lastSha ?? this.lastSha,
     );
@@ -54,6 +58,7 @@ class WatchedRepo {
         'avatar_url': avatarUrl,
         'is_private': isPrivate,
         'muted': muted,
+        'etag': etag,
         'last_commit_at': lastCommitAt?.toIso8601String(),
         'last_sha': lastSha,
       };
@@ -69,6 +74,7 @@ class WatchedRepo {
       avatarUrl: json['avatar_url'] as String? ?? '',
       isPrivate: json['is_private'] == true,
       muted: json['muted'] == true,
+      etag: json['etag'] as String? ?? '',
       lastCommitAt: parseDate(json['last_commit_at']),
       lastSha: json['last_sha'] as String? ?? '',
     );

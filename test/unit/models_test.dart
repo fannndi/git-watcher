@@ -441,6 +441,18 @@ void main() {
       expect(repo.copyWith(muted: false).muted, false);
     });
 
+    test('etag round-trips through json', () {
+      const repo = WatchedRepo(
+        owner: 'a',
+        repo: 'b',
+        branch: 'main',
+        syncMode: syncModeMinimal,
+        etag: 'W/"x"',
+      );
+
+      expect(WatchedRepo.fromJson(repo.toJson()).etag, 'W/"x"');
+    });
+
     test('toJson round-trips through fromJson', () {
       const repo = WatchedRepo(
         owner: 'test',
