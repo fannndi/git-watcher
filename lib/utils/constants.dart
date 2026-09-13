@@ -5,6 +5,7 @@ const String appReleaseChannel = 'Beta';
 const String developerName = 'alisa';
 const String developerUrl = 'https://github.com/fannndi';
 const String appId = 'com.fannndi.gitwatcher';
+const int brandSeedColorValue = 0xFF2563EB;
 
 const int maxWatchedRepos = 10;
 const int maxCachedCommits = 1000;

@@ -45,6 +45,8 @@ lightweight alternative to the GitHub app.
 - AndroidAlarmManager over WorkManager: precise user-configured cadence instead of eventual
 - Single platform (Android) and no conditional-export stubs: less code to maintain
 - Custom AppStrings i18n over flutter_localizations: two languages, no codegen
+- Material You dynamic color by default with a brand-seed fallback, so theming
+  follows the device without extra configuration
 
 ## Known limitations
 

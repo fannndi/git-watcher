@@ -11,9 +11,6 @@ class AppStrings {
   String get settings => isEnglish ? 'Settings' : 'Pengaturan';
   String get history => isEnglish ? 'Sync History' : 'Riwayat Sinkron';
   String get syncNow => isEnglish ? 'Sync now' : 'Sync sekarang';
-  String repoCount(int count) => isEnglish
-      ? '$count of $maxWatchedRepos slots used'
-      : '$count dari $maxWatchedRepos slot terpakai';
   String get lastSync => isEnglish ? 'Last sync' : 'Sinkron terakhir';
   String get never => isEnglish ? 'Never' : 'Belum pernah';
   String get syncing => isEnglish ? 'Syncing' : 'Menyinkronkan';
@@ -122,9 +119,6 @@ class AppStrings {
       : 'Gagal mengambil commit terbaru';
   String get clearSearch => isEnglish ? 'Clear search' : 'Bersihkan pencarian';
   String get searchCommit => isEnglish ? 'Search commit' : 'Cari commit';
-  String get searchCommitHelper => isEnglish
-      ? 'Search by message or SHA'
-      : 'Cari berdasarkan message atau SHA';
   String get commitNotFound =>
       isEnglish ? 'No commits found' : 'Commit tidak ditemukan';
   String changedFiles(int count) =>
@@ -145,6 +139,12 @@ class AppStrings {
   String get systemTheme => isEnglish ? 'System' : 'Sistem';
   String get lightTheme => isEnglish ? 'Light' : 'Terang';
   String get darkTheme => isEnglish ? 'Dark' : 'Gelap';
+  String get dynamicColor => isEnglish
+      ? 'Dynamic color (Material You)'
+      : 'Warna dinamis (Material You)';
+  String get dynamicColorDesc => isEnglish
+      ? 'Follows your Android 12+ wallpaper. Turn off to use the app palette.'
+      : 'Mengikuti wallpaper Android 12+. Matikan untuk memakai palet aplikasi.';
   String get privateAccess =>
       isEnglish ? 'Private repository access' : 'Akses repo privat';
   String get privateMode => isEnglish ? 'Private Mode' : 'Mode Privat';

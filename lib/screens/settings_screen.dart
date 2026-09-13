@@ -238,6 +238,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _update(settings.copyWith(themeMode: selected.first));
                     },
                   ),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(strings.dynamicColor),
+                    subtitle: Text(strings.dynamicColorDesc),
+                    value: settings.dynamicColor,
+                    onChanged: (value) {
+                      _update(settings.copyWith(dynamicColor: value));
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 16),

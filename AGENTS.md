@@ -3,6 +3,19 @@
 Flutter Android app that watches GitHub repositories and notifies about new commits.
 App id: `com.fannndi.gitwatcher`, Dart package: `git_watcher`.
 
+## UI system
+
+- Material 3 with Material You: `DynamicColorBuilder` supplies the system palette
+  when `AppSettings.dynamicColor` is on (default), otherwise the brand seed
+  (`brandSeedColorValue`). All component themes live in `app.dart`.
+- Motion: `FadeForwardsPageTransitionsBuilder` on Android.
+- Home uses a `CustomScrollView` with `SliverAppBar.large`; lists are slivers and
+  state widgets (`home_states.dart`) are non-scrolling so they can live inside
+  `SliverFillRemaining`.
+- Search uses the M3 `SearchBar` widget (Home and Detail).
+- Edge-to-edge system UI is enabled in `main()` and Android predictive back is on
+  via `enableOnBackInvokedCallback`.
+
 ## Commands
 
 | Task | Command |

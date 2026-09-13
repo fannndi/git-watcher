@@ -265,13 +265,14 @@ class _DetailScreenState extends State<DetailScreen> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(
         children: [
-          TextField(
+          SearchBar(
             controller: _searchController,
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _query.isEmpty
-                  ? null
-                  : IconButton(
+            hintText: strings.searchCommit,
+            leading: const Icon(Icons.search),
+            trailing: _query.isEmpty
+                ? null
+                : [
+                    IconButton(
                       tooltip: strings.clearSearch,
                       icon: const Icon(Icons.close),
                       onPressed: () {
@@ -279,9 +280,8 @@ class _DetailScreenState extends State<DetailScreen> {
                         setState(() => _query = '');
                       },
                     ),
-              labelText: strings.searchCommit,
-              helperText: strings.searchCommitHelper,
-            ),
+                  ],
+            elevation: const WidgetStatePropertyAll(0),
             onChanged: (value) => setState(() => _query = value.trim()),
           ),
           const SizedBox(height: 12),

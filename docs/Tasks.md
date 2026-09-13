@@ -2,6 +2,17 @@
 
 ## Done
 
+### 2026-09 — development round 8 (Material 3 / UI-UX)
+- [x] Material You: system wallpaper palette via `dynamic_color` with a toggle and a
+      brand-seed fallback when the OS has no dynamic scheme
+- [x] Centralized M3 component themes (cards, dialogs, sheets, filled inputs,
+      snackbars, progress, dividers, segmented buttons, FAB shape)
+- [x] Material motion on Android (`FadeForwardsPageTransitionsBuilder`)
+- [x] Home redesigned with `SliverAppBar.large`, `CustomScrollView`, sliver states,
+      extended FAB on the empty state, and a slot counter in the sync bar
+- [x] M3 `SearchBar` on Home and commit list; larger empty-state illustration
+- [x] Edge-to-edge system UI + Android predictive back
+
 ### 2026-09 — development round 7 (wake-up schedule + first-run setup)
 - [x] Replaced adaptive interval backoff with an explicit sleep schedule: wake-up
       and sleep time pickers (local device time follows the region automatically)

@@ -31,6 +31,9 @@ Package: `com.fannndi.gitwatcher` (Dart package `git_watcher`).
 - Relative "last commit" time on repo tiles
 - Last-sync status bar and retry state on Home
 - Private repo access with base64-obfuscated token
+- Material 3 with Material You dynamic color (Android 12+ wallpaper palette,
+  toggleable), large app bar, M3 search bars, floating snackbars, edge-to-edge
+  layout, and predictive back
 - Bahasa Indonesia + English, light/dark/system theme
 - Onboarding tour and battery optimization exemption helper
 

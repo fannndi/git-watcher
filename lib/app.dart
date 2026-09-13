@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
@@ -17,17 +17,30 @@ class GitHubWatcherApp extends StatelessWidget {
     return ValueListenableBuilder(
       valueListenable: appSettingsController,
       builder: (context, settings, _) {
-        return ValueListenableBuilder<bool>(
-          valueListenable: setupCompletedNotifier,
-          builder: (context, setupCompleted, _) {
-            return MaterialApp(
-              title: appName,
-              navigatorKey: navigatorKey,
-              debugShowCheckedModeBanner: false,
-              themeMode: _themeMode(settings.themeMode),
-              theme: _theme(Brightness.light),
-              darkTheme: _theme(Brightness.dark),
-              home: setupCompleted ? const HomeScreen() : const SetupScreen(),
+        return DynamicColorBuilder(
+          builder: (lightDynamic, darkDynamic) {
+            final useDynamic = settings.dynamicColor;
+            final lightScheme = useDynamic && lightDynamic != null
+                ? lightDynamic.harmonized()
+                : _fallbackScheme(Brightness.light);
+            final darkScheme = useDynamic && darkDynamic != null
+                ? darkDynamic.harmonized()
+                : _fallbackScheme(Brightness.dark);
+
+            return ValueListenableBuilder<bool>(
+              valueListenable: setupCompletedNotifier,
+              builder: (context, setupCompleted, _) {
+                return MaterialApp(
+                  title: appName,
+                  navigatorKey: navigatorKey,
+                  debugShowCheckedModeBanner: false,
+                  themeMode: _themeMode(settings.themeMode),
+                  theme: _theme(lightScheme),
+                  darkTheme: _theme(darkScheme),
+                  home:
+                      setupCompleted ? const HomeScreen() : const SetupScreen(),
+                );
+              },
             );
           },
         );
@@ -35,54 +48,102 @@ class GitHubWatcherApp extends StatelessWidget {
     );
   }
 
-  ThemeData _theme(Brightness brightness) {
-    final dark = brightness == Brightness.dark;
+  ColorScheme _fallbackScheme(Brightness brightness) {
+    return ColorScheme.fromSeed(
+      seedColor: const Color(brandSeedColorValue),
+      brightness: brightness,
+    );
+  }
 
+  ThemeData _theme(ColorScheme scheme) {
     return ThemeData(
       useMaterial3: true,
-      colorSchemeSeed: Colors.blue,
-      brightness: brightness,
-      scaffoldBackgroundColor: dark ? null : const Color(0xFFF8FAFF),
+      colorScheme: scheme,
+      scaffoldBackgroundColor: scheme.surface,
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
-          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
         },
+      ),
+      appBarTheme: AppBarTheme(
+        centerTitle: false,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        backgroundColor: scheme.surface,
+        surfaceTintColor: scheme.surfaceTint,
       ),
       cardTheme: CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
+        color: scheme.surfaceContainerLow,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: dark ? Colors.grey.shade800 : Colors.grey.shade200,
-          ),
+          side: BorderSide(color: scheme.outlineVariant),
         ),
       ),
-      appBarTheme: const AppBarTheme(
-        centerTitle: false,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
+      dialogTheme: DialogThemeData(
+        backgroundColor: scheme.surfaceContainerHigh,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(28),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: scheme.surfaceContainerLow,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: scheme.primary, width: 2),
         ),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: scheme.inverseSurface,
+        actionTextColor: scheme.inversePrimary,
+        contentTextStyle: TextStyle(color: scheme.onInverseSurface),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: scheme.primary,
+        linearTrackColor: scheme.surfaceContainerHighest,
+        circularTrackColor: scheme.surfaceContainerHighest,
+      ),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant,
+        space: 1,
+        thickness: 1,
+      ),
+      listTileTheme: ListTileThemeData(iconColor: scheme.onSurfaceVariant),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
       ),
     );

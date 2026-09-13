@@ -143,6 +143,7 @@ void main() {
       expect(find.text('Jam tidur'), findsOneWidget);
       expect(find.text('Suara jika belum dibaca'), findsOneWidget);
       expect(find.text('Pengaturan notifikasi Android'), findsOneWidget);
+      expect(find.text('Warna dinamis (Material You)'), findsOneWidget);
     });
   });
 

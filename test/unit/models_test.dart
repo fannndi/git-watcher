@@ -258,6 +258,17 @@ void main() {
       expect(settings.isMorningWindow(DateTime(2026, 1, 1, 10)), false);
     });
 
+    test('dynamic color defaults to true and can be disabled', () {
+      const defaults = AppSettings.defaults();
+
+      expect(defaults.dynamicColor, true);
+      expect(
+        AppSettings.fromJson(const {'dynamic_color': false}).dynamicColor,
+        false,
+      );
+      expect(defaults.copyWith(dynamicColor: false).dynamicColor, false);
+    });
+
     test('copyWith only changes given fields', () {
       const original = AppSettings.defaults();
       final modified = original.copyWith(

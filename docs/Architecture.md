@@ -3,6 +3,16 @@
 Android-only Flutter app (`com.fannndi.gitwatcher`). No server component; all state is
 local (SharedPreferences) and remote data comes from the public GitHub REST API v3.
 
+## Design system
+
+- Material 3 throughout; `DynamicColorBuilder` (`dynamic_color`) maps the Android 12+
+  wallpaper palette when `dynamicColor` is enabled, else `ColorScheme.fromSeed` with
+  `brandSeedColorValue`.
+- Component themes (cards, dialogs, sheets, inputs, snackbars, progress, dividers,
+  segmented buttons) are centralized in `app.dart`.
+- Motion uses `FadeForwardsPageTransitionsBuilder`; system UI is edge-to-edge and
+  Android predictive back is enabled in the manifest.
+
 ## Layers
 
 ```

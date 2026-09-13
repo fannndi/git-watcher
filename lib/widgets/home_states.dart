@@ -11,6 +11,7 @@ class HomeSyncBar extends StatelessWidget {
     required this.isSyncing,
     required this.completed,
     required this.total,
+    this.slotLabel,
   });
 
   final AppStrings strings;
@@ -18,6 +19,7 @@ class HomeSyncBar extends StatelessWidget {
   final bool isSyncing;
   final int completed;
   final int total;
+  final String? slotLabel;
 
   static final DateFormat _format = DateFormat('yyyy-MM-dd HH:mm');
 
@@ -56,6 +58,13 @@ class HomeSyncBar extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (slotLabel != null)
+            Text(
+              slotLabel!,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
         ],
       ),
     );
@@ -76,26 +85,26 @@ class HomeEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
+    return Center(
       child: Padding(
-        padding: const EdgeInsets.only(top: 120),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 64,
-              height: 64,
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(18),
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(24),
               ),
               child: Icon(
                 Icons.folder_open_outlined,
-                color: colorScheme.onSurfaceVariant,
+                size: 32,
+                color: colorScheme.onPrimaryContainer,
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 18),
             Text(
               strings.noReposTitle,
               style: Theme.of(context)
@@ -136,27 +145,28 @@ class HomeErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const SizedBox(height: 160),
-        Center(
-          child: Icon(
-            Icons.error_outline,
-            size: 56,
-            color: Theme.of(context).colorScheme.error,
-          ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 56,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            Text(strings.loadReposFailed),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: Text(strings.tryAgain),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        Center(child: Text(strings.loadReposFailed)),
-        const SizedBox(height: 16),
-        Center(
-          child: FilledButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh),
-            label: Text(strings.tryAgain),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -168,19 +178,22 @@ class HomeNoResultsState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const SizedBox(height: 160),
-        Center(
-          child: Icon(
-            Icons.search_off,
-            size: 56,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 56,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 16),
+            Text(strings.noSearchResults),
+          ],
         ),
-        const SizedBox(height: 16),
-        Center(child: Text(strings.noSearchResults)),
-      ],
+      ),
     );
   }
 }
