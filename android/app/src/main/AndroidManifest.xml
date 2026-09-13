@@ -10,7 +10,7 @@
     <application
         android:label="Git Watcher"
         android:icon="@mipmap/launcher_icon"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/launcher_icon"
         android:enableOnBackInvokedCallback="true"
         android:name="${applicationName}">
         <activity

@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../models/app_settings.dart';
-import '../models/github_credentials.dart';
 import '../services/app_settings_controller.dart';
-import '../services/notification_service.dart';
-import '../services/startup_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../utils/strings.dart';
-import '../widgets/chips.dart';
+import 'about_settings_screen.dart';
+import 'appearance_settings_screen.dart';
+import 'private_access_screen.dart';
+import 'sync_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -20,13 +19,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final StorageService _storage = StorageService();
-  final TextEditingController _usernameController = TextEditingController();
-  final TextEditingController _tokenController = TextEditingController();
-
-  bool _tokenObscured = true;
   bool _hasCredentials = false;
-  bool _isSaving = false;
-  bool _isTestingNotification = false;
 
   @override
   void initState() {
@@ -34,148 +27,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadCredentials();
   }
 
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _tokenController.dispose();
-    super.dispose();
-  }
-
   Future<void> _loadCredentials() async {
     final credentials = await _storage.getCredentials();
     if (!mounted) return;
-
-    setState(() {
-      _hasCredentials = credentials.isNotEmpty;
-      if (credentials.isNotEmpty) {
-        _usernameController.text = credentials.username;
-        _tokenController.text = credentials.token;
-      }
-    });
+    setState(() => _hasCredentials = credentials.isNotEmpty);
   }
 
-  Future<void> _saveCredentials(AppStrings strings) async {
-    final username = _usernameController.text.trim();
-    final token = _tokenController.text.trim();
-
-    if (username.isEmpty || token.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.usernameTokenRequired)),
-      );
-      return;
-    }
-
-    setState(() => _isSaving = true);
-    try {
-      await _storage.saveCredentials(
-        GitHubCredentials(username: username, token: token),
-      );
-      if (!mounted) return;
-      setState(() => _hasCredentials = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.credentialsSaved)),
-      );
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  Future<void> _clearCredentials(AppStrings strings) async {
-    await _storage.clearCredentials();
-    if (!mounted) return;
-
-    setState(() {
-      _hasCredentials = false;
-      _usernameController.clear();
-      _tokenController.clear();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(strings.credentialsCleared)),
+  Future<void> _open(Widget screen) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => screen),
     );
+    await _loadCredentials();
   }
 
-  Future<void> _update(AppSettings settings) {
-    return appSettingsController.update(settings);
+  String _languageName(AppSettings settings) {
+    return settings.languageCode == languageEnglish ? 'English' : 'Indonesia';
   }
 
-  Future<void> _changeInterval(AppSettings settings, int? value) async {
-    if (value == null || value == settings.syncIntervalMinutes) {
-      return;
+  String _themeName(AppSettings settings, AppStrings strings) {
+    if (settings.themeMode == themeModeLight) {
+      return strings.lightTheme;
     }
-
-    await _update(settings.copyWith(syncIntervalMinutes: value));
-    await StartupService.applySyncInterval();
-  }
-
-  Future<void> _pickTime(AppSettings settings, {required bool wake}) async {
-    final current = wake ? settings.wakeMinutes : settings.sleepMinutes;
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: current ~/ 60, minute: current % 60),
-    );
-    if (picked == null) return;
-
-    final minutes = picked.hour * 60 + picked.minute;
-    await _update(
-      wake
-          ? settings.copyWith(wakeMinutes: minutes)
-          : settings.copyWith(sleepMinutes: minutes),
-    );
-  }
-
-  Future<void> _sendTestNotification(AppStrings strings) async {
-    setState(() => _isTestingNotification = true);
-    try {
-      final granted = await NotificationService.ensurePermission();
-      if (!mounted) return;
-
-      if (!granted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(strings.notificationsBlocked)),
-        );
-        return;
-      }
-
-      await NotificationService.testNotification(strings);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(strings.notificationsBlocked)),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isTestingNotification = false);
+    if (settings.themeMode == themeModeDark) {
+      return strings.darkTheme;
     }
-  }
-
-  Future<void> _showAboutApp(AppStrings strings) {
-    return showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(strings.aboutApp),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(strings.appDescription),
-            const SizedBox(height: 16),
-            _AboutRow(label: strings.version, value: appVersionName),
-            _AboutRow(label: strings.channel, value: appReleaseChannel),
-            _AboutLinkRow(
-              label: strings.developer,
-              value: developerName,
-              url: developerUrl,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(strings.close),
-          ),
-        ],
-      ),
-    );
+    return strings.systemTheme;
   }
 
   @override
@@ -184,326 +60,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
       valueListenable: appSettingsController,
       builder: (context, settings, _) {
         final strings = stringsFor(settings.languageCode);
-        final colorScheme = Theme.of(context).colorScheme;
 
         return Scaffold(
           appBar: AppBar(title: Text(strings.settings)),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _SettingsSection(
-                title: strings.appearance,
+              _SettingsTile(
                 icon: Icons.palette_outlined,
-                children: [
-                  DropdownButtonFormField<String>(
-                    initialValue: settings.languageCode,
-                    decoration: InputDecoration(labelText: strings.language),
-                    items: const [
-                      DropdownMenuItem(
-                        value: languageIndonesian,
-                        child: Text('Indonesia'),
-                      ),
-                      DropdownMenuItem(
-                        value: languageEnglish,
-                        child: Text('English'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        _update(settings.copyWith(languageCode: value));
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  SegmentedButton<String>(
-                    segments: [
-                      ButtonSegment(
-                        value: themeModeSystem,
-                        icon: const Icon(Icons.brightness_auto_outlined),
-                        label: Text(strings.systemTheme),
-                      ),
-                      ButtonSegment(
-                        value: themeModeLight,
-                        icon: const Icon(Icons.light_mode_outlined),
-                        label: Text(strings.lightTheme),
-                      ),
-                      ButtonSegment(
-                        value: themeModeDark,
-                        icon: const Icon(Icons.dark_mode_outlined),
-                        label: Text(strings.darkTheme),
-                      ),
-                    ],
-                    selected: {settings.themeMode},
-                    onSelectionChanged: (selected) {
-                      _update(settings.copyWith(themeMode: selected.first));
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(strings.dynamicColor),
-                    subtitle: Text(strings.dynamicColorDesc),
-                    value: settings.dynamicColor,
-                    onChanged: (value) {
-                      _update(settings.copyWith(dynamicColor: value));
-                    },
-                  ),
-                ],
+                title: strings.appearance,
+                subtitle:
+                    '${_languageName(settings)} • ${_themeName(settings, strings)}',
+                onTap: () => _open(const AppearanceSettingsScreen()),
               ),
-              const SizedBox(height: 16),
-              _SettingsSection(
-                title: strings.privateAccess,
-                icon: Icons.lock_outline,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          strings.privateMode,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      InfoChip(
-                        label: _hasCredentials
-                            ? strings.credentialsActive
-                            : strings.credentialsEmpty,
-                        accent: _hasCredentials,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    strings.privateModeSubtitle,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _usernameController,
-                    decoration: InputDecoration(
-                      labelText: strings.githubUsername,
-                      prefixIcon: const Icon(Icons.person_outline),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _tokenController,
-                    obscureText: _tokenObscured,
-                    decoration: InputDecoration(
-                      labelText: strings.githubToken,
-                      helperText: strings.githubTokenHelper,
-                      prefixIcon: const Icon(Icons.key_outlined),
-                      suffixIcon: IconButton(
-                        tooltip: _tokenObscured ? strings.show : strings.hide,
-                        icon: Icon(
-                          _tokenObscured
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                        onPressed: () =>
-                            setState(() => _tokenObscured = !_tokenObscured),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: _isSaving
-                              ? null
-                              : () => _saveCredentials(strings),
-                          icon: _isSaving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.save_outlined),
-                          label: Text(strings.saveCredentials),
-                        ),
-                      ),
-                      if (_hasCredentials) ...[
-                        const SizedBox(width: 12),
-                        OutlinedButton.icon(
-                          onPressed: () => _clearCredentials(strings),
-                          icon: const Icon(Icons.delete_outline),
-                          label: Text(strings.clearCredentials),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: colorScheme.error,
-                            side: BorderSide(color: colorScheme.error),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _SettingsSection(
-                title: strings.syncSettings,
+              const SizedBox(height: 8),
+              _SettingsTile(
                 icon: Icons.sync_outlined,
-                children: [
-                  DropdownButtonFormField<int>(
-                    initialValue: settings.syncIntervalMinutes,
-                    decoration: InputDecoration(
-                      labelText: strings.syncInterval,
-                      helperText: strings.syncIntervalHelper,
-                      prefixIcon: const Icon(Icons.timer_outlined),
-                    ),
-                    items: [
-                      for (final minutes in syncIntervalOptions)
-                        DropdownMenuItem(
-                          value: minutes,
-                          child: Text(strings.minutes(minutes)),
-                        ),
-                    ],
-                    onChanged: (value) => _changeInterval(settings, value),
-                  ),
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    title: Text(strings.enableNotifications),
-                    subtitle: Text(strings.enableNotificationsDesc),
-                    value: settings.notificationsEnabled,
-                    onChanged: (value) {
-                      _update(settings.copyWith(notificationsEnabled: value));
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _isTestingNotification
-                          ? null
-                          : () => _sendTestNotification(strings),
-                      icon: _isTestingNotification
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.notifications_active_outlined),
-                      label: Text(strings.testNotification),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    title: Text(strings.extremePrecision),
-                    subtitle: Text(strings.extremePrecisionDesc),
-                    value: settings.preciseSync,
-                    onChanged: (value) async {
-                      await _update(settings.copyWith(preciseSync: value));
-                      await StartupService.applySyncInterval();
-                    },
-                  ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.tonal(
-                      onPressed: () =>
-                          StartupService.requestBatteryOptimizationExemption(),
-                      style: FilledButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        textStyle: const TextStyle(fontSize: 12),
-                      ),
-                      child: Text(strings.allowBatteryExemption),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    title: Text(strings.wifiOnly),
-                    subtitle: Text(strings.wifiOnlyDesc),
-                    value: settings.wifiOnly,
-                    onChanged: (value) {
-                      _update(settings.copyWith(wifiOnly: value));
-                    },
-                  ),
-                  SwitchListTile(
-                    title: Text(strings.quietHours),
-                    subtitle: Text(strings.quietHoursDesc),
-                    value: settings.quietHoursEnabled,
-                    onChanged: (value) {
-                      _update(settings.copyWith(quietHoursEnabled: value));
-                    },
-                  ),
-                  if (settings.quietHoursEnabled) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _TimeField(
-                            label: strings.wakeUpTime,
-                            value: settings.wakeMinutes,
-                            icon: Icons.wb_twilight_outlined,
-                            onPick: () => _pickTime(settings, wake: true),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _TimeField(
-                            label: strings.sleepTime,
-                            value: settings.sleepMinutes,
-                            icon: Icons.bedtime_outlined,
-                            onPick: () => _pickTime(settings, wake: false),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 4),
-                  SwitchListTile(
-                    title: Text(strings.alertOnUnread),
-                    subtitle: Text(strings.alertOnUnreadDesc),
-                    value: settings.alertOnUnread,
-                    onChanged: (value) {
-                      _update(settings.copyWith(alertOnUnread: value));
-                    },
-                  ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: StartupService.openNotificationSettings,
-                      icon: const Icon(Icons.tune_outlined),
-                      label: Text(strings.openNotificationSettings),
-                    ),
-                  ),
-                ],
+                title: strings.syncSettings,
+                subtitle: '${strings.minutes(settings.syncIntervalMinutes)}'
+                    ' • ${settings.notificationsEnabled ? strings.on : strings.off}',
+                onTap: () => _open(const SyncSettingsScreen()),
               ),
-              const SizedBox(height: 16),
-              _SettingsSection(
-                title: strings.aboutApp,
+              const SizedBox(height: 8),
+              _SettingsTile(
+                icon: Icons.lock_outline,
+                title: strings.privateAccess,
+                subtitle: _hasCredentials
+                    ? strings.credentialsActive
+                    : strings.credentialsEmpty,
+                onTap: () => _open(const PrivateAccessScreen()),
+              ),
+              const SizedBox(height: 8),
+              _SettingsTile(
                 icon: Icons.info_outline,
-                children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.star_outline),
-                    title: Text(strings.rateApp),
-                    subtitle: Text(strings.rateAppDesc),
-                    onTap: () => _openUrl(
-                      context,
-                      'https://play.google.com/store/apps/details?id=$appId',
-                    ),
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(strings.appDescription),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        '${strings.version} $appVersionName ($appBuildNumber) - $appReleaseChannel\n'
-                        '${strings.developer}: $developerName',
-                      ),
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _showAboutApp(strings),
-                  ),
-                ],
+                title: strings.aboutApp,
+                subtitle: 'v$appVersionName ($appBuildNumber)',
+                onTap: () => _open(const AboutSettingsScreen()),
               ),
-              const SizedBox(height: 24),
             ],
           ),
         );
@@ -512,168 +105,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-Future<void> _openUrl(BuildContext context, String url) async {
-  final strings = stringsFor(appSettingsController.value.languageCode);
-  final opened = await launchUrl(
-    Uri.parse(url),
-    mode: LaunchMode.externalApplication,
-  );
-  if (!opened && context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(strings.openLinkFailed)),
-    );
-  }
-}
-
-class _SettingsSection extends StatelessWidget {
-  const _SettingsSection({
-    required this.title,
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
     required this.icon,
-    required this.children,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
   });
 
-  final String title;
   final IconData icon;
-  final List<Widget> children;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
-      color: colorScheme.surface,
+      color: colorScheme.surfaceContainerLow,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: colorScheme.outlineVariant),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 20, color: colorScheme.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            ...children,
-          ],
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: colorScheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: colorScheme.onSecondaryContainer),
         ),
-      ),
-    );
-  }
-}
-
-class _TimeField extends StatelessWidget {
-  const _TimeField({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.onPick,
-  });
-
-  final String label;
-  final int value;
-  final IconData icon;
-  final VoidCallback onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = stringsFor(appSettingsController.value.languageCode);
-
-    return InkWell(
-      onTap: onPick,
-      borderRadius: BorderRadius.circular(12),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon),
-          border: const OutlineInputBorder(),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
-        child: Text(strings.timeLabel(value)),
-      ),
-    );
-  }
-}
-
-class _AboutRow extends StatelessWidget {
-  const _AboutRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 82,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-}
-
-class _AboutLinkRow extends StatelessWidget {
-  const _AboutLinkRow({
-    required this.label,
-    required this.value,
-    required this.url,
-  });
-
-  final String label;
-  final String value;
-  final String url;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 82,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-          Expanded(
-            child: InkWell(
-              onTap: () => _openUrl(context, url),
-              borderRadius: BorderRadius.circular(6),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text(
-                  '$value ($url)',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
       ),
     );
   }

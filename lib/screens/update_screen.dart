@@ -7,6 +7,8 @@ import '../services/app_settings_controller.dart';
 import '../services/storage_service.dart';
 import '../utils/animations.dart';
 import '../utils/strings.dart';
+import '../widgets/skeleton.dart';
+import '../widgets/sliver_date_header.dart';
 
 class UpdateScreen extends StatefulWidget {
   const UpdateScreen({super.key});
@@ -17,9 +19,11 @@ class UpdateScreen extends StatefulWidget {
 
 class _UpdateScreenState extends State<UpdateScreen> {
   final StorageService _storage = StorageService();
-  final DateFormat _dateFormat = DateFormat('yyyy-MM-dd HH:mm');
+  final DateFormat _dayFormat = DateFormat('yyyy-MM-dd');
+  final DateFormat _timeFormat = DateFormat('HH:mm');
 
   List<SyncLog> _history = [];
+  String? _repoFilter;
   bool _isLoading = true;
 
   @override
@@ -35,6 +39,32 @@ class _UpdateScreenState extends State<UpdateScreen> {
       _history = history;
       _isLoading = false;
     });
+  }
+
+  List<String> get _repoKeys {
+    final keys = <String>{};
+    for (final log in _history) {
+      keys.addAll(log.updates.keys);
+    }
+    return keys.toList()..sort();
+  }
+
+  List<SyncLog> get _filteredLogs {
+    if (_repoFilter == null) {
+      return _history;
+    }
+    return _history
+        .where((log) => log.updates.containsKey(_repoFilter))
+        .toList();
+  }
+
+  Map<String, List<SyncLog>> _groupByDay(List<SyncLog> logs) {
+    final grouped = <String, List<SyncLog>>{};
+    for (final log in logs) {
+      final key = _dayFormat.format(log.syncedAt.toLocal());
+      grouped.putIfAbsent(key, () => []).add(log);
+    }
+    return grouped;
   }
 
   Future<void> _confirmClearHistory(AppStrings strings) async {
@@ -60,7 +90,10 @@ class _UpdateScreenState extends State<UpdateScreen> {
 
     await _storage.clearSyncHistory();
     if (!mounted) return;
-    setState(() => _history = []);
+    setState(() {
+      _history = [];
+      _repoFilter = null;
+    });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(strings.historyCleared)),
     );
@@ -91,29 +124,99 @@ class _UpdateScreenState extends State<UpdateScreen> {
             ],
           ),
           body: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? _buildSkeleton()
               : _history.isEmpty
                   ? Center(child: Text(strings.noSyncHistory))
-                  : RefreshIndicator(
-                      onRefresh: _loadUpdates,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                        itemCount: _history.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          return FadeInSlideUp(
-                            index: index,
-                            child: _SyncLogCard(
-                              log: _history[index],
-                              dateFormat: _dateFormat,
-                              strings: strings,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+                  : _buildContent(strings),
         );
       },
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: const [
+        Skeleton(child: SkeletonCommitCard()),
+        SizedBox(height: 12),
+        Skeleton(child: SkeletonCommitCard()),
+        SizedBox(height: 12),
+        Skeleton(child: SkeletonCommitCard()),
+      ],
+    );
+  }
+
+  Widget _buildContent(AppStrings strings) {
+    final grouped = _groupByDay(_filteredLogs);
+    final repoKeys = _repoKeys;
+
+    return RefreshIndicator(
+      onRefresh: _loadUpdates,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          if (repoKeys.isNotEmpty)
+            SliverToBoxAdapter(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Row(
+                  children: [
+                    ChoiceChip(
+                      label: Text(strings.allRepos),
+                      selected: _repoFilter == null,
+                      onSelected: (_) => setState(() => _repoFilter = null),
+                    ),
+                    for (final key in repoKeys) ...[
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: Text(key),
+                        selected: _repoFilter == key,
+                        onSelected: (_) => setState(() => _repoFilter = key),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          if (grouped.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Text(
+                  _history.isEmpty
+                      ? strings.noSyncHistory
+                      : strings.noUpdatesForRepo,
+                ),
+              ),
+            )
+          else
+            for (final entry in grouped.entries) ...[
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: SliverDateHeaderDelegate(entry.key),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                sliver: SliverList.separated(
+                  itemCount: entry.value.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    return FadeInSlideUp(
+                      index: index,
+                      child: _SyncLogCard(
+                        log: entry.value[index],
+                        timeFormat: _timeFormat,
+                        strings: strings,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        ],
+      ),
     );
   }
 }
@@ -121,12 +224,12 @@ class _UpdateScreenState extends State<UpdateScreen> {
 class _SyncLogCard extends StatelessWidget {
   const _SyncLogCard({
     required this.log,
-    required this.dateFormat,
+    required this.timeFormat,
     required this.strings,
   });
 
   final SyncLog log;
-  final DateFormat dateFormat;
+  final DateFormat timeFormat;
   final AppStrings strings;
 
   @override
@@ -134,12 +237,6 @@ class _SyncLogCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -150,10 +247,9 @@ class _SyncLogCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: (log.hasUpdates
-                            ? colorScheme.primaryContainer
-                            : colorScheme.surfaceContainerHighest)
-                        .withValues(alpha: 0.7),
+                    color: log.hasUpdates
+                        ? colorScheme.primaryContainer
+                        : colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -162,7 +258,7 @@ class _SyncLogCard extends StatelessWidget {
                         : Icons.notifications_none_outlined,
                     size: 18,
                     color: log.hasUpdates
-                        ? colorScheme.primary
+                        ? colorScheme.onPrimaryContainer
                         : colorScheme.onSurfaceVariant,
                   ),
                 ),
@@ -172,7 +268,7 @@ class _SyncLogCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        dateFormat.format(log.syncedAt.toLocal()),
+                        timeFormat.format(log.syncedAt.toLocal()),
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
@@ -202,8 +298,8 @@ class _SyncLogCard extends StatelessWidget {
                     ),
                     child: Text(
                       '+${log.totalCommits}',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colorScheme.onPrimary,
                         fontWeight: FontWeight.w900,
                         fontSize: 12,
                       ),

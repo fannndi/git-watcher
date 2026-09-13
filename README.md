@@ -26,6 +26,10 @@ Package: `com.fannndi.gitwatcher` (Dart package `git_watcher`).
   Android notification settings for Do Not Disturb override
 - Per-repo mute (long-press), persisted unread badge, offline commit cache grouped
   by day, search by message/SHA, and a commit detail sheet with copy-SHA
+- Two-pane master-detail layout on tablets, pinned date headers, Today/7-day commit
+  filters, skeleton loading, and repo/day filters in sync history
+- Settings hub split into appearance, sync, private access, and about pages
+- Adaptive launcher icon with a monochrome layer for Android 13+ themed icons
 - Swipe to delete with Undo; long-press a repo to open/copy/delete; tap a SHA to copy
 - Repo preview when adding: description, visibility, language, stars
 - Relative "last commit" time on repo tiles

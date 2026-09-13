@@ -107,23 +107,19 @@ class _RepoTileState extends State<RepoTile>
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: widget.onDelete,
-                              child: Padding(
-                                padding: const EdgeInsets.all(4),
-                                child: Tooltip(
-                                  message: strings.delete,
-                                  child: Icon(
-                                    Icons.delete_outline,
-                                    size: 18,
-                                    color: colorScheme.error
-                                        .withValues(alpha: 0.7),
-                                  ),
-                                ),
-                              ),
+                          IconButton(
+                            tooltip: strings.delete,
+                            onPressed: widget.onDelete,
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 40,
+                              height: 40,
+                            ),
+                            icon: Icon(
+                              Icons.delete_outline,
+                              size: 18,
+                              color: colorScheme.error.withValues(alpha: 0.8),
                             ),
                           ),
                         ],
@@ -241,6 +237,7 @@ class _RepoAvatar extends StatelessWidget {
         width: 38,
         height: 38,
         fit: BoxFit.cover,
+        semanticLabel: repo.fullName,
         errorBuilder: (_, __, ___) => Container(
           width: 38,
           height: 38,

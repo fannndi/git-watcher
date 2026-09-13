@@ -17,6 +17,7 @@ import '../utils/constants.dart';
 import '../utils/strings.dart';
 import '../widgets/home_states.dart';
 import '../widgets/repo_tile.dart';
+import '../widgets/skeleton.dart';
 import 'add_repo_screen.dart';
 import 'detail_screen.dart';
 import 'settings_screen.dart';
@@ -44,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _syncCompleted = 0;
   int _syncTotal = 0;
   String _searchQuery = '';
+  WatchedRepo? _selectedRepo;
 
   @override
   void initState() {
@@ -191,7 +193,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (!mounted) return;
 
     final strings = stringsFor(appSettingsController.value.languageCode);
-    setState(() => _repos = updated);
+    setState(() {
+      _repos = updated;
+      if (_selectedRepo != null &&
+          !updated.any(
+            (item) =>
+                item.owner == _selectedRepo!.owner &&
+                item.repo == _selectedRepo!.repo &&
+                item.branch == _selectedRepo!.branch,
+          )) {
+        _selectedRepo = null;
+      }
+    });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(strings.repoDeleted(repo.fullName)),
@@ -398,141 +411,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       builder: (context, settings, _) {
         final strings = stringsFor(settings.languageCode);
         final repos = _filteredRepos;
-        final colorScheme = Theme.of(context).colorScheme;
+        final wide = MediaQuery.sizeOf(context).width >= 720;
 
         return Stack(
           children: [
-            Scaffold(
-              body: RefreshIndicator(
-                onRefresh: _syncNow,
-                child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverAppBar.large(
-                      title: Text(strings.appTitle),
-                      actions: [
-                        if (_isOffline)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.errorContainer,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              strings.offline,
-                              style: TextStyle(
-                                color: colorScheme.onErrorContainer,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        IconButton(
-                          tooltip: _isSearching
-                              ? strings.closeSearch
-                              : strings.search,
-                          icon: Icon(
-                            _isSearching ? Icons.close : Icons.search,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isSearching = !_isSearching;
-                              if (!_isSearching) {
-                                _searchQuery = '';
-                              }
-                            });
-                          },
-                        ),
-                        IconButton(
-                          tooltip: strings.syncNow,
-                          icon: _isSyncing
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.sync),
-                          onPressed: _isSyncing ? null : _syncNow,
-                        ),
-                        IconButton(
-                          tooltip: strings.history,
-                          icon: Badge(
-                            isLabelVisible: _hasUnreadUpdates,
-                            child: const Icon(Icons.notifications_outlined),
-                          ),
-                          onPressed: () async {
-                            setState(() => _hasUnreadUpdates = false);
-                            await _storage.setLastSeenAt(DateTime.now());
-                            if (!context.mounted) return;
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const UpdateScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        IconButton(
-                          tooltip: strings.settings,
-                          icon: const Icon(Icons.settings_outlined),
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const SettingsScreen(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (_isSearching)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                          child: SearchBar(
-                            autoFocus: true,
-                            hintText: strings.searchRepo,
-                            leading: const Icon(Icons.search),
-                            elevation: const WidgetStatePropertyAll(0),
-                            onChanged: (value) =>
-                                setState(() => _searchQuery = value),
-                          ),
-                        ),
-                      ),
-                    if (_lastSyncAt != null || _isSyncing)
-                      SliverToBoxAdapter(
-                        child: HomeSyncBar(
-                          strings: strings,
-                          lastSyncAt: _lastSyncAt,
-                          isSyncing: _isSyncing,
-                          completed: _syncCompleted,
-                          total: _syncTotal,
-                          slotLabel: '${_repos.length}/$maxWatchedRepos',
-                        ),
-                      ),
-                    ..._buildContentSlivers(strings, repos),
-                    SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: repos.length >= maxWatchedRepos ? 24 : 96,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              floatingActionButton: _repos.length >= maxWatchedRepos
-                  ? null
-                  : _repos.isEmpty
-                      ? FloatingActionButton.extended(
-                          onPressed: _openAddRepo,
-                          icon: const Icon(Icons.add),
-                          label: Text(strings.addRepo),
-                        )
-                      : FloatingActionButton(
-                          onPressed: _openAddRepo,
-                          child: const Icon(Icons.add),
-                        ),
-            ),
+            if (wide)
+              Row(
+                children: [
+                  SizedBox(
+                    width: 420,
+                    child: _buildHomeScaffold(strings, repos, wide: true),
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(child: _buildDetailPane(strings)),
+                ],
+              )
+            else
+              _buildHomeScaffold(strings, repos, wide: false),
             if (_showTour)
               HomeTourOverlay(strings: strings, onDismiss: _dismissTour),
           ],
@@ -541,15 +436,240 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget _buildHomeScaffold(
+    AppStrings strings,
+    List<WatchedRepo> repos, {
+    required bool wide,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: _syncNow,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            if (wide)
+              SliverAppBar(
+                pinned: true,
+                title: Text(strings.appTitle),
+                actions: [
+                  _buildSyncAction(strings),
+                  PopupMenuButton<String>(
+                    tooltip: strings.settings,
+                    onSelected: _handleOverflow,
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'search',
+                        child: Text(strings.search),
+                      ),
+                      PopupMenuItem(
+                        value: 'history',
+                        child: Text(strings.history),
+                      ),
+                      PopupMenuItem(
+                        value: 'settings',
+                        child: Text(strings.settings),
+                      ),
+                    ],
+                  ),
+                ],
+              )
+            else
+              SliverAppBar.large(
+                title: Text(strings.appTitle),
+                actions: [
+                  if (_isOffline) _buildOfflineBadge(strings, colorScheme),
+                  IconButton(
+                    tooltip:
+                        _isSearching ? strings.closeSearch : strings.search,
+                    icon: Icon(_isSearching ? Icons.close : Icons.search),
+                    onPressed: _toggleSearch,
+                  ),
+                  _buildSyncAction(strings),
+                  IconButton(
+                    tooltip: strings.history,
+                    icon: Badge(
+                      isLabelVisible: _hasUnreadUpdates,
+                      child: const Icon(Icons.notifications_outlined),
+                    ),
+                    onPressed: _openHistory,
+                  ),
+                  IconButton(
+                    tooltip: strings.settings,
+                    icon: const Icon(Icons.settings_outlined),
+                    onPressed: _openSettings,
+                  ),
+                ],
+              ),
+            if (_isSearching)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: SearchBar(
+                    autoFocus: true,
+                    hintText: strings.searchRepo,
+                    leading: const Icon(Icons.search),
+                    elevation: const WidgetStatePropertyAll(0),
+                    onChanged: (value) => setState(() => _searchQuery = value),
+                  ),
+                ),
+              ),
+            if (_lastSyncAt != null || _isSyncing)
+              SliverToBoxAdapter(
+                child: HomeSyncBar(
+                  strings: strings,
+                  lastSyncAt: _lastSyncAt,
+                  isSyncing: _isSyncing,
+                  completed: _syncCompleted,
+                  total: _syncTotal,
+                  slotLabel: '${_repos.length}/$maxWatchedRepos',
+                ),
+              ),
+            ..._buildContentSlivers(strings, repos, wide),
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: repos.length >= maxWatchedRepos ? 24 : 96,
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: _repos.length >= maxWatchedRepos
+          ? null
+          : _repos.isEmpty
+              ? FloatingActionButton.extended(
+                  onPressed: _openAddRepo,
+                  tooltip: strings.addRepo,
+                  icon: const Icon(Icons.add),
+                  label: Text(strings.addRepo),
+                )
+              : FloatingActionButton(
+                  onPressed: _openAddRepo,
+                  tooltip: strings.addRepo,
+                  child: const Icon(Icons.add),
+                ),
+    );
+  }
+
+  Widget _buildSyncAction(AppStrings strings) {
+    return IconButton(
+      tooltip: strings.syncNow,
+      icon: _isSyncing
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.sync),
+      onPressed: _isSyncing ? null : _syncNow,
+    );
+  }
+
+  Widget _buildOfflineBadge(AppStrings strings, ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        strings.offline,
+        style: TextStyle(color: colorScheme.onErrorContainer, fontSize: 12),
+      ),
+    );
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchQuery = '';
+      }
+    });
+  }
+
+  Future<void> _openHistory() async {
+    setState(() => _hasUnreadUpdates = false);
+    await _storage.setLastSeenAt(DateTime.now());
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const UpdateScreen()),
+    );
+  }
+
+  void _openSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
+  }
+
+  void _handleOverflow(String value) {
+    switch (value) {
+      case 'search':
+        _toggleSearch();
+      case 'history':
+        _openHistory();
+      case 'settings':
+        _openSettings();
+    }
+  }
+
+  Widget _buildDetailPane(AppStrings strings) {
+    final repo = _selectedRepo;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (repo == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.touch_app_outlined,
+                size: 56,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                strings.selectRepo,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                strings.selectRepoHint,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return DetailScreen(
+      key: ValueKey('${repo.fullName}-${repo.branch}'),
+      repo: repo,
+    );
+  }
+
   List<Widget> _buildContentSlivers(
     AppStrings strings,
     List<WatchedRepo> repos,
+    bool wide,
   ) {
     if (_isLoading) {
-      return const [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(child: CircularProgressIndicator()),
+      return [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          sliver: SliverList.separated(
+            itemCount: 3,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (_, __) => const Skeleton(child: SkeletonRepoTile()),
+          ),
         ),
       ];
     }
@@ -574,61 +694,77 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ];
     }
 
-    return [_buildRepoList(repos, strings)];
+    return [_buildRepoList(repos, strings, wide: wide)];
   }
 
-  Widget _buildRepoList(List<WatchedRepo> repos, AppStrings strings) {
+  Widget _buildRepoList(
+    List<WatchedRepo> repos,
+    AppStrings strings, {
+    required bool wide,
+  }) {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
       sliver: SliverList.separated(
         itemCount: repos.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final repo = repos[index];
+        itemBuilder: (context, index) =>
+            _buildRepoItem(repos[index], index, strings, wide: wide),
+      ),
+    );
+  }
 
-          return FadeInSlideUp(
-            index: index,
-            child: Dismissible(
-              key: ValueKey('${repo.fullName}-${repo.branch}'),
-              direction: DismissDirection.endToStart,
-              background: Container(
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.only(right: 18),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.delete_outline),
+  Widget _buildRepoItem(
+    WatchedRepo repo,
+    int index,
+    AppStrings strings, {
+    required bool wide,
+  }) {
+    return FadeInSlideUp(
+      index: index,
+      child: Dismissible(
+        key: ValueKey('${repo.fullName}-${repo.branch}'),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 18),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.errorContainer,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(Icons.delete_outline),
+        ),
+        confirmDismiss: (_) => showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(strings.confirmDelete),
+            content: Text(strings.confirmDeleteRepo(repo.fullName)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(strings.cancel),
               ),
-              confirmDismiss: (_) => showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text(strings.confirmDelete),
-                  content: Text(strings.confirmDeleteRepo(repo.fullName)),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: Text(strings.cancel),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: Text(strings.delete),
-                    ),
-                  ],
-                ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(strings.delete),
               ),
-              onDismissed: (_) => _deleteRepo(repo, index),
-              child: RepoTile(
-                repo: repo,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => DetailScreen(repo: repo)),
-                ),
-                onDelete: () => _deleteRepo(repo, index),
-                onLongPress: () => _showRepoActions(repo),
-              ),
-            ),
-          );
-        },
+            ],
+          ),
+        ),
+        onDismissed: (_) => _deleteRepo(repo, index),
+        child: RepoTile(
+          repo: repo,
+          onTap: () {
+            if (wide) {
+              setState(() => _selectedRepo = repo);
+            } else {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => DetailScreen(repo: repo)),
+              );
+            }
+          },
+          onDelete: () => _deleteRepo(repo, index),
+          onLongPress: () => _showRepoActions(repo),
+        ),
       ),
     );
   }

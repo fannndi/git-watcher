@@ -12,6 +12,9 @@ local (SharedPreferences) and remote data comes from the public GitHub REST API 
   segmented buttons) are centralized in `app.dart`.
 - Motion uses `FadeForwardsPageTransitionsBuilder`; system UI is edge-to-edge and
   Android predictive back is enabled in the manifest.
+- Layout: `HomeScreen` switches to a two-pane master-detail layout at >= 720 dp;
+  commit and history lists use pinned date headers and choice-chip filters;
+  `skeleton.dart` provides shimmer placeholders; settings is a hub with sub-pages.
 
 ## Layers
 

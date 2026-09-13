@@ -9,6 +9,8 @@ class AppStrings {
 
   String get appTitle => appName;
   String get settings => isEnglish ? 'Settings' : 'Pengaturan';
+  String get on => isEnglish ? 'On' : 'Aktif';
+  String get off => isEnglish ? 'Off' : 'Nonaktif';
   String get history => isEnglish ? 'Sync History' : 'Riwayat Sinkron';
   String get syncNow => isEnglish ? 'Sync now' : 'Sync sekarang';
   String get lastSync => isEnglish ? 'Last sync' : 'Sinkron terakhir';
@@ -121,6 +123,15 @@ class AppStrings {
   String get searchCommit => isEnglish ? 'Search commit' : 'Cari commit';
   String get commitNotFound =>
       isEnglish ? 'No commits found' : 'Commit tidak ditemukan';
+  String get filterAll => isEnglish ? 'All' : 'Semua';
+  String get filterToday => isEnglish ? 'Today' : 'Hari ini';
+  String get filterWeek => isEnglish ? 'Last 7 days' : '7 hari terakhir';
+  String get selectRepo =>
+      isEnglish ? 'Select a repository' : 'Pilih repository';
+  String get selectRepoHint => isEnglish
+      ? 'Pick a repo on the left to see its commits.'
+      : 'Pilih repo di kiri untuk melihat commit-nya.';
+  String get allRepos => isEnglish ? 'All repos' : 'Semua repo';
   String changedFiles(int count) =>
       isEnglish ? '$count changed files' : '$count file berubah';
   String get noFileDetail => isEnglish
@@ -272,6 +283,9 @@ class AppStrings {
 
   String get noSyncHistory =>
       isEnglish ? 'No sync results yet' : 'Belum ada hasil sinkron';
+  String get noUpdatesForRepo => isEnglish
+      ? 'No updates for this repository'
+      : 'Tidak ada update untuk repo ini';
   String get clearHistory =>
       isEnglish ? 'Clear sync history' : 'Hapus riwayat sinkron';
   String get historyCleared =>

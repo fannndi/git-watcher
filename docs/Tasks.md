@@ -2,6 +2,17 @@
 
 ## Done
 
+### 2026-09 — development round 9 (UI/UX deep pass)
+- [x] Settings split into a hub + sub-pages (appearance, sync, private access, about)
+      with current-value subtitles
+- [x] Detail list: pinned date headers, `Today`/`Last 7 days`/`All` choice chips
+- [x] Sync history: grouped by day with pinned headers and a repo filter chip row
+- [x] Skeleton placeholders for Home, Detail and history loading states
+- [x] Adaptive launcher icon with a monochrome layer (Android 13+ themed icons)
+- [x] Two-pane master-detail layout for screens >= 720 dp
+- [x] Accessibility: labeled icon buttons, semantic section headers, 40-48 dp tap
+      targets, decorative skeletons excluded from semantics
+
 ### 2026-09 — development round 8 (Material 3 / UI-UX)
 - [x] Material You: system wallpaper palette via `dynamic_color` with a toggle and a
       brand-seed fallback when the OS has no dynamic scheme

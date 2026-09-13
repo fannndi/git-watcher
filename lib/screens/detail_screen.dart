@@ -13,6 +13,10 @@ import '../utils/constants.dart';
 import '../utils/strings.dart';
 import '../widgets/commit_card.dart';
 import '../widgets/commit_detail_sheet.dart';
+import '../widgets/skeleton.dart';
+import '../widgets/sliver_date_header.dart';
+
+enum CommitRange { all, today, week }
 
 class DetailScreen extends StatefulWidget {
   const DetailScreen({super.key, required this.repo});
@@ -31,6 +35,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
   List<Commit> _commits = [];
   String _query = '';
+  CommitRange _range = CommitRange.all;
   bool _isLoading = true;
   bool _hasError = false;
 
@@ -143,18 +148,28 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   List<Commit> get _filteredCommits {
-    if (_query.isEmpty) {
-      return _commits;
-    }
-
+    final now = DateTime.now();
     final query = _query.toLowerCase();
-    return _commits
-        .where(
-          (commit) =>
-              commit.message.toLowerCase().contains(query) ||
-              commit.sha.toLowerCase().contains(query),
-        )
-        .toList();
+
+    return _commits.where((commit) {
+      if (query.isNotEmpty &&
+          !commit.message.toLowerCase().contains(query) &&
+          !commit.sha.toLowerCase().contains(query)) {
+        return false;
+      }
+
+      final local = commit.date.toLocal();
+      switch (_range) {
+        case CommitRange.all:
+          return true;
+        case CommitRange.today:
+          return local.year == now.year &&
+              local.month == now.month &&
+              local.day == now.day;
+        case CommitRange.week:
+          return now.difference(local).inDays < 7;
+      }
+    }).toList();
   }
 
   Map<String, List<Commit>> _groupCommitsByDate(List<Commit> commits) {
@@ -185,7 +200,6 @@ class _DetailScreenState extends State<DetailScreen> {
       valueListenable: appSettingsController,
       builder: (context, settings, _) {
         final strings = stringsFor(settings.languageCode);
-        final groupedCommits = _groupCommitsByDate(_filteredCommits);
 
         return Scaffold(
           appBar: AppBar(
@@ -211,18 +225,31 @@ class _DetailScreenState extends State<DetailScreen> {
             ],
           ),
           body: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 400),
+            duration: const Duration(milliseconds: 300),
             child: _isLoading
-                ? const Center(
-                    key: ValueKey('loading'),
-                    child: CircularProgressIndicator(),
-                  )
+                ? _buildSkeleton()
                 : _hasError
                     ? _buildErrorState(strings)
-                    : _buildContent(strings, groupedCommits),
+                    : _buildContent(strings),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return ListView(
+      key: const ValueKey('loading'),
+      padding: const EdgeInsets.all(16),
+      children: const [
+        Skeleton(child: SkeletonBox(width: double.infinity, height: 52)),
+        SizedBox(height: 16),
+        Skeleton(child: SkeletonCommitCard()),
+        SizedBox(height: 10),
+        Skeleton(child: SkeletonCommitCard()),
+        SizedBox(height: 10),
+        Skeleton(child: SkeletonCommitCard()),
+      ],
     );
   }
 
@@ -245,7 +272,7 @@ class _DetailScreenState extends State<DetailScreen> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 16),
-            ElevatedButton.icon(
+            FilledButton.icon(
               onPressed: _loadCommits,
               icon: const Icon(Icons.refresh),
               label: Text(strings.tryAgain),
@@ -256,78 +283,95 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Widget _buildContent(
-    AppStrings strings,
-    Map<String, List<Commit>> groupedCommits,
-  ) {
-    return Padding(
-      key: const ValueKey('content'),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Column(
-        children: [
-          SearchBar(
-            controller: _searchController,
-            hintText: strings.searchCommit,
-            leading: const Icon(Icons.search),
-            trailing: _query.isEmpty
-                ? null
-                : [
-                    IconButton(
-                      tooltip: strings.clearSearch,
-                      icon: const Icon(Icons.close),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() => _query = '');
-                      },
-                    ),
-                  ],
-            elevation: const WidgetStatePropertyAll(0),
-            onChanged: (value) => setState(() => _query = value.trim()),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshCommits,
-              child: groupedCommits.isEmpty
-                  ? ListView(
-                      children: [
-                        const SizedBox(height: 220),
-                        Center(child: Text(strings.commitNotFound)),
-                      ],
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      itemCount: groupedCommits.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 4),
-                      itemBuilder: (context, index) {
-                        final group = groupedCommits.entries.elementAt(index);
+  Widget _buildContent(AppStrings strings) {
+    final groupedCommits = _groupCommitsByDate(_filteredCommits);
 
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
-                              child: Text(
-                                group.key,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w800),
-                              ),
-                            ),
-                            for (var i = 0; i < group.value.length; i++)
-                              CommitCard(
-                                commit: group.value[i],
-                                index: i,
-                                onTap: () => _showCommitDetail(group.value[i]),
-                                onCopySha: () => _copySha(group.value[i].sha),
-                              ),
-                          ],
-                        );
-                      },
-                    ),
+    return RefreshIndicator(
+      key: const ValueKey('content'),
+      onRefresh: _refreshCommits,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: SearchBar(
+                controller: _searchController,
+                hintText: strings.searchCommit,
+                leading: const Icon(Icons.search),
+                trailing: _query.isEmpty
+                    ? null
+                    : [
+                        IconButton(
+                          tooltip: strings.clearSearch,
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _query = '');
+                          },
+                        ),
+                      ],
+                elevation: const WidgetStatePropertyAll(0),
+                onChanged: (value) => setState(() => _query = value.trim()),
+              ),
             ),
           ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: Text(strings.filterAll),
+                    selected: _range == CommitRange.all,
+                    onSelected: (_) => setState(() => _range = CommitRange.all),
+                  ),
+                  ChoiceChip(
+                    label: Text(strings.filterToday),
+                    selected: _range == CommitRange.today,
+                    onSelected: (_) =>
+                        setState(() => _range = CommitRange.today),
+                  ),
+                  ChoiceChip(
+                    label: Text(strings.filterWeek),
+                    selected: _range == CommitRange.week,
+                    onSelected: (_) =>
+                        setState(() => _range = CommitRange.week),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (groupedCommits.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: Text(strings.commitNotFound)),
+            )
+          else
+            for (final entry in groupedCommits.entries) ...[
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: SliverDateHeaderDelegate(entry.key),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                sliver: SliverList.separated(
+                  itemCount: entry.value.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final commit = entry.value[index];
+                    return CommitCard(
+                      commit: commit,
+                      index: index,
+                      onTap: () => _showCommitDetail(commit),
+                      onCopySha: () => _copySha(commit.sha),
+                    );
+                  },
+                ),
+              ),
+            ],
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
     );

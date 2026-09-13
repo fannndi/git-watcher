@@ -11,10 +11,16 @@ App id: `com.fannndi.gitwatcher`, Dart package: `git_watcher`.
 - Motion: `FadeForwardsPageTransitionsBuilder` on Android.
 - Home uses a `CustomScrollView` with `SliverAppBar.large`; lists are slivers and
   state widgets (`home_states.dart`) are non-scrolling so they can live inside
-  `SliverFillRemaining`.
+  `SliverFillRemaining`. On screens >= 720 dp it switches to a two-pane
+  master-detail layout (`DetailScreen` embedded on the right).
+- Detail and Update lists use pinned date headers (`sliver_date_header.dart`),
+  `ChoiceChip` filters, and skeleton placeholders (`skeleton.dart`) while loading.
+- Settings is a hub (`settings_screen.dart`) with sub-pages: appearance, sync,
+  private access, about. Shared `SettingsSection` lives in `widgets/`.
 - Search uses the M3 `SearchBar` widget (Home and Detail).
 - Edge-to-edge system UI is enabled in `main()` and Android predictive back is on
-  via `enableOnBackInvokedCallback`.
+  via `enableOnBackInvokedCallback`. The launcher icon is adaptive with a
+  monochrome layer for Android 13+ themed icons.
 
 ## Commands
 
@@ -43,13 +49,17 @@ lib/
     app_settings_controller.dart global ValueNotifier<AppSettings>
     notification_service.dart   local notifications, navigatorKey, deep link
     startup_service.dart        init notifications + sync alarm
-  screens/                      5 screens, StatefulWidget + setState
+  screens/                      Home, Setup, AddRepo, Detail, Update + settings hub
+                                and 4 settings sub-pages
   widgets/
     repo_tile.dart              repo card with long-press actions
     chips.dart                  shared InfoChip
     home_states.dart            Home sync bar, empty/error/no-result, tour
     commit_card.dart            commit list item
     commit_detail_sheet.dart    commit detail bottom sheet + file summary
+    skeleton.dart               loading placeholders
+    sliver_date_header.dart     pinned date headers for commit/history lists
+    settings_section.dart       shared settings card
   workers/alarm_worker.dart     background isolate entry point + alarm scheduling
   utils/constants.dart          ALL constants (single source of truth)
   utils/strings.dart            AppStrings i18n (id + en)

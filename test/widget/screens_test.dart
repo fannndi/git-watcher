@@ -5,7 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:git_watcher/app.dart';
 import 'package:git_watcher/models/sync_log.dart';
 import 'package:git_watcher/models/watched_repo.dart';
+import 'package:git_watcher/screens/about_settings_screen.dart';
+import 'package:git_watcher/screens/appearance_settings_screen.dart';
+import 'package:git_watcher/screens/private_access_screen.dart';
 import 'package:git_watcher/screens/settings_screen.dart';
+import 'package:git_watcher/screens/sync_settings_screen.dart';
 import 'package:git_watcher/screens/update_screen.dart';
 import 'package:git_watcher/utils/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,14 +23,38 @@ void main() {
     setupCompletedNotifier.value = true;
   });
 
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    Size size = const Size(420, 900),
+  }) async {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const GitHubWatcherApp());
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> pumpScreen(
+    WidgetTester tester,
+    Widget screen, {
+    Size size = const Size(420, 1600),
+  }) async {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(MaterialApp(home: screen));
+    await tester.pumpAndSettle();
+  }
+
   group('First launch', () {
     testWidgets('shows the setup wizard when not completed', (tester) async {
       SharedPreferences.setMockInitialValues({});
       setupCompletedNotifier.value = false;
       addTearDown(() => setupCompletedNotifier.value = true);
 
-      await tester.pumpWidget(const GitHubWatcherApp());
-      await tester.pumpAndSettle();
+      await pumpApp(tester);
 
       expect(find.text('Selamat datang di Git Watcher'), findsOneWidget);
       expect(find.text('Lanjut'), findsOneWidget);
@@ -35,16 +63,14 @@ void main() {
 
   group('HomeScreen', () {
     testWidgets('renders empty state when no repos', (tester) async {
-      await tester.pumpWidget(const GitHubWatcherApp());
-      await tester.pumpAndSettle();
+      await pumpApp(tester);
 
       expect(find.text('Belum ada repo'), findsOneWidget);
       expect(find.byIcon(Icons.folder_open_outlined), findsOneWidget);
     });
 
     testWidgets('shows FAB and app bar actions', (tester) async {
-      await tester.pumpWidget(const GitHubWatcherApp());
-      await tester.pumpAndSettle();
+      await pumpApp(tester);
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.byIcon(Icons.sync), findsOneWidget);
@@ -53,8 +79,7 @@ void main() {
     });
 
     testWidgets('navigates to settings', (tester) async {
-      await tester.pumpWidget(const GitHubWatcherApp());
-      await tester.pumpAndSettle();
+      await pumpApp(tester);
 
       await tester.tap(find.byIcon(Icons.settings_outlined));
       await tester.pumpAndSettle();
@@ -63,8 +88,7 @@ void main() {
     });
 
     testWidgets('toggles search field', (tester) async {
-      await tester.pumpWidget(const GitHubWatcherApp());
-      await tester.pumpAndSettle();
+      await pumpApp(tester);
 
       await tester.tap(find.byIcon(Icons.search));
       await tester.pumpAndSettle();
@@ -83,16 +107,16 @@ void main() {
       );
       SharedPreferences.setMockInitialValues({
         'has_seen_tour': true,
+        'setup_completed': true,
         watchedReposKey: jsonEncode([repo.toJson()]),
       });
 
-      await tester.pumpWidget(const GitHubWatcherApp());
-      await tester.pumpAndSettle();
+      await pumpApp(tester);
 
       expect(
           find.text('flutter / flutter', findRichText: true), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.tap(find.byIcon(Icons.delete_outline).first);
       await tester.pumpAndSettle();
 
       expect(find.text('Urungkan'), findsOneWidget);
@@ -103,47 +127,75 @@ void main() {
       expect(
           find.text('flutter / flutter', findRichText: true), findsOneWidget);
     });
+
+    testWidgets('uses two-pane layout on wide screens', (tester) async {
+      await pumpApp(tester, size: const Size(1200, 800));
+
+      expect(find.text('Pilih repository'), findsOneWidget);
+      expect(find.text('Pilih repo di kiri untuk melihat commit-nya.'),
+          findsOneWidget);
+    });
   });
 
-  group('SettingsScreen', () {
-    Future<void> pumpSettings(WidgetTester tester) async {
-      tester.view.physicalSize = const Size(1200, 4200);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-
-      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
-      await tester.pumpAndSettle();
-    }
-
-    testWidgets('renders all sections', (tester) async {
-      await pumpSettings(tester);
+  group('Settings hub', () {
+    testWidgets('shows all sections and navigates', (tester) async {
+      await pumpScreen(tester, const SettingsScreen());
 
       expect(find.text('Tampilan'), findsOneWidget);
-      expect(find.text('Akses repo privat'), findsOneWidget);
       expect(find.text('Sinkronisasi'), findsOneWidget);
+      expect(find.text('Akses repo privat'), findsOneWidget);
       expect(find.text('Tentang aplikasi'), findsOneWidget);
-    });
 
-    testWidgets('shows language, theme and credential controls',
-        (tester) async {
-      await pumpSettings(tester);
+      await tester.tap(find.text('Sinkronisasi'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SyncSettingsScreen), findsOneWidget);
+    });
+  });
+
+  group('AppearanceSettingsScreen', () {
+    testWidgets('shows language, theme and dynamic color', (tester) async {
+      await pumpScreen(tester, const AppearanceSettingsScreen());
 
       expect(find.text('Bahasa'), findsOneWidget);
       expect(find.text('Sistem'), findsOneWidget);
       expect(find.text('Terang'), findsOneWidget);
       expect(find.text('Gelap'), findsOneWidget);
-      expect(find.text('Username GitHub'), findsOneWidget);
-      expect(find.text('Personal Access Token'), findsOneWidget);
+      expect(find.text('Warna dinamis (Material You)'), findsOneWidget);
+    });
+  });
+
+  group('SyncSettingsScreen', () {
+    testWidgets('shows sync and notification controls', (tester) async {
+      await pumpScreen(tester, const SyncSettingsScreen(),
+          size: const Size(420, 2000));
+
       expect(find.text('Interval sync background'), findsOneWidget);
       expect(find.text('Kirim notifikasi uji'), findsOneWidget);
       expect(find.text('Presisi Ekstrem'), findsOneWidget);
       expect(find.text('Sync hanya via Wi-Fi'), findsOneWidget);
-      expect(find.text('Jadwal tidur'), findsOneWidget);
       expect(find.text('Jam bangun'), findsOneWidget);
       expect(find.text('Jam tidur'), findsOneWidget);
       expect(find.text('Suara jika belum dibaca'), findsOneWidget);
       expect(find.text('Pengaturan notifikasi Android'), findsOneWidget);
-      expect(find.text('Warna dinamis (Material You)'), findsOneWidget);
+    });
+  });
+
+  group('PrivateAccessScreen', () {
+    testWidgets('shows credential fields', (tester) async {
+      await pumpScreen(tester, const PrivateAccessScreen());
+
+      expect(find.text('Username GitHub'), findsOneWidget);
+      expect(find.text('Personal Access Token'), findsOneWidget);
+    });
+  });
+
+  group('AboutSettingsScreen', () {
+    testWidgets('shows about entries', (tester) async {
+      await pumpScreen(tester, const AboutSettingsScreen());
+
+      expect(find.text('Beri Nilai'), findsOneWidget);
+      expect(find.text('alisa'), findsOneWidget);
     });
   });
 
@@ -155,11 +207,11 @@ void main() {
       );
       SharedPreferences.setMockInitialValues({
         'has_seen_tour': true,
+        'setup_completed': true,
         syncHistoryKey: jsonEncode([log.toJson()]),
       });
 
-      await tester.pumpWidget(const MaterialApp(home: UpdateScreen()));
-      await tester.pumpAndSettle();
+      await pumpScreen(tester, const UpdateScreen());
 
       expect(find.text('Riwayat Sinkron'), findsOneWidget);
 
@@ -174,8 +226,7 @@ void main() {
 
   group('App theme', () {
     testWidgets('uses Material 3 with light and dark themes', (tester) async {
-      await tester.pumpWidget(const GitHubWatcherApp());
-      await tester.pumpAndSettle();
+      await pumpApp(tester);
 
       final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
       expect(materialApp.theme?.useMaterial3, true);
